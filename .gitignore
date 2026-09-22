@@ -1,0 +1,105 @@
+### Build e binários ###
+bin/
+obj/
+out/
+artifacts/
+*.dll
+*.exe
+*.pdb
+*.cache
+*.log
+
+### Visual Studio ###
+.vs/
+*.user
+*.suo
+*.sln.docstates
+
+### Cache do Visual Studio e Temp ###
+*.userosscache
+*.sln.ide/
+*.local.xml
+*.dbmdl
+*.opendb
+*.VC.db
+
+### .NET Core ###
+*.deps.json
+*.runtimeconfig.json
+*.runtimeconfig.dev.json
+*.nuget.props
+*.nuget.targets
+project.lock.json
+project.fragment.lock.json
+
+### Pacotes NuGet ###
+*.nupkg
+# Caso queira ignorar pacotes restauráveis:
+packages/
+front/node_modules/
+# Porém não ignore se você disponibiliza libs próprias
+
+### Logs ###
+*.log
+logs/
+log/
+
+### Configurações secretas ###
+appsettings.Development.json
+appsettings.Local.json
+appsettings.*.json
+
+### Rider ###
+.idea/
+*.DotSettings.user
+
+### VSCode ###
+.vscode/
+*.code-workspace
+
+### Test Results ###
+TestResults/
+*.coverage
+*.coveragexml
+*.trx
+
+### Docker ###
+/docker-compose.override.yml
+docker-compose.debug.yml
+
+### Sistema operacional ###
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux/macOS
+*.DS_Store
+*.swp
+*~
+
+### Publish ###
+publish/
+dist/
+wwwroot/dist/
+### Material privado e configuração local: nunca publicar ###
+.private-originals/
+.publication/
+.env
+.env.*
+!.env.example
+Transient/
+sqldata/
+models/
+*.back
+*.bak
+*.rar
+*.zip
+node_modules/
+# Banco local e arquivos auxiliares
+**/data/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3

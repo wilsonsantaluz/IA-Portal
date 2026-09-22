@@ -1,0 +1,46 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    profiles: [rag]
+    ports:
+      - "127.0.0.1:6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+  ai-gateway:
+    build: ./ai-gateway
+    depends_on: [ml-service, ocr-service]
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?Configure DEEPSEEK_API_KEY no .env}
+      ConnectionStrings__PortalConnection: Data Source=/app/data/portal.db;Foreign Keys=True
+      Jwt__Key: ${JWT_KEY:?Configure JWT_KEY no .env}
+      Bootstrap__AdminEmail: ${ADMIN_EMAIL:?Configure ADMIN_EMAIL no .env}
+      Bootstrap__AdminPassword: ${ADMIN_PASSWORD:?Configure ADMIN_PASSWORD no .env}
+      Chat__UseAdvancedRag: ${USE_ADVANCED_RAG:-false}
+      ML_SERVICE_URL: http://ml-service:9081
+      OCR_SERVICE_URL: http://ocr-service:8080
+      TRINO_URL: ${TRINO_URL:-http://host.docker.internal:8081}
+      TRINO_USER: ${TRINO_USER:-portal}
+      TRINO_CATALOG: ${TRINO_CATALOG:-memory}
+      Qdrant__Endpoint: http://qdrant:6333
+    ports:
+      - "127.0.0.1:9089:8080"
+    volumes:
+      - ./models:/app/models:ro
+      - portal_data:/app/data
+  ml-service:
+    build: ./ml-service
+    environment:
+      ASPNETCORE_URLS: http://+:9081
+  ocr-service:
+    build: ./ocr-service
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+  portal-front:
+    build: ./front
+    depends_on: [ai-gateway]
+    ports:
+      - "127.0.0.1:9080:80"
+volumes:
+  portal_data:
+  qdrant_data:
