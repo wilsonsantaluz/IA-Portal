@@ -7,6 +7,8 @@ using Org.BouncyCastle.Crypto.Generators;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using AiGateway.Security;
+using Microsoft.AspNetCore.Authorization;
 
 [ApiController]
 [Route("api/auth")]
@@ -22,6 +24,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [AllowAnonymous]
     public async Task<IActionResult> Login(
         LoginRequest req,
         CancellationToken ct)
@@ -30,7 +33,7 @@ public class AuthController : ControllerBase
             .Include(u => u.Roles)
                 .ThenInclude(r => r.Role)
             .FirstOrDefaultAsync(x =>
-                x.UserEmail == req.Email &&
+                x.UserEmail.ToLower() == req.Email.Trim().ToLower() &&
                 x.IsActive, ct);
 
         if (user == null)
@@ -40,18 +43,11 @@ public class AuthController : ControllerBase
             return Unauthorized("Usuário ou senha inválidos.");
 
         // Roles
-        var roles = user.Roles
-            .Select(x => x.Role.RoleName)
-            .Distinct()
-            .ToArray();
+        var access = await PortalAccess.ReadAsync(_db, user.UserId, ct);
+        var roles = access.Roles;
 
         // Permissions
-        var permissions = await _db.RolePermissions
-            .Where(rp => user.Roles.Select(r => r.RoleId).Contains(rp.RoleId))
-            .Include(rp => rp.Permission)
-            .Select(rp => rp.Permission.PermissionKey)
-            .Distinct()
-            .ToArrayAsync(ct);
+        var permissions = access.Permissions;
 
         var token = GenerateToken(user, roles, permissions);
 
@@ -65,6 +61,16 @@ public class AuthController : ControllerBase
         ));
     }
 
+    [Authorize]
+    [HttpGet("me")]
+    public async Task<IActionResult> Me(CancellationToken ct)
+    {
+        var user = await _db.Users.AsNoTracking().SingleAsync(x => x.UserId == PortalAccess.UserId(User), ct);
+        return Ok(new { user.UserId, user.UserName, email = user.UserEmail,
+            roles = User.FindAll(ClaimTypes.Role).Select(x => x.Value),
+            permissions = User.FindAll("perm").Select(x => x.Value) });
+    }
+
     private string GenerateToken(
         User user,
         string[] roles,
@@ -76,7 +82,8 @@ public class AuthController : ControllerBase
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.UserId.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, user.UserEmail),
-            new Claim("name", user.UserName)
+            new Claim("name", user.UserName),
+            new Claim("ver", PortalAccess.Version(user, _cfg))
         };
 
         claims.AddRange(roles.Select(r => new Claim("role", r)));

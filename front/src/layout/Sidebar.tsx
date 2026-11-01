@@ -14,11 +14,41 @@ import LibraryBooksOutlined from "@mui/icons-material/LibraryBooksOutlined";
 import { alpha } from "@mui/material/styles";
 import { Link, useLocation } from "react-router-dom";
 import Brand from "../components/Brand";
+import { useAuth } from "../auth/AuthProvider";
+import PeopleOutline from "@mui/icons-material/PeopleOutline";
+import AdminPanelSettingsOutlined from "@mui/icons-material/AdminPanelSettingsOutlined";
 
 const destinations = [
-  { to: "/chat", label: "Chat IA", icon: <ChatOutlined /> },
-  { to: "/dashboard", label: "Dashboard", icon: <InsightsOutlined /> },
-  { to: "/kb", label: "Base de conhecimento", icon: <LibraryBooksOutlined /> },
+  {
+    to: "/chat",
+    label: "Chat IA",
+    icon: <ChatOutlined />,
+    permission: "chat.access",
+  },
+  {
+    to: "/dashboard",
+    label: "Dashboard",
+    icon: <InsightsOutlined />,
+    permission: "dashboard.view",
+  },
+  {
+    to: "/kb",
+    label: "Base de conhecimento",
+    icon: <LibraryBooksOutlined />,
+    permission: "kb.view",
+  },
+  {
+    to: "/users",
+    label: "Usuários",
+    icon: <PeopleOutline />,
+    permission: "access.manage",
+  },
+  {
+    to: "/groups",
+    label: "Grupos e permissões",
+    icon: <AdminPanelSettingsOutlined />,
+    permission: "access.manage",
+  },
 ];
 
 export default function Sidebar({
@@ -29,6 +59,7 @@ export default function Sidebar({
   onNavigate: () => void;
 }) {
   const { pathname } = useLocation();
+  const { hasPermission } = useAuth();
   return (
     <Box
       component="nav"
@@ -44,8 +75,8 @@ export default function Sidebar({
     >
       <Box
         component={Link}
-        to="/chat"
-        aria-label="IA-Portal: abrir chat"
+        to="/"
+        aria-label="IA-Portal: início"
         onClick={onNavigate}
         sx={{
           height: 72,
@@ -75,54 +106,56 @@ export default function Sidebar({
           </Typography>
         )}
         <List component="div" disablePadding>
-          {destinations.map((item) => (
-            <Tooltip
-              key={item.to}
-              title={open ? "" : item.label}
-              placement="right"
-            >
-              <ListItemButton
-                component={Link}
-                to={item.to}
-                aria-label={item.label}
-                aria-current={pathname === item.to ? "page" : undefined}
-                onClick={onNavigate}
-                selected={pathname === item.to}
-                sx={(theme) => ({
-                  position: "relative",
-                  borderRadius: "10px",
-                  mb: 0.7,
-                  minHeight: 46,
-                  px: 1.6,
-                  transition: "background .2s, box-shadow .2s",
-                  color: theme.palette.text.primary,
-                  "&.Mui-selected": {
-                    color: theme.palette.primary.main,
-                    background: `linear-gradient(100deg, ${alpha(theme.palette.primary.main, 0.14)}, ${alpha(theme.palette.secondary.main, 0.06)})`,
-                    boxShadow: `inset 3px 0 0 ${theme.palette.primary.main}`,
-                  },
-                  "&.Mui-selected .MuiListItemIcon-root": {
-                    color: theme.palette.primary.main,
-                  },
-                })}
+          {destinations
+            .filter((item) => hasPermission(item.permission))
+            .map((item) => (
+              <Tooltip
+                key={item.to}
+                title={open ? "" : item.label}
+                placement="right"
               >
-                <ListItemIcon
-                  sx={{ minWidth: open ? 37 : 0, color: "text.secondary" }}
+                <ListItemButton
+                  component={Link}
+                  to={item.to}
+                  aria-label={item.label}
+                  aria-current={pathname === item.to ? "page" : undefined}
+                  onClick={onNavigate}
+                  selected={pathname === item.to}
+                  sx={(theme) => ({
+                    position: "relative",
+                    borderRadius: "10px",
+                    mb: 0.7,
+                    minHeight: 46,
+                    px: 1.6,
+                    transition: "background .2s, box-shadow .2s",
+                    color: theme.palette.text.primary,
+                    "&.Mui-selected": {
+                      color: theme.palette.primary.main,
+                      background: `linear-gradient(100deg, ${alpha(theme.palette.primary.main, 0.14)}, ${alpha(theme.palette.secondary.main, 0.06)})`,
+                      boxShadow: `inset 3px 0 0 ${theme.palette.primary.main}`,
+                    },
+                    "&.Mui-selected .MuiListItemIcon-root": {
+                      color: theme.palette.primary.main,
+                    },
+                  })}
                 >
-                  {item.icon}
-                </ListItemIcon>
-                {open && (
-                  <ListItemText
-                    primary={item.label}
-                    primaryTypographyProps={{
-                      fontSize: 13,
-                      fontWeight: pathname === item.to ? 650 : 500,
-                    }}
-                  />
-                )}
-              </ListItemButton>
-            </Tooltip>
-          ))}
+                  <ListItemIcon
+                    sx={{ minWidth: open ? 37 : 0, color: "text.secondary" }}
+                  >
+                    {item.icon}
+                  </ListItemIcon>
+                  {open && (
+                    <ListItemText
+                      primary={item.label}
+                      primaryTypographyProps={{
+                        fontSize: 13,
+                        fontWeight: pathname === item.to ? 650 : 500,
+                      }}
+                    />
+                  )}
+                </ListItemButton>
+              </Tooltip>
+            ))}
         </List>
       </Box>
       {open && (

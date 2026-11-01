@@ -106,12 +106,13 @@ def main():
         def start(log):
             nonlocal process
             process = subprocess.Popen(["dotnet", str(dll)], cwd=ROOT / "ai-gateway",
-                                       env=env, stdout=log, stderr=log)
+                                       env=env, stdout=log, stderr=log,
+                                       creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
             for _ in range(100):
                 if process.poll() is not None:
                     raise RuntimeError("Gateway startup failed; inspect build/configuration.")
                 try:
-                    request("/api/chatkb/metrics/summary")
+                    request("/swagger/v1/swagger.json")
                     return
                 except (OSError, urllib.error.URLError):
                     time.sleep(.2)

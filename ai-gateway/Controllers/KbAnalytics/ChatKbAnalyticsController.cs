@@ -1,9 +1,10 @@
-using Portal.AI.Gateway.Infrastructure;
+using AiGateway.Security;
 using Microsoft.AspNetCore.Authorization;
+using Portal.AI.Gateway.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-[ApiController]
+[ApiController, Authorize(Policy = PortalAccess.Dashboard)]
 [Route("api/chatkb")]
 public class ChatKbAnalyticsController : ControllerBase
 {
@@ -19,7 +20,6 @@ public class ChatKbAnalyticsController : ControllerBase
 
     // Resumo geral (cards do dashboard)
     [HttpGet("metrics/summary")]
- //   [Authorize]
     public async Task<IActionResult> GetSummary(CancellationToken ct)
     {
         var now = DateTime.UtcNow;
@@ -46,7 +46,6 @@ public class ChatKbAnalyticsController : ControllerBase
 
     // Médias por mês (gráfico de linha)
     [HttpGet("metrics/by-month")]
-   // [Authorize]
     public async Task<IActionResult> GetByMonth(CancellationToken ct)
     {
         var data = await _db.ChatKbRatings
@@ -66,7 +65,6 @@ public class ChatKbAnalyticsController : ControllerBase
 
     // Médias por seção (gráfico barra)
     [HttpGet("metrics/by-section")]
-   // [Authorize]
     public async Task<IActionResult> GetBySection(CancellationToken ct)
     {
         var data = await _db.ChatKbRatings
@@ -86,7 +84,6 @@ public class ChatKbAnalyticsController : ControllerBase
 
     // Médias por usuário (top problemáticos ou heavy users)
     [HttpGet("metrics/by-user")]
-   // [Authorize]
     public async Task<IActionResult> GetByUser(CancellationToken ct)
     {
         var data = await _db.ChatKbRatings
@@ -106,7 +103,6 @@ public class ChatKbAnalyticsController : ControllerBase
 
     // Tabela com filtros (admin auditoria)
     [HttpGet("ratings")]
-   // [Authorize]
     public async Task<IActionResult> SearchRatings(
         [FromQuery] int? minRating,
         [FromQuery] int? maxRating,

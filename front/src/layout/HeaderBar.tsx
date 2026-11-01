@@ -36,6 +36,8 @@ export default function HeaderBar({
         "/chat": "Chat IA",
         "/dashboard": "Dashboard",
         "/kb": "Base de conhecimento",
+        "/users": "Usuários",
+        "/groups": "Grupos e permissões",
       } as Record<string, string>
     )[pathname] || "IA-Portal";
   return (

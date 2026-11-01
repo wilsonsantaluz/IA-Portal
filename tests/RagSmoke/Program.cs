@@ -41,7 +41,8 @@ var start = new ProcessStartInfo("dotnet")
 {
     WorkingDirectory = Path.Combine(root, "ai-gateway"),
     RedirectStandardOutput = true,
-    RedirectStandardError = true
+    RedirectStandardError = true,
+    CreateNoWindow = true
 };
 start.ArgumentList.Add(Path.Combine(root, "ai-gateway/bin/Debug/net8.0/AiGateway.dll"));
 var settings = new Dictionary<string, string>
@@ -98,9 +99,10 @@ try
         content = "O protocolo TEST-RAG-MARKER realiza conciliacao sintetica de recebiveis.", isActive = true
     });
     if (!saved.IsSuccessStatusCode) throw new Exception("KB upsert failed: " + await saved.Content.ReadAsStringAsync());
+    var streamSession = Guid.NewGuid();
     using var stream = await http.PostAsJsonAsync("/api/ia/ask/stream", new
     {
-        pergunta = "Explique o protocolo de conciliacao de recebiveis", sessionId = Guid.NewGuid().ToString()
+        pergunta = "Explique o protocolo de conciliacao de recebiveis", sessionId = streamSession.ToString(), userId = "spoofed-user"
     });
     stream.EnsureSuccessStatusCode();
     var text = await stream.Content.ReadAsStringAsync();
@@ -108,6 +110,19 @@ try
         throw new Exception("Chat stream failed: " + text);
     if (lastPrompt?.Contains("TEST-RAG-MARKER") != true)
         throw new Exception("Retrieved synthetic knowledge did not reach the LLM prompt.");
+    var history = await http.GetFromJsonAsync<JsonElement>($"/api/chatBot/history/{streamSession}");
+    if (history.GetArrayLength() != 2) throw new Exception("Owner could not retrieve persisted messages.");
+    using var groupResponse = await http.PostAsJsonAsync("/api/roles", new { name = "Chat sintético", permissions = new[] { "chat.access" } });
+    groupResponse.EnsureSuccessStatusCode();
+    var group = await groupResponse.Content.ReadFromJsonAsync<JsonElement>();
+    using var memberResponse = await http.PostAsJsonAsync("/api/users", new { userName = "Outra conta sintética", userEmail = "other@example.test", password = secret, groupIds = new[] { group.GetProperty("id").GetInt32() } });
+    memberResponse.EnsureSuccessStatusCode();
+    using var otherLogin = await http.PostAsJsonAsync("/api/auth/login", new { email = "other@example.test", password = secret });
+    var other = await otherLogin.Content.ReadFromJsonAsync<JsonElement>();
+    http.DefaultRequestHeaders.Authorization = new("Bearer", other.GetProperty("token").GetString());
+    var hiddenHistory = await http.GetFromJsonAsync<JsonElement>($"/api/chatBot/history/{streamSession}");
+    if (hiddenHistory.GetArrayLength() != 0) throw new Exception("Another user could read private conversation history.");
+    Console.WriteLine("PASS: conversation ownership is derived from JWT; another authenticated account cannot read history.");
     Console.WriteLine("PASS: synthetic login, empty index, real ONNX embedding, Qdrant index/search, real reranking and chat streaming; SQLite isolated, LLM simulated, no Trino.");
 }
 finally

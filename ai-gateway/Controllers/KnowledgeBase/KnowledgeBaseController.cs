@@ -1,3 +1,5 @@
+using AiGateway.Security;
+using Microsoft.AspNetCore.Authorization;
 using AiGateway.Application.Interfaces;
 using AiGateway.Dtos;
 using AiGateway.Infrastructure.Qdrant;
@@ -9,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AiGateway.Controllers.KnowledgeBase;
 
-[ApiController]
+[ApiController, Authorize(Policy = PortalAccess.Knowledge)]
 [Route("api/kb")]
 public class KnowledgeBaseController : ControllerBase
 {
@@ -60,6 +62,7 @@ public class KnowledgeBaseController : ControllerBase
 
  
     [HttpPost("save")]
+    [Authorize(Policy = PortalAccess.EditKnowledge)]
     public async Task<ActionResult> Save([FromBody] KnowledgeBaseItemDto dto, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(dto.KeyName))
@@ -100,6 +103,7 @@ public class KnowledgeBaseController : ControllerBase
 
    
     [HttpPost("toggle/{id:int}")]
+    [Authorize(Policy = PortalAccess.EditKnowledge)]
     public async Task<ActionResult> Toggle(int id, CancellationToken ct)
     {
         await _repo.ToggleActiveAsync(id, ct);
@@ -124,6 +128,7 @@ public class KnowledgeBaseController : ControllerBase
         });
     }
     [HttpPost("upsert")]
+    [Authorize(Policy = PortalAccess.EditKnowledge)]
     public async Task<ActionResult> Upsert([FromBody] UpsertKbItemRequest req, CancellationToken ct)
     {
         try
@@ -158,6 +163,7 @@ public class KnowledgeBaseController : ControllerBase
         return Ok(result);
     }
     [HttpPost("reindex-all")]
+    [Authorize(Policy = PortalAccess.EditKnowledge)]
     public async Task<IActionResult> ReindexAll(CancellationToken ct)
     {
         if (!_cfg.GetValue<bool>("Chat:UseAdvancedRag"))

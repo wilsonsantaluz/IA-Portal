@@ -1,16 +1,17 @@
-namespace AiGateway.Dtos
-{
+﻿using System.ComponentModel.DataAnnotations;
+namespace AiGateway.Dtos;
 
-    public record CreateUserRequest(
-string UserName,
-string UserEmail,
-string Password
-     );
+public record CreateUserRequest(
+    [Required, StringLength(150, MinimumLength = 2)] string UserName,
+    [Required, EmailAddress, StringLength(150)] string UserEmail,
+    [Required, StringLength(72, MinimumLength = 12)] string Password,
+    int[]? GroupIds = null);
 
-    public record UpdateUserRequest(
-        string UserName,
-        string UserEmail,
-        bool IsActive
-    );
-}
+public record UpdateUserRequest(
+    [Required, StringLength(150, MinimumLength = 2)] string UserName,
+    [Required, EmailAddress, StringLength(150)] string UserEmail,
+    bool IsActive,
+    int[] GroupIds,
+    [StringLength(72, MinimumLength = 12)] string? Password = null);
 
+public record GroupRequest([Required, StringLength(100, MinimumLength = 2)] string Name, string[] Permissions);

@@ -1,0 +1,34 @@
+﻿using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Portal.AI.Gateway.Infrastructure;
+using AiGateway.Security;
+
+await using var connection = new SqliteConnection("Data Source=:memory:");
+await connection.OpenAsync();
+await using var db = new PortalDbContext(new DbContextOptionsBuilder<PortalDbContext>().UseSqlite(connection).Options);
+await db.Database.EnsureCreatedAsync();
+var originalHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N"));
+var admin = new Role { RoleName = "admin" };
+var legacy = new Role { RoleName = "Grupo existente" };
+var user = new User { UserName = "Conta existente sintética", UserEmail = "existing@example.test", PasswordHash = originalHash, IsActive = true, CreatedAt = DateTime.UtcNow };
+user.Roles.Add(new UserRole { Role = legacy });
+var administrator = new User { UserName = "Admin existente sintético", UserEmail = "admin@example.test", PasswordHash = originalHash, IsActive = true, CreatedAt = DateTime.UtcNow };
+administrator.Roles.Add(new UserRole { Role = admin });
+db.Users.AddRange(user, administrator);
+db.Permissions.Add(new Permission { PermissionKey = "legacy.permission", Description = "Existente" });
+db.KnowledgeBaseItems.Add(new KnowledgeBaseItem { KeyName = "organization_base", Section = "Sintético", Content = "Conteúdo existente preservado", IsActive = true, CreatedAt = DateTime.UtcNow });
+await db.SaveChangesAsync();
+var cfg = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Bootstrap:AdminEmail"] = "not-created@example.test", ["Bootstrap:AdminPassword"] = Guid.NewGuid().ToString("N") }).Build();
+await DatabaseInitializer.InitializeAsync(db, cfg);
+await DatabaseInitializer.InitializeAsync(db, cfg);
+void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
+Check(await db.Users.CountAsync() == 2, "Bootstrap recreated users in an existing installation.");
+Check(await db.Users.AllAsync(x => x.PasswordHash == originalHash), "Existing password hash changed.");
+Check(await db.Roles.CountAsync() == 2, "Groups were duplicated.");
+Check(await db.Permissions.CountAsync() == PortalAccess.Catalog.Length + 1, "Permission catalog duplicated or old keys removed.");
+Check(await db.RolePermissions.CountAsync() == PortalAccess.Catalog.Length, "Admin permission grants are not idempotent.");
+Check((await PortalAccess.ReadAsync(db, user.UserId, default)).Permissions.Length == 0, "Existing non-admin was granted privileges automatically.");
+Check((await PortalAccess.ReadAsync(db, administrator.UserId, default)).Permissions.Length == PortalAccess.Catalog.Length, "Existing admin did not retain full access.");
+Check((await db.KnowledgeBaseItems.SingleAsync()).Content == "Conteúdo existente preservado", "Knowledge was overwritten.");
+Console.WriteLine("PASS: existing users/passwords/groups/knowledge preserved, no automatic non-admin grants, existing admin retained, repeated initialization is idempotent.");

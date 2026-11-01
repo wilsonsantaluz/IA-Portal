@@ -27,6 +27,7 @@ import AddIcon from "@mui/icons-material/Add";
 
 import ReactMarkdown from "react-markdown";
 import api from "../services/api";
+import { useAuth } from "../auth/AuthProvider";
 interface KbItem {
   id: number;
   section: string;
@@ -38,6 +39,8 @@ interface KbItem {
 }
 
 export default function KnowledgeBasePage() {
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission("kb.manage");
   const [items, setItems] = useState<KbItem[]>([]);
   const [sections, setSections] = useState<string[]>([]);
   const [pageSize, setPageSize] = useState(10);
@@ -318,14 +321,16 @@ export default function KnowledgeBasePage() {
           boxShadow: "var(--portal-shadow)",
         }}
       >
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          sx={{ mb: 2 }}
-          onClick={() => openModal()}
-        >
-          Novo Registro
-        </Button>
+        {canEdit && (
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            sx={{ mb: 2 }}
+            onClick={() => openModal()}
+          >
+            Novo Registro
+          </Button>
+        )}
 
         <TextField
           fullWidth
@@ -347,7 +352,11 @@ export default function KnowledgeBasePage() {
                 x.keyName.toLowerCase().includes(q)
               );
             })}
-            columns={columns}
+            columns={
+              canEdit
+                ? columns
+                : columns.filter((column) => column.field !== "actions")
+            }
             getRowId={(row) => row.id}
             rowsPerPageOptions={[10, 20, 50]}
             pageSize={pageSize}

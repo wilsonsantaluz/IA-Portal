@@ -1,3 +1,5 @@
+using AiGateway.Security;
+using Microsoft.AspNetCore.Authorization;
 using AiGateway.Application.SeedWork;
 using Portal.AI.Gateway.Application.DTOs;
 using Portal.AI.Gateway.Application.Interfaces;
@@ -6,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AiGateway.Controllers.Chat;
 
-[ApiController]
+[ApiController, Authorize(Policy = PortalAccess.Chat)]
 [Route("api/chatBot")]
 public class ChatBotContoller : ControllerBase
 {

@@ -1,3 +1,5 @@
+using AiGateway.Security;
+using Microsoft.AspNetCore.Authorization;
 using AiGateway.Application.Interfaces;
 using AiGateway.Dtos;
 using AiGateway.Infrastructure.Sse;
@@ -9,7 +11,7 @@ using System.Text;
 
 namespace AiGateway.Controllers.Chat
 {
-    [ApiController]
+    [ApiController, Authorize(Policy = PortalAccess.Chat)]
     [Route("api/ia")]
     public class SmartAskController : ControllerBase
     {
