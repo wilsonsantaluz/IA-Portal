@@ -1,14 +1,14 @@
-import React from "react";
+﻿import React from "react";
 import {
   Box,
   TextField,
   IconButton,
   CircularProgress,
+  Typography,
+  Tooltip,
 } from "@mui/material";
-import SendIcon from "@mui/icons-material/Send";
-import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
-import { useTheme } from "@mui/material/styles";
-
+import SendRounded from "@mui/icons-material/SendRounded";
+import AttachFileRounded from "@mui/icons-material/AttachFileRounded";
 interface ChatInputProps {
   input: string;
   loading: boolean;
@@ -16,7 +16,6 @@ interface ChatInputProps {
   onSend: () => void;
   onUpload: (file: File) => void;
 }
-
 export default function ChatInput({
   input,
   loading,
@@ -24,67 +23,123 @@ export default function ChatInput({
   onSend,
   onUpload,
 }: ChatInputProps) {
-  const theme = useTheme();
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      onSend();
-    }
-  };
-
   return (
-    <Box px={2} pb={1}>
+    <Box
+      sx={{
+        px: { xs: 2, md: 4 },
+        pb: 2,
+        pt: 1.5,
+        width: "100%",
+        maxWidth: 1040,
+        mx: "auto",
+        flexShrink: 0,
+      }}
+    >
       <Box
         sx={{
-          maxWidth: 1200,
-          mx: "auto",
-          display: "flex",
-          alignItems: "center",
-          gap: 1,
-          px: 2,
-          position: "sticky",
-          colosr: theme.palette.text.primary,
-          border: `1px solid ${theme.palette.divider}`,
-          
-          py: 1,
-          borderRadius: "28px",
-          bottom: 0,
-          zIndex: 20,
-          background: theme.palette.background.paper,
-          boxShadow: theme.shadows[8],
+          p: 2,
+          bgcolor: "background.paper",
+          border: "1px solid",
+          borderColor: "divider",
+          borderRadius: "16px",
+          boxShadow: "var(--portal-shadow)",
+          transition: "border-color .2s, box-shadow .2s",
+          "&:focus-within": {
+            borderColor: "primary.main",
+            boxShadow:
+              "0 0 0 3px color-mix(in srgb, var(--portal-primary) 10%, transparent), var(--portal-shadow)",
+          },
         }}
       >
         <TextField
-         sx={{
-          "& .MuiInputBase-input": { color: theme.palette.text.primary },
-          "& textarea": { color: theme.palette.text.primary },
-        }}
           fullWidth
           multiline
-          maxRows={4}
-          placeholder="Digite sua pergunta"
+          maxRows={5}
+          minRows={2}
+          placeholder="Como posso ajudar você hoje?"
           variant="standard"
           InputProps={{ disableUnderline: true }}
+          inputProps={{
+            "aria-label": "Sua pergunta para a IA",
+            "data-chat-input": true,
+          }}
+          sx={{ "& textarea": { fontSize: 14, lineHeight: 1.7 } }}
           value={input}
           disabled={loading}
           onChange={(e) => onInputChange(e.target.value)}
-          onKeyDown={handleKeyDown}
+          onKeyDown={(e) => {
+            if (
+              e.key === "Enter" &&
+              !e.shiftKey &&
+              !e.nativeEvent.isComposing
+            ) {
+              e.preventDefault();
+              if (!loading && input.trim()) onSend();
+            }
+          }}
         />
-
-        <IconButton disabled={loading} onClick={onSend}>
-          {loading ? <CircularProgress size={22} /> : <SendIcon />}
-        </IconButton>
-
-        <IconButton component="label" disabled={loading} aria-label="Analisar PDF ou imagem">
-          <PictureAsPdfIcon />
-          <input type="file" hidden accept="application/pdf,image/png,image/jpeg" disabled={loading}
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              event.target.value = "";
-              if (file) onUpload(file);
-            }} />
-        </IconButton>
+        <Box
+          display="flex"
+          alignItems="center"
+          justifyContent="space-between"
+          mt={1}
+        >
+          <Tooltip title="Analisar PDF ou imagem">
+            <IconButton
+              component="label"
+              disabled={loading}
+              aria-label="Analisar PDF ou imagem"
+              size="small"
+            >
+              <AttachFileRounded fontSize="small" />
+              <input
+                type="file"
+                hidden
+                accept="application/pdf,image/png,image/jpeg"
+                disabled={loading}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (file) onUpload(file);
+                }}
+              />
+            </IconButton>
+          </Tooltip>
+          <IconButton
+            aria-label="Enviar pergunta"
+            disabled={loading || !input.trim()}
+            onClick={onSend}
+            sx={{
+              width: 38,
+              height: 38,
+              color: "primary.contrastText",
+              bgcolor: "primary.main",
+              boxShadow:
+                "0 4px 12px color-mix(in srgb, var(--portal-primary) 25%, transparent)",
+              "&:hover": {
+                bgcolor: "primary.dark",
+                transform: "translateY(-1px)",
+              },
+              "&.Mui-disabled": { bgcolor: "action.disabledBackground" },
+              transition: "transform .2s",
+            }}
+          >
+            {loading ? (
+              <CircularProgress size={20} color="inherit" />
+            ) : (
+              <SendRounded sx={{ fontSize: 19 }} />
+            )}
+          </IconButton>
+        </Box>
       </Box>
+      <Typography
+        fontSize={10}
+        color="text.secondary"
+        textAlign="center"
+        mt={1.2}
+      >
+        A IA pode cometer erros. Confira as informações importantes.
+      </Typography>
     </Box>
   );
 }

@@ -1,72 +1,91 @@
-import { Card, Box, Typography } from "@mui/material";
-import React from "react";
+﻿import type { ReactNode } from "react";
+import { Card, Box, Typography, Skeleton } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 
-export function DashboardCard({ title, value, color, icon }: any) {
+type Props = {
+  title: string;
+  value: string | number;
+  caption: string;
+  tone?: "primary" | "secondary" | "success" | "warning";
+  icon: ReactNode;
+  loading?: boolean;
+};
+export function DashboardCard({
+  title,
+  value,
+  caption,
+  tone = "primary",
+  icon,
+  loading,
+}: Props) {
+  const theme = useTheme();
+  const color = theme.palette[tone].main;
   return (
     <Card
       sx={{
+        p: 2.5,
+        height: "100%",
+        minWidth: 0,
         position: "relative",
-        minWidth: 240,
-        height: 130, // mais fino
-        borderRadius: 3,
-        px: 2,
-        py: 1.5,
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        overflow: "visible",
-        background: `linear-gradient(135deg, ${color}22, ${color}11)`,
-        border: `1px solid ${color}33`,
-        boxShadow: "0 4px 14px rgba(0,0,0,0.06)",
-        transition: "0.25s ease",
+        overflow: "hidden",
+        transition:
+          "transform .25s ease, box-shadow .25s ease, border-color .25s ease",
         "&:hover": {
-          transform: "translateY(-3px)",
-          boxShadow: "0 10px 26px rgba(0,0,0,0.12)",
+          transform: "translateY(-4px)",
+          boxShadow: "var(--portal-shadow-hover)",
+          borderColor: alpha(color, 0.4),
+        },
+        "&::after": {
+          content: '""',
+          position: "absolute",
+          right: -35,
+          bottom: -55,
+          width: 135,
+          height: 135,
+          borderRadius: "50%",
+          background: `radial-gradient(circle, ${alpha(color, 0.08)}, transparent 70%)`,
+          pointerEvents: "none",
         },
       }}
     >
-      {/* ÍCONE FLUTUANTE */}
       <Box
-        sx={{
-          position: "absolute",
-          top: -18,
-          right: 16,
-          width: 48,
-          height: 48,
-          borderRadius: 3,
-          background: color,
-          color: "#fff",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: 26,
-          boxShadow: "0 6px 18px rgba(0,0,0,0.24)",
-        }}
+        display="flex"
+        alignItems="center"
+        justifyContent="space-between"
+        gap={1}
+        mb={2}
       >
-        {icon}
+        <Typography fontSize={13} fontWeight={550} color="text.secondary">
+          {title}
+        </Typography>
+        <Box
+          sx={{
+            display: "grid",
+            placeItems: "center",
+            width: 42,
+            height: 42,
+            borderRadius: "12px",
+            color,
+            background: `linear-gradient(135deg, ${alpha(color, 0.16)}, ${alpha(color, 0.06)})`,
+            border: `1px solid ${alpha(color, 0.12)}`,
+            "& svg": { fontSize: 22 },
+          }}
+        >
+          {icon}
+        </Box>
       </Box>
-
-      {/* TÍTULO */}
       <Typography
-        sx={{
-          opacity: 0.7,
-          fontSize: "0.80rem",
-          fontWeight: 500,
-          mb: 0.5,
-        }}
+        component="div"
+        fontSize={32}
+        fontWeight={750}
+        letterSpacing="-.045em"
+        lineHeight={1.2}
+        sx={{ fontVariantNumeric: "tabular-nums" }}
       >
-        {title}
+        {loading ? <Skeleton width="55%" /> : value}
       </Typography>
-
-      {/* VALOR */}
-      <Typography
-        sx={{
-          fontSize: "1.8rem",
-          fontWeight: 700,
-          lineHeight: 1.2,
-        }}
-      >
-        {value}
+      <Typography fontSize={11} color="text.secondary" mt={1.2}>
+        {caption}
       </Typography>
     </Card>
   );

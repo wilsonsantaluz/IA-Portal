@@ -1,4 +1,13 @@
-import { Box, Divider, List, ListItemButton, ListItemIcon, ListItemText, Tooltip, Typography } from "@mui/material";
+import {
+  Box,
+  Divider,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Tooltip,
+  Typography,
+} from "@mui/material";
 import ChatOutlined from "@mui/icons-material/ChatOutlined";
 import InsightsOutlined from "@mui/icons-material/InsightsOutlined";
 import LibraryBooksOutlined from "@mui/icons-material/LibraryBooksOutlined";
@@ -12,29 +21,131 @@ const destinations = [
   { to: "/kb", label: "Base de conhecimento", icon: <LibraryBooksOutlined /> },
 ];
 
-export default function Sidebar({ open, onNavigate }: { open: boolean; onNavigate: () => void }) {
+export default function Sidebar({
+  open,
+  onNavigate,
+}: {
+  open: boolean;
+  onNavigate: () => void;
+}) {
   const { pathname } = useLocation();
-  return <Box component="nav" aria-label="Navegação principal" sx={{ height: "100%", display: "flex", flexDirection: "column", bgcolor: "var(--portal-sidebar)", color: "text.primary", overflow: "auto" }}>
-    <Box component={Link} to="/chat" aria-label="IA-Portal: abrir chat" onClick={onNavigate} sx={{ height: 72, px: open ? 3 : 2.5, display: "flex", alignItems: "center", textDecoration: "none", flexShrink: 0 }}>
-      <Brand compact={!open} />
-    </Box>
-    <Divider sx={{ mx: 2 }} />
-    <Box sx={{ px: 1.5, mt: 3 }}>
-      {open && <Typography sx={{ px: 1.5, pb: 1.2, fontSize: 10, fontWeight: 700, letterSpacing: ".12em", color: "text.secondary" }}>ESPAÇO DE TRABALHO</Typography>}
-      <List component="div" disablePadding>{destinations.map(item => <Tooltip key={item.to} title={open ? "" : item.label} placement="right">
-        <ListItemButton component={Link} to={item.to} aria-label={item.label} aria-current={pathname === item.to ? "page" : undefined}
-          onClick={onNavigate} selected={pathname === item.to}
-          sx={theme => ({ borderRadius: "10px", mb: .7, minHeight: 46, px: 1.6, color: theme.palette.text.primary, "&.Mui-selected": { color: theme.palette.primary.main, bgcolor: alpha(theme.palette.primary.main, .1) }, "&.Mui-selected .MuiListItemIcon-root": { color: theme.palette.primary.main } })}>
-          <ListItemIcon sx={{ minWidth: open ? 37 : 0, color: "text.secondary" }}>{item.icon}</ListItemIcon>
-          {open && <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: 13, fontWeight: pathname === item.to ? 650 : 500 }} />}
-        </ListItemButton>
-      </Tooltip>)}</List>
-    </Box>
-    {open && <Box sx={{ mx: 2.5, mt: "auto", pt: 5, pb: 3 }}>
-      <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: "12px", p: 2 }}>
-        <Typography fontSize={12} fontWeight={650}>Conhecimento em ação.</Typography>
-        <Typography fontSize={11} color="text.secondary" mt={.5}>Um espaço para conectar ideias e informações.</Typography>
+  return (
+    <Box
+      component="nav"
+      aria-label="Navegação principal"
+      sx={{
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        bgcolor: "var(--portal-sidebar)",
+        color: "text.primary",
+        overflow: "auto",
+      }}
+    >
+      <Box
+        component={Link}
+        to="/chat"
+        aria-label="IA-Portal: abrir chat"
+        onClick={onNavigate}
+        sx={{
+          height: 72,
+          px: open ? 3 : 2.5,
+          display: "flex",
+          alignItems: "center",
+          textDecoration: "none",
+          flexShrink: 0,
+        }}
+      >
+        <Brand compact={!open} />
       </Box>
-    </Box>}
-  </Box>;
+      <Divider sx={{ mx: 2 }} />
+      <Box sx={{ px: 1.5, mt: 3 }}>
+        {open && (
+          <Typography
+            sx={{
+              px: 1.5,
+              pb: 1.2,
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: ".12em",
+              color: "text.secondary",
+            }}
+          >
+            ESPAÇO DE TRABALHO
+          </Typography>
+        )}
+        <List component="div" disablePadding>
+          {destinations.map((item) => (
+            <Tooltip
+              key={item.to}
+              title={open ? "" : item.label}
+              placement="right"
+            >
+              <ListItemButton
+                component={Link}
+                to={item.to}
+                aria-label={item.label}
+                aria-current={pathname === item.to ? "page" : undefined}
+                onClick={onNavigate}
+                selected={pathname === item.to}
+                sx={(theme) => ({
+                  position: "relative",
+                  borderRadius: "10px",
+                  mb: 0.7,
+                  minHeight: 46,
+                  px: 1.6,
+                  transition: "background .2s, box-shadow .2s",
+                  color: theme.palette.text.primary,
+                  "&.Mui-selected": {
+                    color: theme.palette.primary.main,
+                    background: `linear-gradient(100deg, ${alpha(theme.palette.primary.main, 0.14)}, ${alpha(theme.palette.secondary.main, 0.06)})`,
+                    boxShadow: `inset 3px 0 0 ${theme.palette.primary.main}`,
+                  },
+                  "&.Mui-selected .MuiListItemIcon-root": {
+                    color: theme.palette.primary.main,
+                  },
+                })}
+              >
+                <ListItemIcon
+                  sx={{ minWidth: open ? 37 : 0, color: "text.secondary" }}
+                >
+                  {item.icon}
+                </ListItemIcon>
+                {open && (
+                  <ListItemText
+                    primary={item.label}
+                    primaryTypographyProps={{
+                      fontSize: 13,
+                      fontWeight: pathname === item.to ? 650 : 500,
+                    }}
+                  />
+                )}
+              </ListItemButton>
+            </Tooltip>
+          ))}
+        </List>
+      </Box>
+      {open && (
+        <Box sx={{ mx: 2.5, mt: "auto", pt: 5, pb: 3 }}>
+          <Box
+            sx={{
+              border: "1px solid",
+              borderColor: "divider",
+              borderRadius: "14px",
+              p: 2,
+              background:
+                "linear-gradient(135deg, color-mix(in srgb, var(--portal-primary) 6%, transparent), color-mix(in srgb, var(--portal-cyan) 4%, transparent))",
+            }}
+          >
+            <Typography fontSize={12} fontWeight={650}>
+              Conhecimento em ação.
+            </Typography>
+            <Typography fontSize={11} color="text.secondary" mt={0.5}>
+              Um espaço para conectar ideias e informações.
+            </Typography>
+          </Box>
+        </Box>
+      )}
+    </Box>
+  );
 }

@@ -7,8 +7,8 @@ const preferenceKey = "theme-mode";
 const ThemeContext = createContext<{ mode: Mode; toggle: () => void } | null>(null);
 
 function readPreference(): Mode {
-  try { return localStorage.getItem(preferenceKey) === "dark" ? "dark" : "light"; }
-  catch { return "light"; }
+  try { return localStorage.getItem(preferenceKey) === "light" ? "light" : "dark"; }
+  catch { return "dark"; }
 }
 
 export function usePortalTheme() {
