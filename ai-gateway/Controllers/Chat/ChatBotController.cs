@@ -1,4 +1,5 @@
 using AiGateway.Dtos;
+using AiGateway.Infrastructure.Qdrant.Services.LLMs;
 using AiGateway.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -45,8 +46,9 @@ public class ChatBotContoller(IChatRepository chats, ChatUsageService usage, IKn
             var answer = await chats.CompleteTurnAsync(id, requestId, response, timeout.Token, model: usage.ActualModel, provider: usage.ActualProvider);
             await titles.TryGenerateAsync(id, ct);
             return Ok(new { sessionId = id, texto = response, messageId = answer.Id });
-        } catch {
+        } catch (Exception ex) {
             using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(10)); await chats.FailTurnAsync(id, requestId, ct.IsCancellationRequested ? "cancelled" : "failed", cleanup.Token);
+            if (ex is AiProviderException) throw;
             throw new ChatException(502, "Não foi possível concluir a resposta. A pergunta foi preservada.");
         }
     }

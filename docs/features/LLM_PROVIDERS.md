@@ -49,6 +49,9 @@ A tela administrativa deve mostrar **configurado/não configurado**, endpoint pe
 
 ## Regras de runtime
 
+- HTTP 402 do provedor é classificado como `payment_required`: o chat informa uma possível restrição de créditos/plano com mensagem fixa em português, sem retornar o corpo recebido do provedor. Não altera o modelo nem tenta outro provedor automaticamente.
+- O teste de conectividade consulta metadados; seu sucesso não comprova acesso de inferência ao modelo ou saldo disponível. No Ollama Cloud, verificar a conta em https://ollama.com/settings quando uma chamada retornar 402. Uma chave nova não resolve restrições de cobrança.
+
 - Timeout, cancelamento, retry limitado somente quando seguro; evitar duplicar cobranças.
 - Não fazer fallback silencioso de DeepSeek para OpenAI/Ollama.
 - Para Ollama no Docker, `localhost` dentro do container não é o host Windows; verificar conectividade e endpoint apropriado ao ambiente.

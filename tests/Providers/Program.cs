@@ -69,6 +69,15 @@ try {
             catch (AiProviderException e) { Check(e.Code == "rate_limit" && !e.Message.Contains("SECRET_PROVIDER_BODY"), "Provider error leaked/misclassified"); }
             catch (ChatException e) { Check(adapter.ProviderId == "openai" && e.Status == 409, "Unexpected disabled adapter error"); }
         }
+        wire.Error = 402;
+        IAiProviderAdapter[] billingAdapters = [new DeepSeekService(wire, cfg), new OpenAiService(wire, cfg), new OllamaService(wire, cfg)];
+        foreach (var adapter in billingAdapters) {
+            try { await adapter.GenerateAsync("synthetic-model", "Synthetic", default); throw new Exception("Expected payment restriction"); }
+            catch (AiProviderException e) { Check(e.Code == "payment_required" && e.Message.Contains("créditos") && e.Message.Contains("plano") && !e.Message.Contains("SECRET_PROVIDER_BODY"), "Payment restriction hidden or leaked upstream body"); }
+            try { await foreach (var part in adapter.GenerateStreamAsync("synthetic-model", "Synthetic", default)) { } throw new Exception("Expected streaming payment restriction"); }
+            catch (AiProviderException e) { Check(e.Code == "payment_required" && e.Message.Contains("créditos") && !e.Message.Contains("SECRET_PROVIDER_BODY"), "Streaming payment restriction hidden or leaked upstream body"); }
+        }
+        Console.WriteLine("PASS: all adapters expose safe payment restrictions in plain and streaming requests without upstream bodies.");
         wire.Error = 0;
         // Destination and API billing are frozen together when a call is accepted.
         await router.Select("ollama", "local-a", default);

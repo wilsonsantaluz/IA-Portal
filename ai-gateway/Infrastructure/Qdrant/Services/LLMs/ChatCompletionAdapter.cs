@@ -34,7 +34,7 @@ public abstract class ChatCompletionAdapter : IAiProviderAdapter
     {
         if (response.IsSuccessStatusCode) return;
         var code = (int)response.StatusCode;
-        throw new AiProviderException(code is 401 or 403 ? "authentication" : code == 429 ? "rate_limit" : code >= 500 ? "unavailable" : "invalid_request");
+        throw new AiProviderException(code is 401 or 403 ? "authentication" : code == 402 ? "payment_required" : code == 429 ? "rate_limit" : code >= 500 ? "unavailable" : "invalid_request");
     }
     private void Capture(JsonElement root)
     {
@@ -87,4 +87,6 @@ public abstract class ChatCompletionAdapter : IAiProviderAdapter
         }
     }
 }
-public sealed class AiProviderException(string code) : ChatException(502, "Não foi possível concluir a chamada ao provedor de IA.") { public string Code { get; } = code; }
+public sealed class AiProviderException(string code) : ChatException(502, code == "payment_required"
+    ? "O provedor recusou o modelo por falta de créditos ou restrição do plano. Verifique sua conta no provedor ou escolha outro modelo habilitado."
+    : "Não foi possível concluir a chamada ao provedor de IA.") { public string Code { get; } = code; }

@@ -1,6 +1,7 @@
 ﻿using AiGateway.Application.Interfaces;
 using AiGateway.Dtos;
 using AiGateway.Infrastructure.Sse;
+using AiGateway.Infrastructure.Qdrant.Services.LLMs;
 using AiGateway.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -47,7 +48,7 @@ public class SmartAskController(IAskSmartService service, IChatRepository chats,
         catch (Exception ex) {
             if (!turn.Replayed) { using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(10)); await chats.FailTurnAsync(id, requestId, ex is OperationCanceledException ? "cancelled" : "failed", cleanup.Token); }
             logger.LogWarning("Interação {RequestId} não concluída ({ErrorType}).", requestId, ex.GetType().Name);
-            await sse.EmitAsync("error", ex is OperationCanceledException ? "Resposta interrompida ou tempo limite atingido. Sua pergunta foi preservada." : "Não foi possível concluir a resposta. Sua pergunta foi preservada; atualize o histórico.");
+            await sse.EmitAsync("error", ex is AiProviderException providerError ? providerError.Message : ex is OperationCanceledException ? "Resposta interrompida ou tempo limite atingido. Sua pergunta foi preservada." : "Não foi possível concluir a resposta. Sua pergunta foi preservada; atualize o histórico.");
         }
     }
 }
