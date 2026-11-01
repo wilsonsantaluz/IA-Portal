@@ -33,6 +33,7 @@ export default function App() {
           </RequireAuth>
         }
       >
+        <Route index element={<Navigate to="/chat" replace />} />
         <Route path="chat" element={<ChatPage />} />
         <Route path="dashboard" element={<AdminDashboardPage />} />
         <Route path="kb" element={<KnowledgeBasePage />} />

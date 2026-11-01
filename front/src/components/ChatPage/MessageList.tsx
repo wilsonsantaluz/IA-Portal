@@ -61,7 +61,6 @@ export default function MessageList({
             key={message.id}
             message={message}
             index={index}
-            isLast={index === messages.length - 1}
             statusMessage={statusMessage}
             onToggleExpand={onToggleExpand}
             onSendRating={onSendRating}

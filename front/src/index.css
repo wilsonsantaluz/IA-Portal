@@ -1,37 +1,8 @@
-html, body, #root {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-}
-
-.MuiBox-root,
-.MuiStack-root {
-  max-width: 100%;
-}
-
-
-* {
-  box-sizing: border-box;
-}
-
-
-.MuiStack-root > .MuiBox-root {
-  overflow: visible !important;
-  background: transparent !important;
-}
-/* Esconde mensagens de erro do Mermaid */
-.mermaid-error,
-.mermaid > svg + div,
-.mermaid svg[aria-roledescription="error"],
-.mermaid pre,
-.mermaid text.error {
-  display: none !important;
-}
-
-
-.mermaid {
-  min-height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
+html, body, #root { height: 100%; margin: 0; }
+* { box-sizing: border-box; }
+a { color: inherit; }
+.skip-link { position: fixed; top: -80px; left: 12px; padding: 12px 20px; background: var(--portal-surface); color: var(--portal-text); z-index: 2000; border-radius: 8px; }
+.skip-link:focus { top: 10px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }

@@ -1,26 +1,11 @@
-import { IconButton } from "@mui/material";
+import { IconButton, Tooltip } from "@mui/material";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
-import { useTheme } from "@mui/material/styles";
-import React from "react";
-
+import { usePortalTheme } from "../theme/PortalThemeProvider";
 export default function ThemeToggle() {
-  const theme = useTheme();
-  const dark = theme.palette.mode === "dark";
-
-  const toggle = () => {
-    const next = dark ? "light" : "dark";
-
-
-    localStorage.setItem("theme-mode", next);
-
-
-    window.dispatchEvent(new Event("storage"));
-  };
-
-  return (
-    <IconButton onClick={toggle} color="inherit">
-      {dark ? <LightModeIcon /> : <DarkModeIcon />}
-    </IconButton>
-  );
+  const { mode, toggle } = usePortalTheme();
+  const label = mode === "dark" ? "Ativar tema claro" : "Ativar tema escuro";
+  return <Tooltip title={label}><IconButton aria-label={label} onClick={toggle} color="inherit">
+    {mode === "dark" ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
+  </IconButton></Tooltip>;
 }

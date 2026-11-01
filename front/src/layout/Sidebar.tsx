@@ -1,131 +1,40 @@
-import React from "react";
-import {
-  Box,
-  List,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Tooltip,
-  styled,
-} from "@mui/material";
+import { Box, Divider, List, ListItemButton, ListItemIcon, ListItemText, Tooltip, Typography } from "@mui/material";
+import ChatOutlined from "@mui/icons-material/ChatOutlined";
+import InsightsOutlined from "@mui/icons-material/InsightsOutlined";
+import LibraryBooksOutlined from "@mui/icons-material/LibraryBooksOutlined";
+import { alpha } from "@mui/material/styles";
+import { Link, useLocation } from "react-router-dom";
+import Brand from "../components/Brand";
 
-import ChatIcon from "@mui/icons-material/Chat";
-import DashboardIcon from "@mui/icons-material/Dashboard";
-import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
-import MenuIcon from "@mui/icons-material/Menu";
-import { useTheme } from "@mui/material/styles";
+const destinations = [
+  { to: "/chat", label: "Chat IA", icon: <ChatOutlined /> },
+  { to: "/dashboard", label: "Dashboard", icon: <InsightsOutlined /> },
+  { to: "/kb", label: "Base de conhecimento", icon: <LibraryBooksOutlined /> },
+];
 
-type SidebarProps = {
-  open: boolean;
-  setOpen: (v: boolean) => void;
-};
-
-const EXPANDED_WIDTH = 240;
-const COLLAPSED_WIDTH = 64;
-const HOVER_WIDTH = 220;
-
-const SidebarContainer = styled(Box, {
-  shouldForwardProp: (prop) => prop !== "open",
-})<{ open: boolean }>(({ open, theme }) => {
-  const isDark = theme.palette.mode === "dark";
-
-  return {
-    position: "fixed",
-    left: 0,
-    top: 0,
-    height: "100vh",
-    width: open ? EXPANDED_WIDTH : COLLAPSED_WIDTH,
-
-    /* 🔑 AQUI ESTÁ A CORREÇÃO */
-    backgroundColor: isDark
-      ? theme.palette.background.paper
-      : "#0a2240",
-
-    color: isDark
-      ? theme.palette.text.primary
-      : "#ffffff",
-
-    boxShadow: theme.shadows[8],
-
-    transition: "width 0.25s ease",
-    overflow: "hidden",
-    zIndex: 1200,
-    display: "flex",
-    flexDirection: "column",
-
-    ...(open
-      ? {}
-      : {
-          "&:hover": {
-            width: HOVER_WIDTH,
-          },
-        }),
-  };
-});
-
-const ItemText = styled(ListItemText, {
-  shouldForwardProp: (prop) => prop !== "open",
-})<{ open: boolean }>(({ open }) => ({
-  opacity: open ? 1 : 0,
-  transition: "opacity 0.2s ease",
-  whiteSpace: "nowrap",
-  marginLeft: -10,
-}));
-
-const SidebarRoot = styled(Box)({
-  "&:hover .item-text": {
-    opacity: 1,
-  },
-});
-
-export default function Sidebar({ open, setOpen }: SidebarProps) {
-  return (
-    <SidebarContainer open={open}>
-      <SidebarRoot sx={{ mt: 1 }}>
-        <List>
-          <ListItemButton sx={{ py: 2 }} onClick={() => setOpen(!open)}>
-            <ListItemIcon sx={{ color: "white" }}>
-              <MenuIcon />
-            </ListItemIcon>
-            <ItemText open={open} className="item-text" primary="Menu" />
-          </ListItemButton>
-
-          <Tooltip title="Chat IA" placement="right" disableHoverListener={open}>
-            <ListItemButton component="a" href="/chat" sx={{ py: 2 }}>
-              <ListItemIcon sx={{ color: "white" }}>
-                <ChatIcon />
-              </ListItemIcon>
-              <ItemText open={open} className="item-text" primary="Chat IA" />
-            </ListItemButton>
-          </Tooltip>
-
-          <Tooltip title="Dashboard" placement="right" disableHoverListener={open}>
-            <ListItemButton component="a" href="/dashboard" sx={{ py: 2 }}>
-              <ListItemIcon sx={{ color: "white" }}>
-                <DashboardIcon />
-              </ListItemIcon>
-              <ItemText open={open} className="item-text" primary="Dashboard" />
-            </ListItemButton>
-          </Tooltip>
-
-          <Tooltip
-            title="Base de Conhecimento"
-            placement="right"
-            disableHoverListener={open}
-          >
-            <ListItemButton component="a" href="/kb" sx={{ py: 2 }}>
-              <ListItemIcon sx={{ color: "white" }}>
-                <LibraryBooksIcon />
-              </ListItemIcon>
-              <ItemText
-                open={open}
-                className="item-text"
-                primary="Base Conhecimento"
-              />
-            </ListItemButton>
-          </Tooltip>
-        </List>
-      </SidebarRoot>
-    </SidebarContainer>
-  );
+export default function Sidebar({ open, onNavigate }: { open: boolean; onNavigate: () => void }) {
+  const { pathname } = useLocation();
+  return <Box component="nav" aria-label="Navegação principal" sx={{ height: "100%", display: "flex", flexDirection: "column", bgcolor: "var(--portal-sidebar)", color: "text.primary", overflow: "auto" }}>
+    <Box component={Link} to="/chat" aria-label="IA-Portal: abrir chat" onClick={onNavigate} sx={{ height: 72, px: open ? 3 : 2.5, display: "flex", alignItems: "center", textDecoration: "none", flexShrink: 0 }}>
+      <Brand compact={!open} />
+    </Box>
+    <Divider sx={{ mx: 2 }} />
+    <Box sx={{ px: 1.5, mt: 3 }}>
+      {open && <Typography sx={{ px: 1.5, pb: 1.2, fontSize: 10, fontWeight: 700, letterSpacing: ".12em", color: "text.secondary" }}>ESPAÇO DE TRABALHO</Typography>}
+      <List component="div" disablePadding>{destinations.map(item => <Tooltip key={item.to} title={open ? "" : item.label} placement="right">
+        <ListItemButton component={Link} to={item.to} aria-label={item.label} aria-current={pathname === item.to ? "page" : undefined}
+          onClick={onNavigate} selected={pathname === item.to}
+          sx={theme => ({ borderRadius: "10px", mb: .7, minHeight: 46, px: 1.6, color: theme.palette.text.primary, "&.Mui-selected": { color: theme.palette.primary.main, bgcolor: alpha(theme.palette.primary.main, .1) }, "&.Mui-selected .MuiListItemIcon-root": { color: theme.palette.primary.main } })}>
+          <ListItemIcon sx={{ minWidth: open ? 37 : 0, color: "text.secondary" }}>{item.icon}</ListItemIcon>
+          {open && <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: 13, fontWeight: pathname === item.to ? 650 : 500 }} />}
+        </ListItemButton>
+      </Tooltip>)}</List>
+    </Box>
+    {open && <Box sx={{ mx: 2.5, mt: "auto", pt: 5, pb: 3 }}>
+      <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: "12px", p: 2 }}>
+        <Typography fontSize={12} fontWeight={650}>Conhecimento em ação.</Typography>
+        <Typography fontSize={11} color="text.secondary" mt={.5}>Um espaço para conectar ideias e informações.</Typography>
+      </Box>
+    </Box>}
+  </Box>;
 }

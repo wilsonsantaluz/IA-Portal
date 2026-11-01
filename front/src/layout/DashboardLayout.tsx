@@ -1,104 +1,25 @@
-import React, { useEffect, useState } from "react";
-import { Box, CssBaseline, ThemeProvider } from "@mui/material";
+import { useEffect, useState } from "react";
+import { Box, Drawer, useMediaQuery, useTheme } from "@mui/material";
 import { Outlet } from "react-router-dom";
-
 import Sidebar from "./Sidebar";
 import HeaderBar from "./HeaderBar";
-
 import { ChatUIProvider } from "../context/ChatUIContext";
-import { lightTheme } from "../theme/lightTheme";
-import { darkTheme } from "../theme/darkTheme";
 
-type ThemeMode = "light" | "dark";
-
-export default function DashboardLayout({ children }: any) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  /**
-   * 🔑 Fonte da verdade do tema
-   * Usa localStorage (compatível com teu toggle atual)
-   */
-  const [mode, setMode] = useState<ThemeMode>("dark");
-
-  /**
-   * Carrega tema salvo
-   */
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("theme-mode") as ThemeMode | null;
-    if (savedTheme === "light" || savedTheme === "dark") {
-      setMode(savedTheme);
-    }
-  }, []);
-
-  /**
-   * Mantém sincronizado
-   */
-  useEffect(() => {
-    const syncTheme = () => {
-      const saved = localStorage.getItem("theme-mode") as ThemeMode | null;
-      if (saved === "light" || saved === "dark") {
-        setMode(saved);
-      }
-    };
- 
-  
-    syncTheme();
-  
-    window.addEventListener("storage", syncTheme);
-    return () => window.removeEventListener("storage", syncTheme);
-  }, []);
-  useEffect(() => {
-    document.body.dataset.theme = mode;
-  }, [mode]);
-  /**
-   * Tema efetivo
-   */
-  const theme = mode === "dark" ? darkTheme : lightTheme;
-
-  return (
-    <ThemeProvider theme={theme}>
-      <ChatUIProvider>
-        <CssBaseline />
-
-        <Box sx={{ display: "flex", height: "100vh", overflow: "hidden" }}>
-          {/* Sidebar */}
-          <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
-
-          {/* Main */}
-          <Box
-            component="main"
-            sx={{
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden",
-              ml: sidebarOpen ? "240px" : "64px",
-              transition: "margin-left .25s ease",
-            }}
-          >
-            {/* Header */}
-            <HeaderBar
-              open={sidebarOpen}
-              setOpen={setSidebarOpen}
-              // 👇 opcional, se quiser ligar direto no toggle depois
-              // themeMode={mode}
-              // setThemeMode={setMode}
-            />
-
-            {/* Conteúdo */}
-            <Box
-              sx={{
-                flex: 1,
-                overflow: "hidden",
-                pt: "64px",
-              }}
-            >
-              <Outlet />
-              {children}
-            </Box>
-          </Box>
-        </Box>
-      </ChatUIProvider>
-    </ThemeProvider>
-  );
+export default function DashboardLayout() {
+  const desktop = useMediaQuery(useTheme().breakpoints.up("md"));
+  const [expanded, setExpanded] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  useEffect(() => { if (desktop) setMobileOpen(false); }, [desktop]);
+  return <ChatUIProvider><Box sx={{ display: "flex", height: "100dvh", overflow: "hidden" }}>
+    <a className="skip-link" href="#main-content">Ir para o conteúdo</a>
+    {desktop ? <Box component="aside" id="desktop-navigation" sx={{ width: expanded ? 248 : 80, flexShrink: 0, borderRight: "1px solid", borderColor: "divider" }}>
+      <Sidebar open={expanded} onNavigate={() => {}} />
+    </Box> : <Drawer ModalProps={{ keepMounted: true }} open={mobileOpen} onClose={() => setMobileOpen(false)} PaperProps={{ id: "mobile-navigation", sx: { width: 272 } }}>
+      <Sidebar open onNavigate={() => setMobileOpen(false)} />
+    </Drawer>}
+    <Box sx={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
+      <HeaderBar onMenu={() => desktop ? setExpanded(v => !v) : setMobileOpen(v => !v)} menuExpanded={desktop ? expanded : mobileOpen} navigationId={desktop ? "desktop-navigation" : "mobile-navigation"} />
+      <Box id="main-content" component="main" tabIndex={-1} sx={{ flex: 1, minHeight: 0, overflow: "auto" }}><Outlet /></Box>
+    </Box>
+  </Box></ChatUIProvider>;
 }
