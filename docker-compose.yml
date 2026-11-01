@@ -11,7 +11,26 @@ services:
     depends_on: [ml-service, ocr-service]
     environment:
       ASPNETCORE_URLS: http://+:8080
-      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?Configure DEEPSEEK_API_KEY no .env}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_ENABLED: ${DEEPSEEK_ENABLED:-true}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com/}
+      DEEPSEEK_DEFAULT_MODEL: ${DEEPSEEK_DEFAULT_MODEL:-deepseek-chat}
+      DEEPSEEK_MODELS: ${DEEPSEEK_MODELS:-}
+      DEEPSEEK_ALLOWED_ORIGINS: ${DEEPSEEK_ALLOWED_ORIGINS:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_ENABLED: ${OPENAI_ENABLED:-false}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1/}
+      OPENAI_DEFAULT_MODEL: ${OPENAI_DEFAULT_MODEL:-gpt-4.1}
+      OPENAI_MODELS: ${OPENAI_MODELS:-}
+      OPENAI_ALLOWED_ORIGINS: ${OPENAI_ALLOWED_ORIGINS:-}
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+      OLLAMA_ENABLED: ${OLLAMA_ENABLED:-false}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434/}
+      OLLAMA_DEFAULT_MODEL: ${OLLAMA_DEFAULT_MODEL:-}
+      OLLAMA_MODELS: ${OLLAMA_MODELS:-}
+      OLLAMA_ALLOWED_ORIGINS: ${OLLAMA_ALLOWED_ORIGINS:-}
+      OLLAMA_LOCAL_ORIGINS: ${OLLAMA_LOCAL_ORIGINS:-}
+      AI_DEFAULT_PROVIDER: ${AI_DEFAULT_PROVIDER:-deepseek}
       ConnectionStrings__PortalConnection: Data Source=/app/data/portal.db;Foreign Keys=True
       Jwt__Key: ${JWT_KEY:?Configure JWT_KEY no .env}
       Bootstrap__AdminEmail: ${ADMIN_EMAIL:?Configure ADMIN_EMAIL no .env}

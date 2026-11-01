@@ -28,7 +28,7 @@ try {
         preserved.Messages.Add(new ChatMessage { Role = "user", Content = "Pergunta anterior à v2", CreatedAt = DateTime.UtcNow });
         preserved.Messages.Add(new ChatMessage { Role = "assistant", Content = "Resposta anterior à v2", CreatedAt = DateTime.UtcNow });
         old.ChatSessions.Add(preserved); await old.SaveChangesAsync();
-        await old.Database.ExecuteSqlRawAsync("DROP TABLE LlmUsage; DELETE FROM SchemaVersions WHERE Version>=2; CREATE TABLE Collision(Id INTEGER); CREATE INDEX IX_LlmUsage_SessionId_Purpose ON Collision(Id)");
+        await old.Database.ExecuteSqlRawAsync("DROP TABLE AiUserPreferences; DROP TABLE AiSystemDefault; DROP TABLE AiProviderSettings; DROP TABLE LlmUsage; DELETE FROM SchemaVersions WHERE Version>=2; CREATE TABLE Collision(Id INTEGER); CREATE INDEX IX_LlmUsage_SessionId_Purpose ON Collision(Id)");
         try { await ChatSchemaMigrator.InitializeAsync(old, config); throw new Exception("DDL should fail"); } catch (SqliteException) { }
         using var query = old.Database.GetDbConnection().CreateCommand(); query.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE name='LlmUsage'";
         Check(Convert.ToInt64(await query.ExecuteScalarAsync()) == 0, "v2 DDL rollback failed");
@@ -49,7 +49,9 @@ try {
         var mock = new TitleMock();
         var titles = new ChatTitleService(db, identity, mock, NullLogger<ChatTitleService>.Instance);
         async Task<Guid> Conversation(string question = "Como organizar documentos?", bool complete = true, string model = "selected-model") {
-            var session = await repo.CreateSessionAsync(default); var request = Guid.NewGuid();
+            var session = await repo.CreateSessionAsync(default);
+            await db.ChatSessions.Where(s => s.Id == session.Id).ExecuteUpdateAsync(u => u.SetProperty(s => s.Model, model));
+            db.ChangeTracker.Clear(); var request = Guid.NewGuid();
             await repo.BeginTurnAsync(session.Id, request, question, "synthetic", default);
             if (complete) await repo.CompleteTurnAsync(session.Id, request, "Resposta sintética", default, model: model);
             else await repo.FailTurnAsync(session.Id, request, "failed", default);

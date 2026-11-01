@@ -32,7 +32,7 @@ public class OcrController(IOcrService ocr, ChatUsageService usage, IChatReposit
             var prompt = $"Analise o documento em português. Resuma os pontos principais, datas e valores presentes. Informe limitações.\nHISTÓRICO:\n{string.Join("\n", history.Select(m => $"{m.Role}: {m.Content[..Math.Min(m.Content.Length, 4000)]}"))}\nDOCUMENTO (até 50.000 caracteres):\n{text}";
             var answer = await usage.GenerateAsync(sessionId, turn.UserMessage.Id, "document", cfg["DEEPSEEK_DEFAULT_MODEL"] ?? "deepseek-chat", prompt, timeout.Token);
             if (string.IsNullOrWhiteSpace(answer)) throw new InvalidOperationException();
-            await chats.CompleteTurnAsync(sessionId, id, answer, timeout.Token, text, cfg["DEEPSEEK_DEFAULT_MODEL"] ?? "deepseek-chat");
+            await chats.CompleteTurnAsync(sessionId, id, answer, timeout.Token, text, usage.ActualModel, usage.ActualProvider);
             await titles.TryGenerateAsync(sessionId, ct);
             return Ok(new OcrAnalyzeResponse { Texto = text, Analise = answer });
         } catch (Exception ex) {

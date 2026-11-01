@@ -8,6 +8,8 @@ import { useTheme } from "@mui/material/styles";
 
 interface MessageItemProps {
   message: {
+    provider?: string;
+    model?: string;
     id: string;
     from: "user" | "ia";
     streamText?: string;
@@ -123,6 +125,7 @@ export default function MessageItem({
             boxShadow: "var(--portal-shadow)",
           }}
         >
+          {message.finished && message.model && <Typography fontSize={10} color="text.secondary" sx={{ mb: 1, overflowWrap: "anywhere" }}>{message.provider} · {message.model}</Typography>}
           {message.finished && (
             <Box
               display="flex"

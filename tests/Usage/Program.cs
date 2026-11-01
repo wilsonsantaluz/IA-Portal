@@ -30,7 +30,7 @@ try {
         var request = Guid.NewGuid(); await repo.BeginTurnAsync(oldSession, request, "Synthetic legacy question", "old", default); var answer = await repo.CompleteTurnAsync(oldSession, request, "Synthetic legacy answer", default);
         db.LlmUsages.Add(new() { Id = Guid.NewGuid(), OwnerUserId = 1, SessionId = oldSession, MessageId = answer.Id, Purpose = "title", Model = "deepseek-chat", Provider = "deepseek", Source = "reported", Status = "completed", TotalTokens = 10, CreatedAt = DateTime.UtcNow.AddMonths(-1) }); await db.SaveChangesAsync();
         // Only this disposable fixture is reverted to the v2 shape; no application database is touched.
-        await db.Database.ExecuteSqlRawAsync("DROP INDEX IX_LlmUsage_MessageId_Purpose; DROP INDEX IX_LlmUsage_SessionId_CreatedAt; DROP INDEX IX_LlmUsage_Purpose_CreatedAt; DROP INDEX IX_LlmUsage_CreatedAt_Id; ALTER TABLE LlmUsage DROP COLUMN EstimatedCostNanoUsd; ALTER TABLE LlmUsage DROP COLUMN PriceVersion; DELETE FROM SchemaVersions WHERE Version=3; CREATE TABLE Collision(Id INTEGER); CREATE INDEX IX_LlmUsage_MessageId_Purpose ON Collision(Id)");
+        await db.Database.ExecuteSqlRawAsync("DROP TABLE AiUserPreferences; DROP TABLE AiSystemDefault; DROP TABLE AiProviderSettings; ALTER TABLE LlmUsage DROP COLUMN ApiBilling; DROP INDEX IX_LlmUsage_MessageId_Purpose; DROP INDEX IX_LlmUsage_SessionId_CreatedAt; DROP INDEX IX_LlmUsage_Purpose_CreatedAt; DROP INDEX IX_LlmUsage_CreatedAt_Id; ALTER TABLE LlmUsage DROP COLUMN EstimatedCostNanoUsd; ALTER TABLE LlmUsage DROP COLUMN PriceVersion; DELETE FROM SchemaVersions WHERE Version>=3; CREATE TABLE Collision(Id INTEGER); CREATE INDEX IX_LlmUsage_MessageId_Purpose ON Collision(Id)");
         try { await ChatSchemaMigrator.InitializeAsync(db, config); throw new Exception("Expected DDL rollback"); } catch (SqliteException) { }
         using var query = db.Database.GetDbConnection().CreateCommand(); query.CommandText = "SELECT COUNT(*) FROM pragma_table_info('LlmUsage') WHERE name='EstimatedCostNanoUsd'";
         Check(Convert.ToInt64(await query.ExecuteScalarAsync()) == 0, "Failed v3 DDL not rolled back");
@@ -105,7 +105,7 @@ try {
         Check(answer.ToString() == "Answer" && adapter.LastCall.TotalTokens == 22 && adapter.LastCall.CacheTokens == 7 && adapter.LastCall.Model == "resolved-stream-model", "Stream usage/content parsing incorrect");
     }
     var truncated = new DeepSeekService(new FixtureHttp("data: {\"choices\":[{\"delta\":{\"content\":\"Partial\"}}],\"usage\":{\"total_tokens\":9}}\n\n", true), config);
-    try { await foreach (var _ in truncated.GenerateStreamAsync("selected", "Synthetic", default)) { } throw new Exception("Truncated stream accepted"); } catch (IOException) { }
+    try { await foreach (var _ in truncated.GenerateStreamAsync("selected", "Synthetic", default)) { } throw new Exception("Truncated stream accepted"); } catch (AiProviderException) { }
     Check(truncated.LastCall.TotalTokens == 9 && truncated.LastCall.Status != "completed", "Truncation lost real partial usage");
     var missingMetrics = new DeepSeekService(new FixtureHttp("{\"choices\":[{\"message\":{\"content\":\"Answer\"}}]}", false), config);
     await missingMetrics.GenerateAsync("selected", "Synthetic", default); Check(missingMetrics.LastCall.TotalTokens is null && missingMetrics.LastCall.Source == "unavailable", "Missing tokens invented");

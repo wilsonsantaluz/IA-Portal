@@ -27,6 +27,15 @@ class FakeServices(BaseHTTPRequestHandler):
     def log_message(self, *_):
         pass
 
+    def do_GET(self):
+        SERVICE_CALLS.append(self.path)
+        payload = json.dumps({"models": []} if self.path == "/api/tags" else {"data": []}).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
     def do_POST(self):
         SERVICE_CALLS.append(self.path)
         if self.headers.get("Transfer-Encoding", "").lower() == "chunked":
@@ -46,9 +55,14 @@ class FakeServices(BaseHTTPRequestHandler):
             assert b"fixture.pdf" in body
             payload = json.dumps({"texto": "Documento sintetico: recebivel de 125 reais."}).encode()
             content_type = "application/json"
-        elif self.path == "/chat/completions":
+        elif self.path == "/api/generate":
             data = json.loads(body)
-            if data.get("max_tokens") == 64:
+            last = {"model": data["model"], "done": True, "response": "Titulo local" if data.get("system") else "Resposta local.", "prompt_eval_count": 11, "eval_count": 9}
+            payload = (json.dumps(last) + ("\n" if data.get("stream") else "")).encode()
+            content_type = "application/x-ndjson" if data.get("stream") else "application/json"
+        elif self.path in ["/chat/completions", "/openai/chat/completions"]:
+            data = json.loads(body)
+            if data.get("max_tokens") == 64 or data.get("max_completion_tokens") == 64:
                 assert not data.get("stream") and len(data["messages"]) == 2
                 TITLE_PROMPTS.append(data["messages"][-1]["content"])
                 if "__title_failure__" in TITLE_PROMPTS[-1]:
@@ -70,10 +84,10 @@ class FakeServices(BaseHTTPRequestHandler):
                 payload = b"".join(
                     ("data: " + json.dumps({"choices": [{"delta": {"content": chunk}}]}) + "\n\n").encode()
                     for chunk in chunks
-                ) + ("data: " + json.dumps({"model": "deepseek-chat", "choices": [], "usage": {"prompt_tokens": 17, "completion_tokens": 5, "total_tokens": 22, "prompt_cache_hit_tokens": 7}}) + "\n\ndata: [DONE]\n\n").encode()
+                ) + ("data: " + json.dumps({"model": data["model"], "choices": [], "usage": {"prompt_tokens": 17, "completion_tokens": 5, "total_tokens": 22, "prompt_cache_hit_tokens": 7}}) + "\n\ndata: [DONE]\n\n").encode()
                 content_type = "text/event-stream"
             else:
-                payload = json.dumps({"model": "deepseek-chat", "choices": [{"message": {"content": "Analise sintetica do documento."}}], "usage": {"prompt_tokens": 23, "completion_tokens": 6, "total_tokens": 29, "prompt_cache_hit_tokens": 5}}).encode()
+                payload = json.dumps({"model": data["model"], "choices": [{"message": {"content": "Analise sintetica do documento."}}], "usage": {"prompt_tokens": 23, "completion_tokens": 6, "total_tokens": 29, "prompt_cache_hit_tokens": 5}}).encode()
                 content_type = "application/json"
         else:
             self.send_error(404)
@@ -109,6 +123,16 @@ def main():
             "Chat__UseAdvancedRag": "false",
             "DEEPSEEK_BASE_URL": f"http://127.0.0.1:{services.server_port}",
             "DEEPSEEK_API_KEY": "test-only",
+            "DEEPSEEK_MODELS": "deepseek-chat,deepseek-fixture",
+            "OPENAI_BASE_URL": f"http://127.0.0.1:{services.server_port}/openai/",
+            "OPENAI_API_KEY": "test-only",
+            "OPENAI_MODELS": "openai-fixture",
+            "OPENAI_ENABLED": "true",
+            "OLLAMA_BASE_URL": f"http://127.0.0.1:{services.server_port}/",
+            "OLLAMA_ALLOWED_ORIGINS": f"http://127.0.0.1:{services.server_port}",
+            "OLLAMA_LOCAL_ORIGINS": f"http://127.0.0.1:{services.server_port}",
+            "OLLAMA_MODELS": "local-fixture",
+            "OLLAMA_ENABLED": "true",
             "OCR_SERVICE_URL": f"http://127.0.0.1:{services.server_port}",
             "TRINO_URL": "http://127.0.0.1:1",
             "LLM_PRICES_FILE": str(ROOT / "ai-gateway/config/model-prices.json"),
@@ -227,6 +251,7 @@ def main():
                 rejected(f"/api/chatBot/history/{session}")
                 rejected(f"/api/chatBot/sessions/{session}", {"title": "Intrusão", "version": 0}, method="PATCH")
                 rejected(f"/api/chatBot/sessions/{session}", method="DELETE")
+                rejected(f"/api/chatBot/sessions/{session}/model", {"provider": "openai", "model": "openai-fixture", "version": 0}, method="PATCH")
                 rejected("/api/ia/ask/stream", {"pergunta": "Intrusão", "sessionId": session})
                 rejected("/api/chatBot/ask", {"question": "Intrusão", "sessionId": session})
                 rejected("/api/sql/ask", {"question": "Intrusão", "sessionId": session})
@@ -291,6 +316,27 @@ def main():
                 assert final_usage["errors"] >= 2 and not final_usage["tokensComplete"] and final_usage["totalTokens"] > 114
                 print("PASS: real HTTP usage summary/groups/call pagination, A/B and administrative authorization, measured totals/cache, unknown costs, failures and restart persistence.")
                 print("PASS: automatic title via real SSE/API, reported usage persisted separately, failure fallback preserves chat success and restart never repeats title charges.")
+                providers = request("/api/ai/providers")
+                assert {p["id"] for p in providers} == {"deepseek", "openai", "ollama"}
+                assert all("endpoint" not in p and "apiKey" not in p for p in providers)
+                for provider, model in [("openai", "openai-fixture"), ("ollama", "local-fixture")]:
+                    request("/api/me/ai-preference", {"provider": provider, "model": model}, method="PUT")
+                    selected = request("/api/chatBot/sessions", {})
+                    assert selected["provider"] == provider and selected["model"] == model
+                    reply = request("/api/ia/ask/stream", {"pergunta": "Assunto sintetico", "sessionId": selected["id"]}, raw=True)
+                    assert "event: done" in reply and "event: error" not in reply
+                    answer = request(f"/api/chatBot/sessions/{selected['id']}/messages")["items"][-1]
+                    assert answer["provider"] == provider and answer["model"] == model
+                    current = request(f"/api/chatBot/sessions/{selected['id']}")
+                    changed = request(f"/api/chatBot/sessions/{selected['id']}/model", {"provider": "deepseek", "model": "deepseek-fixture", "version": current["version"]}, method="PATCH")
+                    assert changed["provider"] == "deepseek" and len(request(f"/api/chatBot/sessions/{selected['id']}/messages")["items"]) == 2
+                    if provider == "ollama":
+                        local = request(f"/api/usage/summary?sessionId={selected['id']}")
+                        assert local["totalTokens"] == 40 and local["localApiRequests"] == 2 and local["estimatedCostUsd"] == 0
+                stop()
+                start(log)
+                assert request("/api/me/ai-preference")["provider"] == "ollama"
+                print("PASS: provider list/preferences, OpenAI/Ollama chat+title via mocks, explicit versioned switch preserving history, measured local tokens/API billing and preference restart persistence.")
                 print("PASS: SQLite creation, bootstrap/login, KB CRUD, chat streaming/history, ratings, OCR routing and restart persistence.")
                 print("LLM and OCR were HTTP doubles; external inference and real text extraction were not exercised.")
         finally:

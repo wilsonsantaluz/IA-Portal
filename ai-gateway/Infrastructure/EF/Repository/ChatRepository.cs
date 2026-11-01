@@ -5,8 +5,8 @@ using Portal.AI.Gateway.Application.Interfaces;
 using System.Text.Json;
 namespace Portal.AI.Gateway.Infrastructure;
 
-public sealed class ChatException(int status, string message) : Exception(message) { public int Status { get; } = status; }
-public class ChatRepository(PortalDbContext db, IHttpContextAccessor http) : IChatRepository
+public class ChatException(int status, string message) : Exception(message) { public int Status { get; } = status; }
+public class ChatRepository(PortalDbContext db, IHttpContextAccessor http, AiProviderCatalog? catalog = null) : IChatRepository
 {
     private int Owner => PortalAccess.UserId(http.HttpContext!.User);
     private IQueryable<ChatSession> Owned => db.ChatSessions.Where(s => s.OwnerUserId == Owner && s.DeletedAt == null);
@@ -15,8 +15,19 @@ public class ChatRepository(PortalDbContext db, IHttpContextAccessor http) : ICh
     private static MessageDto Dto(ChatMessage m) => new(m.Id, m.SessionId, m.RequestId, m.Role, m.Content, DateTime.SpecifyKind(m.CreatedAt, DateTimeKind.Utc), m.Status, m.Provider, m.Model);
     private record Cursor(DateTime At, Guid Id, string Search, int Owner);
     public async Task<SessionDto> CreateSessionAsync(CancellationToken ct) {
+        var selection = catalog is null ? new ModelSelection("deepseek", "deepseek-chat") : await catalog.Default(Owner, ct);
         var s = new ChatSession { Id = Guid.NewGuid(), OwnerUserId = Owner, UserId = Owner.ToString(), Title = "Nova conversa", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow, Provider = "deepseek", Model = "deepseek-chat" };
+        s.Provider = selection.Provider; s.Model = selection.Model;
         db.ChatSessions.Add(s); await db.SaveChangesAsync(ct); return Dto(s);
+    }
+    public async Task<SessionDto> ChangeModelAsync(Guid id, ChangeModelRequest request, CancellationToken ct) {
+        await Session(id, ct);
+        if (catalog is null) throw new ChatException(409, "Seleção de modelos indisponível.");
+        await catalog.Resolve(request.Provider, request.Model, ct);
+        var count = await Owned.Where(s => s.Id == id && s.Version == request.Version && (s.ActiveRequestId == null || s.LeaseUntil < DateTime.UtcNow))
+            .ExecuteUpdateAsync(u => u.SetProperty(s => s.Provider, request.Provider).SetProperty(s => s.Model, request.Model).SetProperty(s => s.Version, s => s.Version + 1), ct);
+        if (count == 0) throw new ChatException(409, "Conversa alterada ou resposta em andamento; atualize antes de trocar o modelo.");
+        db.ChangeTracker.Clear(); return await GetSessionAsync(id, ct);
     }
     public async Task<SessionDto> GetSessionAsync(Guid id, CancellationToken ct) => Dto(await Owned.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id, ct) ?? throw new ChatException(404, "Conversa não encontrada."));
     public async Task<SessionPage> ListSessionsAsync(int limit, string? cursor, string? search, CancellationToken ct) {
@@ -69,6 +80,7 @@ public class ChatRepository(PortalDbContext db, IHttpContextAccessor http) : ICh
             var answer = await db.ChatMessages.SingleAsync(m => m.SessionId == id && m.RequestId == requestId && m.Role == "assistant", ct);
             return new(prior, answer, true);
         }
+        if (catalog is not null) await catalog.Resolve(s.Provider ?? "deepseek", s.Model ?? "deepseek-chat", ct);
         if (s.ActiveRequestId is not null && s.LeaseUntil > DateTime.UtcNow) throw new ChatException(409, "Aguarde a resposta em andamento nesta conversa.");
         if (s.ActiveRequestId is not null) {
             var expired = await db.ChatMessages.Where(m => m.SessionId == id && m.RequestId == s.ActiveRequestId && m.Status == "pending").ToListAsync(ct);
@@ -76,16 +88,18 @@ public class ChatRepository(PortalDbContext db, IHttpContextAccessor http) : ICh
         }
         s.ActiveRequestId = requestId; s.LeaseUntil = DateTime.UtcNow.AddMinutes(3); s.UpdatedAt = DateTime.UtcNow; s.Version++;
         var question = new ChatMessage { SessionId = id, RequestId = requestId, Role = "user", Content = content, Status = "pending", RequestFingerprint = fingerprint, CreatedAt = DateTime.UtcNow };
+        question.Provider = s.Provider; question.Model = s.Model;
         db.ChatMessages.Add(question); await db.SaveChangesAsync(ct); await tx.CommitAsync(ct); return new(question, null, false);
     }
-    public async Task<ChatMessage> CompleteTurnAsync(Guid id, Guid requestId, string content, CancellationToken ct, string? userContent = null, string? model = null) {
+    public async Task<ChatMessage> CompleteTurnAsync(Guid id, Guid requestId, string content, CancellationToken ct, string? userContent = null, string? model = null, string? provider = null) {
         await using var tx = await db.Database.BeginTransactionAsync(ct);
         db.ChangeTracker.Clear(); var s = await Session(id, ct);
         if (s.ActiveRequestId != requestId || s.LeaseUntil < DateTime.UtcNow) throw new ChatException(409, "Esta interação foi interrompida.");
         var question = await db.ChatMessages.SingleAsync(m => m.SessionId == id && m.RequestId == requestId && m.Role == "user", ct);
         question.Status = "completed"; if (userContent is not null) question.Content = userContent;
         var answer = new ChatMessage { SessionId = id, RequestId = requestId, Role = "assistant", Content = content, Status = "completed", Provider = "deepseek", Model = model ?? "deepseek-chat", CreatedAt = DateTime.UtcNow };
-        db.ChatMessages.Add(answer); s.Model = answer.Model; s.ActiveRequestId = null; s.LeaseUntil = null; s.UpdatedAt = DateTime.UtcNow; s.Version++;
+        answer.Provider = provider ?? s.Provider ?? "deepseek"; answer.Model = model ?? s.Model ?? "deepseek-chat";
+        db.ChatMessages.Add(answer); s.ActiveRequestId = null; s.LeaseUntil = null; s.UpdatedAt = DateTime.UtcNow; s.Version++;
         await db.SaveChangesAsync(ct); await tx.CommitAsync(ct); return answer;
     }
     public async Task FailTurnAsync(Guid id, Guid requestId, string status, CancellationToken ct) {

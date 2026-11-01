@@ -39,25 +39,25 @@ builder.Services.AddHttpClient<TrinoRestClient>(client =>
     client.Timeout = TimeSpan.FromMinutes(50);
 });
 
-builder.Services.AddHttpClient<OllamaService>(client =>
-{
-    client.Timeout = TimeSpan.FromMinutes(50);
-});
-
-
+builder.Services.AddHttpClient("ai-provider").ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
 builder.Services.AddScoped<ITrinoQueryService, TrinoQueryService>();
 builder.Services.AddScoped<ITrinoRestClient, TrinoRestClient>();
 builder.Services.AddScoped<ITrinoMetadataService, TrinoMetadataService>();
-//builder.Services.AddScoped<IOllamaService, OllamaService>();
+builder.Services.AddScoped<AiProviderCatalog>();
 builder.Services.AddScoped<DeepSeekService>();
-builder.Services.AddScoped<IOllamaService>(services => services.GetRequiredService<DeepSeekService>());
-builder.Services.AddScoped<IChatTitleGenerator>(services => services.GetRequiredService<DeepSeekService>());
+builder.Services.AddScoped<OpenAiService>();
+builder.Services.AddScoped<OllamaService>();
+builder.Services.AddScoped<IAiProviderAdapter>(s => s.GetRequiredService<DeepSeekService>());
+builder.Services.AddScoped<IAiProviderAdapter>(s => s.GetRequiredService<OpenAiService>());
+builder.Services.AddScoped<IAiProviderAdapter>(s => s.GetRequiredService<OllamaService>());
+builder.Services.AddScoped<AiProviderRouter>();
+builder.Services.AddScoped<IOllamaService>(s => s.GetRequiredService<AiProviderRouter>());
+builder.Services.AddScoped<IChatTitleGenerator>(s => s.GetRequiredService<AiProviderRouter>());
+builder.Services.AddScoped<ILlmMetrics>(s => s.GetRequiredService<AiProviderRouter>());
 builder.Services.AddScoped<ChatTitleService>();
-builder.Services.AddScoped<ILlmMetrics>(services => services.GetRequiredService<DeepSeekService>());
 builder.Services.AddScoped<ChatUsageService>();
 builder.Services.AddScoped<UsageQueryService>();
 builder.Services.AddSingleton(ModelPriceCatalog.Load(Path.GetFullPath(builder.Configuration["LLM_PRICES_FILE"] ?? "config/model-prices.json", builder.Environment.ContentRootPath)));
-//builder.Services.AddScoped<IOllamaService, OpenAiService>();
 builder.Services.AddScoped<IMlService, MlService>();
 builder.Services.AddScoped<IOcrService, OcrService>();
 builder.Services.AddScoped<IDataRagService, DataRagService>();

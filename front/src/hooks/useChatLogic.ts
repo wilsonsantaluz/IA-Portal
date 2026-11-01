@@ -22,6 +22,8 @@ type StoredMessage = {
   model?: string;
 };
 interface Message {
+  provider?: string;
+  model?: string;
   id: string;
   from: "user" | "ia";
   streamText?: string;
@@ -49,6 +51,8 @@ function fromStored(m: StoredMessage): Message {
     finished: true,
     expanded: true,
     status: m.status,
+    provider: m.provider,
+    model: m.model,
   };
 }
 export const useChatLogic = () => {
@@ -423,6 +427,7 @@ export const useChatLogic = () => {
     renameConversation,
     deleteConversation,
     refreshSessions,
+    reloadCurrent: async () => { if (session) await reload(session.id); },
     loadOlder: () => {
       if (session && messagesCursor)
         return loadMessages(session.id, messagesCursor);

@@ -35,7 +35,7 @@ public class SmartAskController(IAskSmartService service, IChatRepository chats,
                 var result = new StringBuilder();
                 await foreach (var part in usage.GenerateStreamAsync(id, turn.UserMessage.Id, "deepseek-chat", prompt, timeout.Token)) { result.Append(part); await sse.EmitAsync("data", part); }
                 if (result.Length == 0) throw new InvalidOperationException("Resposta vazia.");
-                answer = await chats.CompleteTurnAsync(id, requestId, result.ToString(), timeout.Token);
+                answer = await chats.CompleteTurnAsync(id, requestId, result.ToString(), timeout.Token, model: usage.ActualModel, provider: usage.ActualProvider);
             }
             await sse.EmitAsync("persisted", JsonSerializer.Serialize(new { id = answer.Id, requestId, status = answer.Status }));
             if (!turn.Replayed) {

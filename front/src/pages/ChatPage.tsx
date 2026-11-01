@@ -14,6 +14,7 @@ import "./markdown.css";
 import { useChatScroll } from "../hooks/useChatScroll";
 import ChatWelcome from "../components/ChatWelcome";
 import ConversationPanel from "../components/ConversationPanel";
+import ConversationModelPicker from "../components/ConversationModelPicker";
 
 export default function ChatPage() {
   const chat = useChatLogic();
@@ -133,6 +134,7 @@ export default function ChatPage() {
             {chat.session?.provider || "DeepSeek"} ·{" "}
             {chat.session?.model || "deepseek-chat"}
           </Typography>
+          {chat.session && <ConversationModelPicker session={chat.session} disabled={loading || chat.historyLoading} refresh={chat.reloadCurrent} />}
         </Box>
         {chat.historyLoading && (
           <LinearProgress aria-label="Carregando histórico" />

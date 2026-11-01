@@ -20,6 +20,7 @@ public sealed class ModelPriceCatalog
     public static ModelPriceCatalog Load(string path) => new(JsonSerializer.Deserialize<ModelPrice[]>(File.ReadAllText(path), new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? throw new InvalidOperationException("Lista de preços inválida."));
     public void Apply(LlmUsage usage)
     {
+        if (usage.ApiBilling == "local") { usage.EstimatedCostNanoUsd = 0; usage.PriceVersion = "local-api-no-external-billing"; return; }
         var price = entries.Where(p => p.Provider == usage.Provider && p.Model == usage.Model && p.EffectiveFrom <= new DateTimeOffset(DateTime.SpecifyKind(usage.CreatedAt, DateTimeKind.Utc))).OrderByDescending(p => p.EffectiveFrom).FirstOrDefault();
         if (price is null || usage.Source != "reported" || usage.InputTokens is not long input || usage.OutputTokens is not long output || input < 0 || output < 0) return;
         var cachedRate = price.CachedInputUsdPerMillion ?? price.InputUsdPerMillion;

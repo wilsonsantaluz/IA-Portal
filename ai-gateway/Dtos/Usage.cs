@@ -2,6 +2,7 @@ namespace AiGateway.Dtos;
 
 public sealed class UsageTotals
 {
+    public long LocalApiRequests { get; set; }
     public long Requests { get; set; }
     public long Errors { get; set; }
     public long Unknown { get; set; }
@@ -20,5 +21,5 @@ public sealed class UsageTotals
 }
 public sealed record UsageCall(Guid Id, Guid SessionId, long MessageId, string Provider, string Model,
     string Purpose, DateTime CreatedAt, string Status, string Source, long? InputTokens, long? OutputTokens,
-    long? TotalTokens, long? CacheTokens, long? DurationMs, decimal? EstimatedCostUsd, string? PriceVersion);
+    long? TotalTokens, long? CacheTokens, long? DurationMs, decimal? EstimatedCostUsd, string? PriceVersion, string ApiBilling);
 public sealed record UsageFilter(DateTime From, DateTime To, Guid? SessionId = null, string? Provider = null, string? Model = null, string? Purpose = null, int? UserId = null);

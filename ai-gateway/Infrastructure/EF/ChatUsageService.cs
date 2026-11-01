@@ -3,19 +3,27 @@ using Microsoft.EntityFrameworkCore;
 using Portal.AI.Gateway.Application.Interfaces;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using AiGateway.Infrastructure.Qdrant.Services.LLMs;
 
 namespace Portal.AI.Gateway.Infrastructure;
 
 public sealed class ChatUsageService(PortalDbContext db, IHttpContextAccessor http, IOllamaService provider,
-    ILlmMetrics metrics, ModelPriceCatalog prices, ILogger<ChatUsageService> logger)
+    ILlmMetrics metrics, ModelPriceCatalog prices, ILogger<ChatUsageService> logger, AiProviderRouter? router = null)
 {
+    public string ActualProvider { get; private set; } = "deepseek";
+    public string ActualModel { get; private set; } = "deepseek-chat";
     private async Task<LlmUsage> Start(Guid session, long message, string purpose, string model, CancellationToken ct)
     {
         var owner = PortalAccess.UserId(http.HttpContext!.User);
         if (purpose is not ("chat" or "document")) throw new ArgumentException("Finalidade inválida.");
         if (!await db.ChatMessages.AnyAsync(m => m.Id == message && m.SessionId == session && m.Role == "user" && m.Status == "pending" && m.Session.OwnerUserId == owner && m.Session.DeletedAt == null, ct)) throw new ChatException(404, "Conversa não encontrada.");
+        if (router is not null) {
+            var question = await db.ChatMessages.AsNoTracking().SingleAsync(m => m.Id == message && m.SessionId == session, ct);
+            await router.Select(question.Provider ?? "deepseek", question.Model ?? model, ct);
+            model = router.Model;
+        }
         var usage = new LlmUsage { Id = Guid.NewGuid(), OwnerUserId = owner, SessionId = session, MessageId = message,
-            Purpose = purpose, Provider = "deepseek", Model = model, CreatedAt = DateTime.UtcNow };
+            Purpose = purpose, Provider = router?.ProviderId ?? "deepseek", Model = model, ApiBilling = router?.ApiBilling ?? "external", CreatedAt = DateTime.UtcNow };
         db.LlmUsages.Add(usage); await db.SaveChangesAsync(ct); return usage;
     }
 
@@ -23,6 +31,7 @@ public sealed class ChatUsageService(PortalDbContext db, IHttpContextAccessor ht
     {
         var result = metrics.LastCall;
         usage.Model = string.IsNullOrWhiteSpace(result.Model) ? usage.Model : result.Model;
+        ActualProvider = usage.Provider; ActualModel = usage.Model;
         usage.InputTokens = result.InputTokens; usage.OutputTokens = result.OutputTokens;
         usage.TotalTokens = result.TotalTokens; usage.CacheTokens = result.CacheTokens; usage.Source = result.Source;
         usage.Status = completed ? "completed" : result.Status == "invalid_response" ? "invalid_response" :

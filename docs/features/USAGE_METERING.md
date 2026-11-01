@@ -6,6 +6,8 @@ O parsing do adapter usa os campos `prompt_tokens`, `completion_tokens`, `total_
 
 ## Cobertura implementada
 
+**Evolução da etapa 4:** o registro dos fluxos abaixo agora acompanha o adapter selecionado (DeepSeek/OpenAI/Ollama). Pergunta conserva modelo solicitado; resposta e telemetria registram o efetivo. `apiBilling=local` significa ausência de cobrança externa de API, sem incluir infraestrutura; Ollama remoto não recebe essa classificação automaticamente. Resumo inclui `localApiRequests`. Detalhes em [LLM_PROVIDERS.md](LLM_PROVIDERS.md). Os trechos de diagnóstico abaixo sobre provedores ainda não ativos descrevem o estado anterior da etapa 3.
+
 - `purpose=chat`: `/api/ia/ask/stream` e `/api/chatBot/ask`.
 - `purpose=document`: chamada ao LLM de `/api/ocr/analisar`, após a extração de texto. Não mede tokens/custo do serviço de OCR.
 - `purpose=title`: chamada auxiliar já existente, agora também elegível a estimativa com preço conhecido.

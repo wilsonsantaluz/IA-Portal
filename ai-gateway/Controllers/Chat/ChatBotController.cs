@@ -22,6 +22,8 @@ public class ChatBotContoller(IChatRepository chats, ChatUsageService usage, IKn
     public async Task<IActionResult> Messages(Guid id, [FromQuery] int limit = 50, [FromQuery] string? before = null, CancellationToken ct = default) => Ok(await chats.ListMessagesAsync(id, limit, before, ct));
     [HttpPatch("sessions/{id:guid}")]
     public async Task<IActionResult> Rename(Guid id, RenameSessionRequest request, CancellationToken ct) => Ok(await chats.RenameAsync(id, request, ct));
+    [HttpPatch("sessions/{id:guid}/model")]
+    public async Task<IActionResult> Model(Guid id, ChangeModelRequest request, CancellationToken ct) => Ok(await chats.ChangeModelAsync(id, request, ct));
     [HttpDelete("sessions/{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct) { await chats.DeleteAsync(id, ct); return NoContent(); }
     [HttpGet("history/{sessionId:guid}")]
@@ -40,7 +42,7 @@ public class ChatBotContoller(IChatRepository chats, ChatUsageService usage, IKn
             var prompt = $"Responda em português com base no conhecimento e histórico.\nBASE:\n{context}\nHISTÓRICO:\n{string.Join("\n", history.Select(m => $"{m.Role}: {m.Content[..Math.Min(m.Content.Length, 4000)]}"))}\nDOCUMENTO:\n{req.DocumentContext}\nPERGUNTA:\n{req.Question}";
             var response = await usage.GenerateAsync(id, turn.UserMessage.Id, "chat", cfg["DEEPSEEK_DEFAULT_MODEL"] ?? "deepseek-chat", prompt, timeout.Token);
             if (string.IsNullOrWhiteSpace(response)) throw new InvalidOperationException();
-            var answer = await chats.CompleteTurnAsync(id, requestId, response, timeout.Token, model: cfg["DEEPSEEK_DEFAULT_MODEL"] ?? "deepseek-chat");
+            var answer = await chats.CompleteTurnAsync(id, requestId, response, timeout.Token, model: usage.ActualModel, provider: usage.ActualProvider);
             await titles.TryGenerateAsync(id, ct);
             return Ok(new { sessionId = id, texto = response, messageId = answer.Id });
         } catch {

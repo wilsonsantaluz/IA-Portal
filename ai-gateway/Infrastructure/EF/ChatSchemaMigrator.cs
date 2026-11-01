@@ -69,6 +69,24 @@ public static class ChatSchemaMigrator
             await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO SchemaVersions VALUES (3, {hash}, {DateTime.UtcNow})");
             await tx.CommitAsync();
         }
+        async Task UpgradeProviders(bool fresh, bool alreadyBackedUp) {
+            using var resource4 = typeof(ChatSchemaMigrator).Assembly.GetManifestResourceStream("AiGateway.Infrastructure.EF.Migrations.004_AiProviders.sql")!;
+            var script = (await new StreamReader(resource4).ReadToEndAsync()).Replace("\r\n", "\n");
+            var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(script)));
+            using var command = connection.CreateCommand(); command.CommandText = "SELECT Checksum FROM SchemaVersions WHERE Version=4";
+            var recorded = await command.ExecuteScalarAsync();
+            var billing = (await Columns("LlmUsage")).Contains("ApiBilling");
+            var providers = (await Columns("AiProviderSettings")).IsSupersetOf(new[] { "Id", "Enabled", "Endpoint", "ModelsJson", "DefaultModel", "Version" });
+            var preferences = (await Columns("AiUserPreferences")).IsSupersetOf(new[] { "UserId", "Provider", "Model" });
+            var defaults = (await Columns("AiSystemDefault")).IsSupersetOf(new[] { "Id", "Provider", "Model", "Version" });
+            if (recorded is not null) { if (!Equals(recorded, hash) || !billing || !providers || !preferences || !defaults) throw new InvalidOperationException("Esquema/checksum de provedores incompatível."); return; }
+            if (!fresh && (billing || providers || preferences || defaults)) throw new InvalidOperationException("Migração parcial de provedores não reconhecida.");
+            if (!fresh && !alreadyBackedUp) await Backup(4);
+            await using var tx = await db.Database.BeginTransactionAsync();
+            if (!fresh) await db.Database.ExecuteSqlRawAsync(script);
+            await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO SchemaVersions VALUES (4, {hash}, {DateTime.UtcNow})");
+            await tx.CommitAsync();
+        }
         var isEmpty = await Count("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'") == 0;
         if (isEmpty) await db.Database.EnsureCreatedAsync();
         var expected = new Dictionary<string, string[]> {
@@ -95,10 +113,11 @@ public static class ChatSchemaMigrator
         if (ledger) {
             using var c = connection.CreateCommand(); c.CommandText = "SELECT Checksum FROM SchemaVersions WHERE Version=1";
             var recorded = await c.ExecuteScalarAsync();
-            if (recorded is not string value || value != checksum || !current || await Count("SELECT COUNT(*) FROM SchemaVersions WHERE Version>3") != 0)
+            if (recorded is not string value || value != checksum || !current || await Count("SELECT COUNT(*) FROM SchemaVersions WHERE Version>4") != 0)
                 throw new InvalidOperationException("Versão/checksum de esquema incompatível. Inicialização interrompida.");
             var hadV2 = await Count("SELECT COUNT(*) FROM SchemaVersions WHERE Version=2") != 0;
-            await UpgradeTitles(false, false); await UpgradeUsage(false, !hadV2); return;
+            var hadV3 = await Count("SELECT COUNT(*) FROM SchemaVersions WHERE Version=3") != 0;
+            await UpgradeTitles(false, false); await UpgradeUsage(false, !hadV2); await UpgradeProviders(false, !hadV3); return;
         }
         if (partial && !current) throw new InvalidOperationException("Migração parcial desconhecida. Restaure um backup validado.");
         if (!current) await Backup(1);
@@ -116,5 +135,6 @@ public static class ChatSchemaMigrator
         }
         await UpgradeTitles(isEmpty, !current);
         await UpgradeUsage(isEmpty, true);
+        await UpgradeProviders(isEmpty, true);
     }
 }

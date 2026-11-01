@@ -26,7 +26,7 @@ public sealed class UsageQueryService(PortalDbContext db, IHttpContextAccessor h
         return query;
     }
     private static IQueryable<UsageTotals> Totals<TKey>(IQueryable<IGrouping<TKey, LlmUsage>> groups) => groups.Select(g => new UsageTotals {
-        Requests = g.LongCount(), Errors = g.LongCount(u => u.Status != "completed" && u.Status != "started"), Unknown = g.LongCount(u => u.Status == "started"),
+        LocalApiRequests = g.LongCount(u => u.ApiBilling == "local"), Requests = g.LongCount(), Errors = g.LongCount(u => u.Status != "completed" && u.Status != "started"), Unknown = g.LongCount(u => u.Status == "started"),
         ReportedRequests = g.LongCount(u => u.Source == "reported"), TotalTokenRequests = g.LongCount(u => u.TotalTokens != null), PricedRequests = g.LongCount(u => u.EstimatedCostNanoUsd != null),
         InputTokens = g.LongCount(u => u.InputTokens != null) == 0 ? null : g.Sum(u => u.InputTokens),
         OutputTokens = g.LongCount(u => u.OutputTokens != null) == 0 ? null : g.Sum(u => u.OutputTokens),
@@ -49,7 +49,7 @@ public sealed class UsageQueryService(PortalDbContext db, IHttpContextAccessor h
             Day = by == "day" ? u.CreatedAt.Day : 0
         });
         var items = await groups.Select(g => new { key = g.Key, totals = new UsageTotals {
-        Requests = g.LongCount(), Errors = g.LongCount(u => u.Status != "completed" && u.Status != "started"), Unknown = g.LongCount(u => u.Status == "started"),
+        LocalApiRequests = g.LongCount(u => u.ApiBilling == "local"), Requests = g.LongCount(), Errors = g.LongCount(u => u.Status != "completed" && u.Status != "started"), Unknown = g.LongCount(u => u.Status == "started"),
         ReportedRequests = g.LongCount(u => u.Source == "reported"), TotalTokenRequests = g.LongCount(u => u.TotalTokens != null), PricedRequests = g.LongCount(u => u.EstimatedCostNanoUsd != null),
         InputTokens = g.LongCount(u => u.InputTokens != null) == 0 ? null : g.Sum(u => u.InputTokens),
         OutputTokens = g.LongCount(u => u.OutputTokens != null) == 0 ? null : g.Sum(u => u.OutputTokens),
@@ -67,7 +67,7 @@ public sealed class UsageQueryService(PortalDbContext db, IHttpContextAccessor h
         Page(page, limit);
         var rows = await (await Scope(filter, false, ct)).OrderByDescending(u => u.CreatedAt).ThenByDescending(u => u.Id).Skip((page - 1) * limit).Take(limit + 1).ToListAsync(ct);
         var more = rows.Count > limit; if (more) rows.RemoveAt(limit);
-        return new { items = rows.Select(u => new UsageCall(u.Id, u.SessionId, u.MessageId, u.Provider, u.Model, u.Purpose, DateTime.SpecifyKind(u.CreatedAt, DateTimeKind.Utc), u.Status, u.Source, u.InputTokens, u.OutputTokens, u.TotalTokens, u.CacheTokens, u.DurationMs, u.EstimatedCostNanoUsd / 1_000_000_000m, u.PriceVersion)), nextPage = more ? (int?)(page + 1) : null };
+        return new { items = rows.Select(u => new UsageCall(u.Id, u.SessionId, u.MessageId, u.Provider, u.Model, u.Purpose, DateTime.SpecifyKind(u.CreatedAt, DateTimeKind.Utc), u.Status, u.Source, u.InputTokens, u.OutputTokens, u.TotalTokens, u.CacheTokens, u.DurationMs, u.EstimatedCostNanoUsd / 1_000_000_000m, u.PriceVersion, u.ApiBilling)), nextPage = more ? (int?)(page + 1) : null };
     }
     private static void Page(int page, int limit) { if (page is < 1 or > 10000 || limit is < 1 or > 100) throw new ChatException(400, "Página ou limite inválido."); }
 }
