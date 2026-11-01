@@ -9,8 +9,8 @@ Este conjunto documenta **o objetivo e os contratos propostos**, não uma afirma
 - A interface foi renovada e exibe navegação para chat, dashboard, base de conhecimento, usuários e grupos/permissões.
 - A auditoria inicial confirmou persistência em `ChatSession`/`ChatMessage` e identificou verificações de propriedade incompletas. A etapa 1 acrescentou filtros por proprietário em leituras/escritas e rejeição antes de OCR/LLM/SSE; os testes A/B estão registrados no diário. Isso não equivale a uma auditoria de segurança completa do produto.
 - Após aprovação, a etapa 1 acrescentou sessões criadas pelo servidor, lista/busca, CRUD, recuperação entre navegadores e mensagens paginadas, com dono validado em cada operação. A migração SQL v1 preserva dados e faz backup consistente antes de alterar um esquema legado.
-- A etapa 2 acrescentou títulos automáticos, fallback e consumo auxiliar separado em `LlmUsage`. Consumo completo de chat, custos, seleção de modelos e configurações administrativas continuam futuros. Os adapters OpenAI/Ollama existem, mas não estão habilitados no fluxo principal.
-- A auditoria descreve a base anterior ao incremento; consulte [o estado implementado de conversas](features/CHAT_SESSIONS.md) e o diário para testes, aplicação local e limitações. A etapa 0 foi aprovada; a etapa 1 foi mergeada e o proprietário autorizou a etapa 2.
+- A etapa 2 acrescentou títulos automáticos, fallback e consumo auxiliar separado em `LlmUsage`. A etapa 3 estendeu o registro para chat/documentos persistentes, consultas por período e agregados administrativos, com preços opcionais versionados. As etapas 4/5 integram os adapters existentes, seleção explícita, preferências e telas de configuração/consumo. OpenAI/Ollama precisam ser configurados e habilitados; não há fallback silencioso.
+- A auditoria descreve a base anterior ao incremento; consulte [o estado implementado de conversas](features/CHAT_SESSIONS.md) e o diário para testes, aplicação local e limitações. A etapa 0 foi aprovada; as etapas 1/2 foram mergeadas; o proprietário autorizou concluir as etapas restantes na mesma branch, com merge ao final.
 
 ## Leitura recomendada
 
@@ -33,3 +33,5 @@ Contratos detalhados após inspeção: [architecture/API_CONTRACTS.md](architect
 - Exemplos de endpoints e nomes de tabelas são **propostas**. Não criar contratos paralelos sem verificar os existentes.
 - Não usar dados reais de terceiros em testes, documentação ou screenshots.
 - Toda mudança estrutural exige testes e plano de migração sem perda de dados.
+
+Estado atual de configurações e consumo visual: [AI_SETTINGS.md](features/AI_SETTINGS.md). Resultados efetivos de testes e aplicação local no diário.

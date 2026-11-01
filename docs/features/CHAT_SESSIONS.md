@@ -2,6 +2,8 @@
 
 ## Experiência desejada
 
+**Estado atual:** etapas 1–5 implementadas. Além dos recursos abaixo, há seleção explícita por conversa, preferência pessoal e administração/consumo. Fluxos e limites atuais em [AI_SETTINGS.md](AI_SETTINGS.md) e [LLM_PROVIDERS.md](LLM_PROVIDERS.md); as seções identificadas por etapa preservam o registro histórico de cada incremento.
+
 - Botão **Nova conversa** cria um contexto separado para o usuário autenticado.
 - Conversas recentes agrupadas visualmente: Hoje, Ontem, Últimos 7 dias, Anteriores (fuso do usuário para exibição; timestamps UTC persistidos).
 - Ao selecionar uma conversa, carregar mensagens paginadas e permitir continuar o contexto.
@@ -46,7 +48,8 @@
 A seção de experiência acima é o objetivo completo. Neste incremento foram entregues:
 
 - Sessões UUID criadas no backend e vinculadas ao JWT, com título provisório, datas, versão, provedor/modelo efetivamente usados pelo caminho atual e exclusão lógica.
-- Listar/buscar/selecionar/renomear/excluir conversas; recarregar ou entrar por outro navegador recupera a lista do servidor. O armazenamento local guarda apenas a última seleção por conta.
+- Listar/buscar/selecionar/renomear/excluir conversas; recarregar ou entrar por outro navegador recupera a lista do servidor. A tela abre sem conversa selecionada, inclusive após recarregar ou retornar à rota. O histórico só é aberto por seleção explícita. “Nova conversa” limpa a tela sem criar uma sessão; a criação ocorre no primeiro envio de pergunta ou documento.
+- Durante o envio, um indicador indeterminado acima do campo permanece visível desde a preparação da sessão até a conclusão ou falha. Usa o status do servidor na consulta à base e muda para recebimento quando chegam trechos da resposta; análise de documentos também é sinalizada. Sem percentuais simulados, com anúncio acessível e respeito a movimento reduzido.
 - Histórico de mensagens em páginas de 50, com botão para anteriores; lista de conversas em páginas de 30. Limite máximo de 100 por API. Mensagens ordenadas por horário + ID; conversas por última atividade + GUID. Busca é substring com a semântica de comparação SQLite atual, sem promessa de busca semântica/fuzzy.
 - Períodos Hoje/Ontem/Últimos 7 dias/Anteriores no fuso do navegador; horários dos DTOs de sessão/mensagens em UTC. Drawer de conversas em telas menores, sem substituir a navegação principal.
 - IDs reais do SQLite no histórico, estados de interação e confirmação de persistência antes de sinalizar sucesso no SSE. Abrir uma sessão não altera sua atividade.
@@ -77,6 +80,8 @@ A migração `002_TitleUsage.sql` cria apenas essa tabela e índices, com checks
 Testes adicionais: `dotnet run --project tests/ChatTitles` (migração v1→v2, rollback/checksum, geração, fallback, edição/exclusão durante chamada, isolamento e parsing de usage do adapter) e `python scripts/smoke_local.py` (título real via API com double HTTP, consumo separado, falha sem erro de chat e reinício). Provedores externos são simulados; não comprova disponibilidade nem qualidade de títulos do serviço remoto real.
 
 ### SQLite v1 e preservação
+
+**Evolução posterior:** a etapa 3 contabiliza as chamadas de chat e análise de documentos, além do título, usando o mesmo `LlmUsage`. Consumo próprio/por conversa e agregados administrativos estão disponíveis por APIs protegidas, sem nova tela neste incremento. Preços são opcionais, explícitos e versionados; sem preço/tokens suficientes o custo permanece indisponível. A migração v3 é aditiva e preserva o histórico. Contratos, cobertura e limites em [USAGE_METERING.md](USAGE_METERING.md).
 
 `ChatSchemaMigrator` substitui a chamada direta a EnsureCreated no inicializador. Para banco novo usa o esquema do modelo e registra v1. Para banco legado reconhecido, cria backup por `SqliteConnection.BackupDatabase`, verifica integridade e aplica `001_ChatSessions.sql` em transação com registro de checksum em `SchemaVersions`. SQL é normalizado quanto a quebras de linha antes do checksum. Esquema parcial/desconhecido, versão futura ou checksum divergente impedem startup, sem recriar banco.
 

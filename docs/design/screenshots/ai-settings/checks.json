@@ -1,0 +1,11 @@
+{
+  "checks": [
+    "Administrative provider models/global default and personal preference persist; metadata connectivity creates no paid inference usage.",
+    "New conversation honors personal model; confirmed provider/model change preserves earlier answers and labels after reload.",
+    "Real usage cards/tables distinguish partial costs, local infrastructure and unknown values; detail pagination loads 34 real persisted calls; admin view exposes aggregates only.",
+    "Regular user sees only personal preferences and own empty consumption; direct admin API and another owner conversation usage are rejected.",
+    "Chat entry/reload stays empty; explicit history selection restores messages; reset creates no empty sessions; first send creates a distinct conversation.",
+    "Settings/usage accessibility and overflow checks pass in light/dark themes at desktop, 390px and 320px."
+  ],
+  "errors": []
+}

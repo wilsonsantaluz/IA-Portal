@@ -1,8 +1,8 @@
 ﻿# Modelo de dados — proposta após auditoria
 
-Data: 01/11/2026. **Modelo evolutivo: etapas 1–2 implementadas; etapas 3–5 ainda propostas.** Evidências da base anterior em [AS_IS_AUDIT.md](AS_IS_AUDIT.md). As tabelas `ChatSession` e `ChatMessage` foram reutilizadas, sem uma segunda entidade de conversa.
+Data: 01/11/2026. **Modelo evolutivo: etapas 1–5 implementadas, com limites documentados.** Evidências da base anterior em [AS_IS_AUDIT.md](AS_IS_AUDIT.md). As tabelas `ChatSession` e `ChatMessage` foram reutilizadas, sem uma segunda entidade de conversa.
 
-**Atualização após aprovação:** o proprietário aprovou a proposta e o diagrama em 01/11/2026. A etapa 1 foi implementada: migração SQL v1, `OwnerUserId`, metadados da sessão, estado/request/fingerprint nas mensagens e índices. A lease está em `ChatSession` (`ActiveRequestId`, `LeaseUntil`). A etapa 2 adicionou `LlmUsage` para tentativas de título via migração v2; métricas completas e provedores continuam futuros. Resultados e limites em [CHAT_SESSIONS.md](../features/CHAT_SESSIONS.md) e no diário.
+**Atualização após aprovação:** o proprietário aprovou a proposta e o diagrama em 01/11/2026. A etapa 1 foi implementada: migração SQL v1, `OwnerUserId`, metadados da sessão, estado/request/fingerprint nas mensagens e índices. A lease está em `ChatSession` (`ActiveRequestId`, `LeaseUntil`). A etapa 2 adicionou `LlmUsage` para tentativas de título via migração v2; a etapa 3 estende a mesma tabela para consumo de chat/documentos, custo opcional e índices via migração v3. A migração v4 adiciona configurações sem segredos, preferências e padrão global; os três adapters foram integrados. Resultados e limites em [CHAT_SESSIONS.md](../features/CHAT_SESSIONS.md) e no diário.
 
 ## Organização conceitual fornecida pelo proprietário
 
@@ -71,6 +71,8 @@ Título recebe somente trecho limitado da primeira pergunta e, se necessário, p
 
 ## Etapas 3–5 — uso e configuração
 
+**Implementação da etapa 3:** reutilizada `LlmUsage`; migração v3 acrescenta `EstimatedCostNanoUsd`/`PriceVersion` opcionais e índices por mensagem/finalidade (unicidade somente chat/document), sessão/data, finalidade/data e data/ID. `MessageId` referencia a pergunta para chat/documentos e a primeira resposta para títulos. Provider/model efetivo, duração, tokens e status ficam por chamada. Preços foram implementados como arquivo JSON versionável (`ModelPriceCatalog`), sem tabela adicional: vigência e versão ficam na configuração, e a versão aplicada acompanha cada estimativa persistida. Não há recálculo retroativo. Configuração inicial vazia. `ProviderConfiguration`/`UserPreference` abaixo continuam propostos; não foram criados nesta etapa.
+
 | Entidade proposta | Campos mínimos | Regras |
 | --- | --- | --- |
 | `LlmUsage` (evolução) | Custo estimado decimal USD, referência/versionamento do preço, detalhes de cache suportados e índices de agregação | Medido, estimado e indisponível são categorias distintas. Ausência de tokens/preço é NULL, não zero inventado. |
@@ -102,3 +104,9 @@ Cache é subconjunto da entrada conforme o provedor, não parcela a somar ao tot
 - Checksum/baseline inválidos impedem prosseguir.
 - Backup restaurado mantém dados e integridade.
 - Nenhum banco real foi aberto ou alterado para preparar esta proposta.
+
+## Estado final de provedores/preferências
+
+O identificador de provider em mensagens/usage/preferências é um snapshot lógico, não uma FK obrigatória para configuração: provedores podem funcionar só pelo ambiente, sem linha em `AiProviderSettings`, e histórico não deve depender de a configuração permanecer habilitada. Seleção runtime é validada pelo catálogo. As FKs de usuário, sessão e mensagem continuam reais; não há tabela paralela de conversas.
+
+`AiProviderSettings` guarda Id do provedor, enabled, endpoint permitido, lista de modelos JSON, modelo padrão e versão de concorrência. `AiUserPreferences` vincula UserId ao provider/model pessoal; `AiSystemDefault` guarda provider/model/versão globais. Sem colunas de API key, segredo ou JWT. `LlmUsage.ApiBilling` separa external/local/unknown. Perguntas conservam provider/model solicitado; respostas/usage conservam efetivo; a seleção da conversa não é sobrescrita pelo alias retornado. Endpoint e classificação de cobrança são congelados juntos ao aceitar a chamada, evitando redirecionamento de uma chamada local já iniciada por edição administrativa concorrente. SQL v4/backup/checksum preservam todas as estruturas anteriores. Preços continuam em arquivo versionável, não em uma tabela adicional.

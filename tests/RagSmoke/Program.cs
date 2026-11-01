@@ -23,6 +23,12 @@ string? lastPrompt = null;
 fake.MapPost("/chat/completions", async (HttpContext context) =>
 {
     using var body = await JsonDocument.ParseAsync(context.Request.Body);
+    if (!body.RootElement.TryGetProperty("stream", out var streaming) || !streaming.GetBoolean())
+    {
+        await context.Response.WriteAsJsonAsync(new { model = body.RootElement.GetProperty("model").GetString(), choices = new[] { new { message = new { content = "Conciliação sintética de recebíveis" } } } });
+        return;
+    }
+    // Preserve the chat prompt observation: the subsequent minimal title call must not replace it.
     lastPrompt = body.RootElement.GetProperty("messages")[0].GetProperty("content").GetString();
     context.Response.ContentType = "text/event-stream";
     await context.Response.WriteAsync("data: {\"choices\":[{\"delta\":{\"content\":\"Resposta vetorial sintetica.\"}}]}\n\ndata: [DONE]\n\n");
@@ -55,6 +61,15 @@ var settings = new Dictionary<string, string>
     ["Chat__UseAdvancedRag"] = "true",
     ["DEEPSEEK_BASE_URL"] = fakeUrl,
     ["DEEPSEEK_API_KEY"] = "synthetic-only",
+    ["DEEPSEEK_ENABLED"] = "true",
+    ["DEEPSEEK_MODELS"] = "deepseek-chat",
+    ["DEEPSEEK_DEFAULT_MODEL"] = "deepseek-chat",
+    ["DEEPSEEK_ALLOWED_ORIGINS"] = fakeUrl,
+    ["AI_DEFAULT_PROVIDER"] = "deepseek",
+    ["OPENAI_ENABLED"] = "false", ["OPENAI_API_KEY"] = "",
+    ["OLLAMA_ENABLED"] = "false", ["OLLAMA_API_KEY"] = "",
+    ["SQLITE_BACKUP_DIRECTORY"] = Path.Combine(temp, "backups"),
+    ["LLM_PRICES_FILE"] = Path.Combine(root, "ai-gateway/config/model-prices.json"),
     ["Qdrant__Endpoint"] = qdrant,
     ["Embedding__ModelPath"] = Path.Combine(root, "models/embeddings/nomic-v15/model.onnx"),
     ["Embedding__TokenizerPath"] = Path.Combine(root, "models/embeddings/nomic-v15/tokenizer.json"),

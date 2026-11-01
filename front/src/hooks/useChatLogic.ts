@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useChatUI } from "../context/ChatUIContext";
-import { useAuth } from "../auth/AuthProvider";
 import api from "../services/api";
 export type Session = {
   id: string;
@@ -22,6 +21,8 @@ type StoredMessage = {
   model?: string;
 };
 interface Message {
+  provider?: string;
+  model?: string;
   id: string;
   from: "user" | "ia";
   streamText?: string;
@@ -49,11 +50,11 @@ function fromStored(m: StoredMessage): Message {
     finished: true,
     expanded: true,
     status: m.status,
+    provider: m.provider,
+    model: m.model,
   };
 }
 export const useChatLogic = () => {
-  const { user } = useAuth();
-  const key = `portal_session_id_${user?.userId}`;
   const [sessions, setSessions] = useState<Session[]>([]);
   const [session, setSession] = useState<Session | null>(null);
   const [sessionsCursor, setSessionsCursor] = useState<string | null>(null);
@@ -75,7 +76,6 @@ export const useChatLogic = () => {
   const streamAbort = useRef<AbortController | null>(null);
   const sessionListVersion = useRef(0);
   const mounted = useRef(true);
-  const initialized = useRef(false);
   const report = useCallback(
     (error: unknown) =>
       setSnackbar({ open: true, type: "error", text: failure(error) }),
@@ -141,17 +141,15 @@ export const useChatLogic = () => {
   );
   const selectSession = useCallback(
     async (item: Session) => {
-      initialized.current = true;
       selectedRef.current = item.id;
       setSession(item);
-      localStorage.setItem(key, item.id);
       setMessages([]);
       setMessagesCursor(null);
       setStatusMessage("");
       setInput("");
       await loadMessages(item.id);
     },
-    [key, loadMessages],
+    [loadMessages],
   );
   useEffect(() => {
     mounted.current = true;
@@ -162,27 +160,20 @@ export const useChatLogic = () => {
   }, []);
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      void refreshSessions().then(async (items) => {
-        if (!items || initialized.current || !mounted.current) return;
-        initialized.current = true;
-        const saved = localStorage.getItem(key);
-        if (saved) {
-          try {
-            const { data } = await api.get<Session>(
-              `api/chatBot/sessions/${saved}`,
-            );
-            if (mounted.current) await selectSession(data);
-            return;
-          } catch {
-            localStorage.removeItem(key);
-          }
-        }
-        if (items[0] && mounted.current) await selectSession(items[0]);
-      });
+      void refreshSessions();
     }, 250);
     return () => clearTimeout(timer);
-  }, [refreshSessions, key, selectSession]);
-  const newConversation = async () => {
+  }, [refreshSessions]);
+  const newConversation = () => {
+    if (loading || historyLoading) return;
+    selectedRef.current = null;
+    setSession(null);
+    setMessages([]);
+    setMessagesCursor(null);
+    setStatusMessage("");
+    setInput("");
+  };
+  const createConversation = async () => {
     if (loading || historyLoading) return null;
     setHistoryLoading(true);
     try {
@@ -218,7 +209,6 @@ export const useChatLogic = () => {
         setSession(null);
         setMessages([]);
         setMessagesCursor(null);
-        localStorage.removeItem(key);
       }
       await refreshSessions();
       return true;
@@ -241,9 +231,11 @@ export const useChatLogic = () => {
   const sendMessage = async (prompt?: string) => {
     const question = (prompt ?? input).trim();
     if (!question || loading || historyLoading) return;
+    setLoading(true);
+    setStatusMessage("Preparando sua conversa...");
     let active = session;
-    if (!active) active = await newConversation();
-    if (!active) return;
+    if (!active) active = await createConversation();
+    if (!active) { setLoading(false); setStatusMessage(""); return; }
     const id = active.id;
     const requestId = crypto.randomUUID();
     const aiId = "pending-" + requestId;
@@ -310,6 +302,7 @@ export const useChatLogic = () => {
           if (type === "done" && text.includes("[*ENDSTREAN*]"))
             completed = persisted;
           if (type === "data") {
+            if (!answer) setStatusMessage("Recebendo resposta da IA...");
             answer += text;
             setMessages((previous) =>
               previous.map((m) =>
@@ -340,9 +333,11 @@ export const useChatLogic = () => {
       report(new Error("O limite é de 20 MB por documento."));
       return;
     }
+    setLoading(true);
+    setStatusMessage("Preparando documento para análise...");
     let active = session;
-    if (!active) active = await newConversation();
-    if (!active) return;
+    if (!active) active = await createConversation();
+    if (!active) { setLoading(false); setStatusMessage(""); return; }
     setLoading(true);
     setStatusMessage("Extraindo e analisando documento...");
     try {
@@ -423,6 +418,7 @@ export const useChatLogic = () => {
     renameConversation,
     deleteConversation,
     refreshSessions,
+    reloadCurrent: async () => { if (session) await reload(session.id); },
     loadOlder: () => {
       if (session && messagesCursor)
         return loadMessages(session.id, messagesCursor);

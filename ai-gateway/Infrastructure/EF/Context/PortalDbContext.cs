@@ -12,6 +12,9 @@ public class PortalDbContext : DbContext
     public DbSet<ChatSession> ChatSessions => Set<ChatSession>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
     public DbSet<LlmUsage> LlmUsages => Set<LlmUsage>();
+    public DbSet<AiProviderSetting> AiProviderSettings => Set<AiProviderSetting>();
+    public DbSet<AiUserPreference> AiUserPreferences => Set<AiUserPreference>();
+    public DbSet<AiSystemDefault> AiSystemDefaults => Set<AiSystemDefault>();
     public DbSet<KnowledgeBaseItem> KnowledgeBaseItems => Set<KnowledgeBaseItem>();
     public DbSet<ChatKbRating> ChatKbRatings => Set<ChatKbRating>();
 
@@ -26,6 +29,9 @@ public class PortalDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
 
+        modelBuilder.Entity<AiProviderSetting>(e => { e.ToTable("AiProviderSettings"); e.HasKey(x => x.Id); e.Property(x => x.Version).IsConcurrencyToken(); });
+        modelBuilder.Entity<AiUserPreference>(e => { e.ToTable("AiUserPreferences"); e.HasKey(x => x.UserId); e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict); });
+        modelBuilder.Entity<AiSystemDefault>(e => { e.ToTable("AiSystemDefault"); e.HasKey(x => x.Id); e.Property(x => x.Version).IsConcurrencyToken(); });
         // USERS
         modelBuilder.Entity<User>(e =>
         {
@@ -116,6 +122,10 @@ public class PortalDbContext : DbContext
             e.HasOne<ChatSession>().WithMany().HasForeignKey(x => x.SessionId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<ChatMessage>().WithMany().HasForeignKey(x => x.MessageId).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(x => new { x.SessionId, x.Purpose }).IsUnique().HasFilter("Purpose = 'title'");
+            e.HasIndex(x => new { x.MessageId, x.Purpose }).IsUnique().HasFilter("Purpose IN ('chat', 'document')");
+            e.HasIndex(x => new { x.SessionId, x.CreatedAt });
+            e.HasIndex(x => new { x.Purpose, x.CreatedAt });
+            e.HasIndex(x => new { x.CreatedAt, x.Id });
             e.HasIndex(x => new { x.OwnerUserId, x.CreatedAt });
             e.HasIndex(x => new { x.Provider, x.Model, x.CreatedAt });
         });
@@ -262,7 +272,21 @@ public class LlmUsage
     public long? TotalTokens { get; set; }
     public long? CacheTokens { get; set; }
     public long? DurationMs { get; set; }
+    public long? EstimatedCostNanoUsd { get; set; }
+    public string? PriceVersion { get; set; }
+    public string ApiBilling { get; set; } = "external";
 }
+public class AiProviderSetting
+{
+    public string Id { get; set; } = "";
+    public bool Enabled { get; set; }
+    public string Endpoint { get; set; } = "";
+    public string ModelsJson { get; set; } = "[]";
+    public string DefaultModel { get; set; } = "";
+    public int Version { get; set; }
+}
+public class AiUserPreference { public int UserId { get; set; } public string Provider { get; set; } = ""; public string Model { get; set; } = ""; }
+public class AiSystemDefault { public int Id { get; set; } public string Provider { get; set; } = ""; public string Model { get; set; } = ""; public int Version { get; set; } }
 
 public class Permission
 {

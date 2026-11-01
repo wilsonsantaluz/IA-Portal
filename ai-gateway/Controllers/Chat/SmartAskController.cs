@@ -1,6 +1,7 @@
 ﻿using AiGateway.Application.Interfaces;
 using AiGateway.Dtos;
 using AiGateway.Infrastructure.Sse;
+using AiGateway.Infrastructure.Qdrant.Services.LLMs;
 using AiGateway.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,7 +12,7 @@ using System.Text.Json;
 namespace AiGateway.Controllers.Chat;
 
 [ApiController, Authorize(Policy = PortalAccess.Chat), Route("api/ia")]
-public class SmartAskController(IAskSmartService service, IChatRepository chats, IOllamaService llm, ChatTitleService titles, ILogger<SmartAskController> logger) : ControllerBase
+public class SmartAskController(IAskSmartService service, IChatRepository chats, ChatUsageService usage, ChatTitleService titles, ILogger<SmartAskController> logger) : ControllerBase
 {
     [HttpPost("ask/stream")]
     public async Task AskStream(AskSmartRequest req, CancellationToken ct)
@@ -33,9 +34,9 @@ public class SmartAskController(IAskSmartService service, IChatRepository chats,
                 await sse.EmitAsync("status", "Consultando o conhecimento e preparando a resposta...");
                 var prompt = await service.AskAsync(req, sse);
                 var result = new StringBuilder();
-                await foreach (var part in llm.GenerateStreamAsync("deepseek-chat", prompt, timeout.Token)) { result.Append(part); await sse.EmitAsync("data", part); }
+                await foreach (var part in usage.GenerateStreamAsync(id, turn.UserMessage.Id, "deepseek-chat", prompt, timeout.Token)) { result.Append(part); await sse.EmitAsync("data", part); }
                 if (result.Length == 0) throw new InvalidOperationException("Resposta vazia.");
-                answer = await chats.CompleteTurnAsync(id, requestId, result.ToString(), timeout.Token);
+                answer = await chats.CompleteTurnAsync(id, requestId, result.ToString(), timeout.Token, model: usage.ActualModel, provider: usage.ActualProvider);
             }
             await sse.EmitAsync("persisted", JsonSerializer.Serialize(new { id = answer.Id, requestId, status = answer.Status }));
             if (!turn.Replayed) {
@@ -47,7 +48,7 @@ public class SmartAskController(IAskSmartService service, IChatRepository chats,
         catch (Exception ex) {
             if (!turn.Replayed) { using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(10)); await chats.FailTurnAsync(id, requestId, ex is OperationCanceledException ? "cancelled" : "failed", cleanup.Token); }
             logger.LogWarning("Interação {RequestId} não concluída ({ErrorType}).", requestId, ex.GetType().Name);
-            await sse.EmitAsync("error", ex is OperationCanceledException ? "Resposta interrompida ou tempo limite atingido. Sua pergunta foi preservada." : "Não foi possível concluir a resposta. Sua pergunta foi preservada; atualize o histórico.");
+            await sse.EmitAsync("error", ex is AiProviderException providerError ? providerError.Message : ex is OperationCanceledException ? "Resposta interrompida ou tempo limite atingido. Sua pergunta foi preservada." : "Não foi possível concluir a resposta. Sua pergunta foi preservada; atualize o histórico.");
         }
     }
 }

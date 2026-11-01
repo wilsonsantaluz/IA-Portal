@@ -11,7 +11,9 @@ import PublicRoute from "./auth/PublicRoute";
 import DashboardLayout from "./layout/DashboardLayout";
 import React from "react";
 import AccessManagementPage from "./pages/AccessManagementPage";
-import RequirePermission, { HomeRoute } from "./auth/RequirePermission";
+import RequirePermission, { HomeRoute, RequireAnyPermission } from "./auth/RequirePermission";
+import AiSettingsPage from "./pages/AiSettingsPage";
+import UsagePage from "./pages/UsagePage";
 
 export default function App() {
   return (
@@ -77,6 +79,8 @@ export default function App() {
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="settings/ai" element={<RequireAnyPermission permissions={["chat.access", "ai.manage"]}><AiSettingsPage /></RequireAnyPermission>} />
+        <Route path="usage" element={<RequireAnyPermission permissions={["chat.access", "usage.admin"]}><UsagePage /></RequireAnyPermission>} />
       </Route>
     </Routes>
   );

@@ -48,3 +48,15 @@ Não declarar a aplicação pronta para produção sem revisão e execução des
 As verificações de propriedade nas operações de sessão/mensagem e a rejeição antes de OCR/LLM/SSE foram implementadas e testadas, inclusive chamadas diretas por outra conta e sessões inexistentes/excluídas. Erros do fluxo de chat são sanitizados. Backups e migração v1 foram testados em fixtures sintéticas. Isso atualiza esses itens do diagnóstico inicial; não encerra os requisitos de segurança do produto inteiro.
 
 Credencial literal e logs dos adapters alternativos inativos continuam pendentes antes de sua habilitação. Não houve configuração de novas chaves, SSRF configurável, gestão de preços ou tela administrativa de IA nesta etapa.
+
+## Atualização da etapa 3
+
+Consultas de consumo pessoal filtram o usuário JWT; filtro de conversa revalida posse/exclusão. Consumo administrativo agregado exige `usage.admin`, inclusive com JWT válido de um usuário que só possui `chat.access`/`dashboard.view`. Não há endpoint administrativo de prompts, mensagens ou chamadas detalhadas de terceiros. Testes HTTP A/B, endpoints administrativos, parâmetros e paginação executados no smoke. Novos registros não incluem prompts, respostas, bodies de erro ou segredos; erros brutos também foram removidos do caminho não streaming do adapter DeepSeek ativo. Preços são configuração local sem credenciais, com arquivo vazio por padrão. Esses ajustes não habilitam nem resolvem automaticamente os bloqueios dos adapters alternativos.
+
+## Atualização das etapas 4/5
+
+Ollama/OpenAI foram corrigidos e integrados: removidos credencial literal/endpoint antigo e logs de payload/resposta dos adapters. O valor antigo não foi reutilizado nem testado. Revogação/rotação no emissor continua pendente de confirmação pelo responsável; remover código não revoga uma chave nem limpa o histórico Git. Esta observação substitui o estado histórico de “literal ainda presente” acima.
+
+Configurações via `ai.manage` armazenam apenas metadados; chaves continuam no ambiente, com status booleano na interface. Não foi criado mecanismo inseguro para gravar chaves em texto puro. A allowlist de origens só pode ser alterada no servidor; redirecionamentos HTTP ficam desabilitados e userinfo/query/fragmento são rejeitados. O destino validado e sua classificação de cobrança são congelados juntos por chamada, impedindo que mudança administrativa concorrente redirecione uma inferência aceita ou classifique um endpoint remoto como local por uma corrida.
+
+Rotas de seleção/preferência revalidam dono, disponibilidade e versão. Administração de provedores usa `ai.manage`, sem depender de menus ou do acesso ao dashboard. Testes HTTP e navegador verificam negação para usuário comum, ausência de segredos nas respostas/estrutura SQLite, preferências próprias, modelo/histórico e consumo alheio. Teste de metadados não chama inferência. Isso não equivale a auditoria completa de produção, nem valida modelos/credenciais/fatura reais ou elimina logs legados fora dos adapters alterados.

@@ -38,6 +38,8 @@ export default function HeaderBar({
         "/kb": "Base de conhecimento",
         "/users": "Usuários",
         "/groups": "Grupos e permissões",
+        "/settings/ai": "Configurações · Inteligência Artificial",
+        "/usage": "Consumo de Inteligência Artificial",
       } as Record<string, string>
     )[pathname] || "IA-Portal";
   return (

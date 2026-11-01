@@ -1,0 +1,20 @@
+CREATE TABLE AiProviderSettings (
+    Id TEXT NOT NULL PRIMARY KEY,
+    Enabled INTEGER NOT NULL,
+    Endpoint TEXT NOT NULL,
+    ModelsJson TEXT NOT NULL,
+    DefaultModel TEXT NOT NULL,
+    Version INTEGER NOT NULL
+);
+CREATE TABLE AiUserPreferences (
+    UserId INTEGER NOT NULL PRIMARY KEY REFERENCES Users(UserId) ON DELETE RESTRICT,
+    Provider TEXT NOT NULL,
+    Model TEXT NOT NULL
+);
+CREATE TABLE AiSystemDefault (
+    Id INTEGER NOT NULL PRIMARY KEY,
+    Provider TEXT NOT NULL,
+    Model TEXT NOT NULL,
+    Version INTEGER NOT NULL
+);
+ALTER TABLE LlmUsage ADD COLUMN ApiBilling TEXT NOT NULL DEFAULT 'external';
