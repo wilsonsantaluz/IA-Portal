@@ -15,6 +15,7 @@ import { useChatScroll } from "../hooks/useChatScroll";
 import ChatWelcome from "../components/ChatWelcome";
 import ConversationPanel from "../components/ConversationPanel";
 import ConversationModelPicker from "../components/ConversationModelPicker";
+import { Link } from "react-router-dom";
 
 export default function ChatPage() {
   const chat = useChatLogic();
@@ -135,6 +136,7 @@ export default function ChatPage() {
             {chat.session?.model || "deepseek-chat"}
           </Typography>
           {chat.session && <ConversationModelPicker session={chat.session} disabled={loading || chat.historyLoading} refresh={chat.reloadCurrent} />}
+          {chat.session && <Button component={Link} to={`/usage?sessionId=${chat.session.id}`} size="small" sx={{ mt: 0.5 }}>Consumo desta conversa</Button>}
         </Box>
         {chat.historyLoading && (
           <LinearProgress aria-label="Carregando histórico" />

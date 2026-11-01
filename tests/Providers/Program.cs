@@ -70,6 +70,17 @@ try {
             catch (ChatException e) { Check(adapter.ProviderId == "openai" && e.Status == 409, "Unexpected disabled adapter error"); }
         }
         wire.Error = 0;
+        // Destination and API billing are frozen together when a call is accepted.
+        await router.Select("ollama", "local-a", default);
+        var localInfo = await catalog.Get("ollama", default);
+        cfg["OLLAMA_ALLOWED_ORIGINS"] = "http://ollama.test:11434,http://remote.test:11434";
+        await catalog.Save("ollama", new(true, "http://remote.test:11434/", localInfo.Models, localInfo.DefaultModel, localInfo.Version), default);
+        await router.GenerateAsync("local-a", "Snapshot fixture", default);
+        Check(wire.LastHost == "ollama.test" && router.ApiBilling == "local", "Administrative edit redirected an accepted local call");
+        await router.Select("ollama", "local-a", default); await router.GenerateAsync("local-a", "Next selection", default);
+        Check(wire.LastHost == "remote.test" && router.ApiBilling == "unknown", "New selection reused stale billing/destination");
+        var remote = await catalog.Get("ollama", default);
+        await catalog.Save("ollama", new(true, localInfo.Endpoint, localInfo.Models, localInfo.DefaultModel, remote.Version), default);
         Console.WriteLine("PASS: unavailable preferences fail explicitly, endpoint allowlist/userinfo checks, remote Ollama costs unknown, no secret responses, consistent safe provider errors.");
         // Build v3 fixture from this disposable database and inject v4 DDL failure.
         await db.Database.ExecuteSqlRawAsync("DROP TABLE AiUserPreferences; DROP TABLE AiSystemDefault; DROP TABLE AiProviderSettings; ALTER TABLE LlmUsage DROP COLUMN ApiBilling; DELETE FROM SchemaVersions WHERE Version=4; CREATE TABLE AiUserPreferences(Id INTEGER)");
@@ -86,12 +97,13 @@ try {
 
 sealed class Wire : HttpMessageHandler, IHttpClientFactory {
     public int Calls; public int Error;
+    public string? LastHost;
     public HttpClient CreateClient(string name) => new(this, false);
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) {
-        Calls++; if (Error != 0) return new((HttpStatusCode)Error) { Content = new StringContent("SECRET_PROVIDER_BODY") };
+        Calls++; LastHost = request.RequestUri!.Host; if (Error != 0) return new((HttpStatusCode)Error) { Content = new StringContent("SECRET_PROVIDER_BODY") };
         using var json = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(ct)); var root = json.RootElement;
         var model = root.GetProperty("model").GetString()!; var stream = root.GetProperty("stream").GetBoolean();
-        var ollama = request.RequestUri!.Host == "ollama.test"; var openai = request.RequestUri.Host == "openai.test";
+        var ollama = request.RequestUri!.AbsolutePath == "/api/generate"; var openai = request.RequestUri.Host == "openai.test";
         if (model.EndsWith("-resolved")) throw new Exception("Actual model alias was wrongly sent instead of configured selection");
         if (!ollama && request.Headers.Authorization?.Parameter != "synthetic-key") throw new Exception("Missing environment credential");
         var title = !stream && (ollama ? root.TryGetProperty("system", out _) : root.GetProperty("messages").GetArrayLength() == 2);

@@ -2,6 +2,8 @@
 
 ## Experiência desejada
 
+**Estado atual:** etapas 1–5 implementadas. Além dos recursos abaixo, há seleção explícita por conversa, preferência pessoal e administração/consumo. Fluxos e limites atuais em [AI_SETTINGS.md](AI_SETTINGS.md) e [LLM_PROVIDERS.md](LLM_PROVIDERS.md); as seções identificadas por etapa preservam o registro histórico de cada incremento.
+
 - Botão **Nova conversa** cria um contexto separado para o usuário autenticado.
 - Conversas recentes agrupadas visualmente: Hoje, Ontem, Últimos 7 dias, Anteriores (fuso do usuário para exibição; timestamps UTC persistidos).
 - Ao selecionar uma conversa, carregar mensagens paginadas e permitir continuar o contexto.

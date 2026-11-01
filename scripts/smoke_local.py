@@ -123,16 +123,21 @@ def main():
             "Chat__UseAdvancedRag": "false",
             "DEEPSEEK_BASE_URL": f"http://127.0.0.1:{services.server_port}",
             "DEEPSEEK_API_KEY": "test-only",
+            "DEEPSEEK_ENABLED": "true",
+            "DEEPSEEK_ALLOWED_ORIGINS": f"http://127.0.0.1:{services.server_port}",
+            "AI_DEFAULT_PROVIDER": "deepseek",
             "DEEPSEEK_MODELS": "deepseek-chat,deepseek-fixture",
             "OPENAI_BASE_URL": f"http://127.0.0.1:{services.server_port}/openai/",
             "OPENAI_API_KEY": "test-only",
             "OPENAI_MODELS": "openai-fixture",
             "OPENAI_ENABLED": "true",
+            "OPENAI_ALLOWED_ORIGINS": f"http://127.0.0.1:{services.server_port}",
             "OLLAMA_BASE_URL": f"http://127.0.0.1:{services.server_port}/",
             "OLLAMA_ALLOWED_ORIGINS": f"http://127.0.0.1:{services.server_port}",
             "OLLAMA_LOCAL_ORIGINS": f"http://127.0.0.1:{services.server_port}",
             "OLLAMA_MODELS": "local-fixture",
             "OLLAMA_ENABLED": "true",
+            "OLLAMA_API_KEY": "",
             "OCR_SERVICE_URL": f"http://127.0.0.1:{services.server_port}",
             "TRINO_URL": "http://127.0.0.1:1",
             "LLM_PRICES_FILE": str(ROOT / "ai-gateway/config/model-prices.json"),
@@ -243,6 +248,11 @@ def main():
                 rejected(f"/api/usage/calls?sessionId={session}")
                 rejected("/api/usage/admin/summary", expected=403)
                 rejected("/api/usage/admin/groups", expected=403)
+                rejected("/api/admin/ai/providers", expected=403)
+                rejected("/api/admin/ai/providers/deepseek/test", {}, expected=403)
+                rejected("/api/admin/ai/providers/deepseek", {"enabled": True, "endpoint": f"http://127.0.0.1:{services.server_port}/", "models": ["deepseek-chat"], "defaultModel": "deepseek-chat", "version": 0}, method="PUT", expected=403)
+                rejected("/api/admin/ai/default", expected=403)
+                rejected("/api/admin/ai/default", {"provider": "deepseek", "model": "deepseek-chat", "version": 0}, method="PUT", expected=403)
                 rejected("/api/usage/summary?userId=1", expected=400)
                 rejected("/api/usage/groups?by=user", expected=400)
                 assert request("/api/chatBot/sessions")["items"] == []
@@ -337,6 +347,37 @@ def main():
                 start(log)
                 assert request("/api/me/ai-preference")["provider"] == "ollama"
                 print("PASS: provider list/preferences, OpenAI/Ollama chat+title via mocks, explicit versioned switch preserving history, measured local tokens/API billing and preference restart persistence.")
+                admin_settings = request("/api/admin/ai/providers")
+                assert len(admin_settings) == 3 and "test-only" not in json.dumps(admin_settings)
+                deepseek = next(p for p in admin_settings if p["id"] == "deepseek")
+                update = {"enabled": True, "endpoint": deepseek["endpoint"], "models": deepseek["models"], "defaultModel": deepseek["defaultModel"], "version": deepseek["version"], "apiKey": "synthetic-must-not-be-stored"}
+                rejected("/api/admin/ai/providers/deepseek", {**update, "endpoint": "http://untrusted.invalid/"}, method="PUT", expected=400)
+                rejected("/api/admin/ai/providers/deepseek", {**update, "endpoint": "http://user:secret@127.0.0.1/"}, method="PUT", expected=400)
+                saved = request("/api/admin/ai/providers/deepseek", update, method="PUT")
+                assert saved["version"] == update["version"] + 1 and "synthetic-must-not-be-stored" not in json.dumps(saved)
+                rejected("/api/admin/ai/providers/deepseek", update, method="PUT", expected=409)
+                global_default = request("/api/admin/ai/default")
+                request("/api/admin/ai/default", {"provider": "deepseek", "model": "deepseek-fixture", "version": global_default["version"]}, method="PUT")
+                rejected("/api/admin/ai/default", {"provider": "deepseek", "model": "deepseek-chat", "version": global_default["version"]}, method="PUT", expected=409)
+                inferred = len(PROMPTS) + len(TITLE_PROMPTS)
+                accounted = request("/api/usage/summary")["requests"]
+                for provider in ["deepseek", "openai", "ollama"]:
+                    tested = request(f"/api/admin/ai/providers/{provider}/test", {})
+                    assert tested["success"] and tested["status"] == "connected"
+                assert inferred == len(PROMPTS) + len(TITLE_PROMPTS) and accounted == request("/api/usage/summary")["requests"], "Connectivity test invoked paid inference"
+                request("/api/admin/ai/providers/deepseek", {**update, "version": saved["version"], "enabled": False}, method="PUT")
+                rejected("/api/chatBot/ask", {"question": "No silent fallback", "sessionId": selected["id"]}, expected=409)
+                with closing(sqlite3.connect(dbfile)) as db:
+                    stored = db.execute("SELECT Endpoint, ModelsJson, DefaultModel FROM AiProviderSettings").fetchall()
+                    assert "synthetic-must-not-be-stored" not in json.dumps(stored)
+                    assert not {"ApiKey", "Secret", "Password"}.intersection(r[1] for r in db.execute("PRAGMA table_info(AiProviderSettings)"))
+                stop()
+                env["OPENAI_API_KEY"] = ""
+                start(log)
+                assert request("/api/admin/ai/default")["model"] == "deepseek-fixture"
+                assert request("/api/admin/ai/providers/openai/test", {})["status"] == "not_configured"
+                assert "openai" not in {p["id"] for p in request("/api/ai/providers")}
+                print("PASS: administrative settings/default CAS, server endpoint allowlist, environment-only secrets, metadata-only connectivity, disabled provider rejection and settings restart persistence.")
                 print("PASS: SQLite creation, bootstrap/login, KB CRUD, chat streaming/history, ratings, OCR routing and restart persistence.")
                 print("LLM and OCR were HTTP doubles; external inference and real text extraction were not exercised.")
         finally:

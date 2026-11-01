@@ -2,7 +2,7 @@
 
 **Branch sugerida:** `feature/chat-sessions-providers`. Se a branch já existir, verificar `git status` e alterações pendentes antes de prosseguir. Nunca commitar diretamente em `main` nem fazer merge automático.
 
-**Situação em 01/11/2026:** etapas 0–2 aprovadas e mergeadas em `main` (`8aadff7`). Após nova autorização, etapa 3 implementada na branch de trabalho: consumo dos fluxos persistentes, consultas protegidas e preços opcionais versionados. Etapas 4–5 ainda não iniciadas. Resultados e aplicação local no diário.
+**Situação em 01/11/2026:** etapas 0–2 mergeadas; etapa 3 registrada em `f8d515b`; etapa 4 em `232eac3`. A pedido do proprietário, etapas restantes seguem na mesma branch, com merge somente ao final por ele. Etapa 5 implementada; validações finais/deploy/evidências constam no diário. Não há autorização para merge automático.
 
 | Etapa | Entrega | Critérios de aceite | Bloqueio |
 | --- | --- | --- | --- |

@@ -6,6 +6,8 @@ export const screenRoutes = [
   ["dashboard.view", "/dashboard"],
   ["kb.view", "/kb"],
   ["access.manage", "/users"],
+  ["usage.admin", "/usage"],
+  ["ai.manage", "/settings/ai"],
 ];
 export function HomeRoute() {
   const { hasPermission } = useAuth();
@@ -22,6 +24,10 @@ export function HomeRoute() {
       </Alert>
     </Box>
   );
+}
+export function RequireAnyPermission({ permissions, children }: { permissions: string[]; children: JSX.Element }) {
+  const { hasPermission } = useAuth();
+  return permissions.some(hasPermission) ? children : <RequirePermission permission={permissions[0]}>{children}</RequirePermission>;
 }
 export default function RequirePermission({
   permission,

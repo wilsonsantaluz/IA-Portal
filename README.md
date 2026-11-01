@@ -23,7 +23,7 @@ The chat now supports separate conversations per authenticated user: create, sea
 - PDF/image upload, extraction through a separate OCR service, and analysis through the configured AI provider.
 - A basic metrics dashboard.
 
-Local mode does **not** require Qdrant, Trino, or ONNX models. However, it **does require an external DeepSeek API key** for AI responses. Uploaded document content, selected knowledge context, and conversation history may be transmitted to the configured AI provider. Do not use real confidential data in this prototype.
+Local mode does **not** require Qdrant, Trino, or ONNX models. AI responses require a configured provider: DeepSeek/OpenAI with your own API key, or an explicitly configured local Ollama endpoint and installed model. DeepSeek remains the compatible default; OpenAI/Ollama start disabled. Uploaded document content, selected knowledge context, and conversation history may be transmitted to the configured AI provider. Do not use real confidential data in this prototype.
 
 ## Architecture
 
@@ -52,7 +52,7 @@ React / TypeScript UI
 
 ## Quick start with Docker
 
-**Requirements:** Docker Compose, your own DeepSeek API key, and locally generated authentication credentials.
+**Requirements:** Docker Compose, locally generated authentication credentials, and at least one configured AI provider (remote API key or local Ollama model).
 
 1. Copy `.env.example` to `.env` (for example, `Copy-Item .env.example .env` in PowerShell).
 2. Set the following values in `.env`:
@@ -190,4 +190,6 @@ This public version is a generalized demonstration. It must not be interpreted a
 
 For a detailed Portuguese audit and the current list of limitations, see [docs/REVISAO_PUBLICACAO.md](docs/REVISAO_PUBLICACAO.md).
 
-Automatic conversation titles are generated after the first successful response, with a safe first-question fallback and manual edits preserved. Title-call usage is stored separately; persistent chat/document usage metrics and optional versioned pricing are now available through protected APIs; provider settings remain planned. See [usage documentation](docs/features/USAGE_METERING.md). See [chat documentation](docs/features/CHAT_SESSIONS.md).
+Automatic conversation titles are generated after the first successful response, with a safe first-question fallback and manual edits preserved. Title-call usage is stored separately; persistent chat/document usage metrics and optional versioned pricing are now available through protected APIs; provider settings, personal preferences and consumption screens are available at `/settings/ai` and `/usage`. See [usage documentation](docs/features/USAGE_METERING.md). See [chat documentation](docs/features/CHAT_SESSIONS.md).
+
+AI settings and consumption: [configuration, permissions and limits](docs/features/AI_SETTINGS.md). API keys remain server environment variables; the UI never reads or stores their values. Automatic fallback between providers is disabled.

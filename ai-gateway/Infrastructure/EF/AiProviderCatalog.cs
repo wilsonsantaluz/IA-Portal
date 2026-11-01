@@ -43,18 +43,19 @@ public sealed class AiProviderCatalog(PortalDbContext db, IConfiguration cfg)
         Known(id); var stored = await db.AiProviderSettings.AsNoTracking().SingleOrDefaultAsync(p => p.Id == id, ct);
         var defaultModel = cfg[$"{Prefix(id)}_DEFAULT_MODEL"] ?? (id == "deepseek" ? "deepseek-chat" : id == "openai" ? "gpt-4.1" : "");
         var models = stored is not null ? JsonSerializer.Deserialize<string[]>(stored.ModelsJson)! : Models(Option($"{Prefix(id)}_MODELS", defaultModel).Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries));
-        var endpoint = ValidateEndpoint(id, stored?.Endpoint ?? Endpoint(id));
+        var endpoint = stored?.Endpoint ?? Endpoint(id); string? error = null;
+        try { endpoint = ValidateEndpoint(id, endpoint); } catch (ChatException ex) { error = ex.Message; try { Url(endpoint); } catch { endpoint = ""; } }
         return new(id, stored?.Enabled ?? (bool.TryParse(cfg[$"{Prefix(id)}_ENABLED"], out var enabled) ? enabled : id == "deepseek"), id == "ollama" || !string.IsNullOrWhiteSpace(Key(id)), endpoint, models,
-            stored?.DefaultModel ?? (models.Contains(defaultModel) ? defaultModel : models.FirstOrDefault() ?? ""), stored?.Version ?? 0, true, Billing(id, endpoint), $"{Prefix(id)}_API_KEY");
+            stored?.DefaultModel ?? (models.Contains(defaultModel) ? defaultModel : models.FirstOrDefault() ?? ""), stored?.Version ?? 0, true, error is null ? Billing(id, endpoint) : "unknown", $"{Prefix(id)}_API_KEY", error);
     }
     public async Task<List<ProviderInfo>> List(bool admin, CancellationToken ct)
     {
-        var result = new List<ProviderInfo>(); foreach (var id in Ids) { var info = await Get(id, ct); if (admin || info.Enabled && info.Configured && info.Models.Length > 0) result.Add(info); } return result;
+        var result = new List<ProviderInfo>(); foreach (var id in Ids) { var info = await Get(id, ct); if (admin || info.Enabled && info.Configured && info.Models.Length > 0 && info.ConfigurationError is null) result.Add(info); } return result;
     }
     public async Task<ProviderInfo> Resolve(string provider, string model, CancellationToken ct)
     {
         var info = await Get(provider, ct);
-        if (!info.Enabled || !info.Configured || !info.Models.Contains(model)) throw new ChatException(409, "Provedor/modelo indisponível. Escolha explicitamente uma opção habilitada.");
+        if (!info.Enabled || !info.Configured || info.ConfigurationError is not null || !info.Models.Contains(model)) throw new ChatException(409, "Provedor/modelo indisponível. Escolha explicitamente uma opção habilitada.");
         return info;
     }
     public async Task<ModelSelection> Preference(int user, CancellationToken ct)
@@ -71,7 +72,8 @@ public sealed class AiProviderCatalog(PortalDbContext db, IConfiguration cfg)
         await Resolve(selection.Provider, selection.Model, ct);
         var preference = await db.AiUserPreferences.SingleOrDefaultAsync(p => p.UserId == user, ct);
         if (preference is null) { preference = new() { UserId = user }; db.AiUserPreferences.Add(preference); }
-        preference.Provider = selection.Provider; preference.Model = selection.Model; await db.SaveChangesAsync(ct);
+        preference.Provider = selection.Provider; preference.Model = selection.Model;
+        try { await db.SaveChangesAsync(ct); } catch (DbUpdateException) { throw new ChatException(409, "Preferência alterada; atualize a página."); }
     }
     public async Task<ProviderInfo> Save(string id, ProviderUpdate request, CancellationToken ct)
     {

@@ -39,7 +39,7 @@ builder.Services.AddHttpClient<TrinoRestClient>(client =>
     client.Timeout = TimeSpan.FromMinutes(50);
 });
 
-builder.Services.AddHttpClient("ai-provider").ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+builder.Services.AddHttpClient("ai-provider", client => client.Timeout = TimeSpan.FromMinutes(3)).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
 builder.Services.AddScoped<ITrinoQueryService, TrinoQueryService>();
 builder.Services.AddScoped<ITrinoRestClient, TrinoRestClient>();
 builder.Services.AddScoped<ITrinoMetadataService, TrinoMetadataService>();

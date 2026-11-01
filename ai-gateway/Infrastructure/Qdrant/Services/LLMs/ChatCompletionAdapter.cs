@@ -12,6 +12,8 @@ public abstract class ChatCompletionAdapter : IAiProviderAdapter
     protected readonly HttpClient Http;
     protected readonly IConfiguration Config;
     private readonly AiProviderCatalog? catalog;
+    private string? selectedEndpoint;
+    public void ConfigureEndpoint(string endpoint) => selectedEndpoint = endpoint;
     public abstract string ProviderId { get; }
     public LlmCallMetrics LastCall { get; protected set; } = new();
     protected ChatCompletionAdapter(IHttpClientFactory factory, IConfiguration config, AiProviderCatalog? catalog)
@@ -20,7 +22,7 @@ public abstract class ChatCompletionAdapter : IAiProviderAdapter
     {
         LastCall = new() { Model = model };
         var prefix = ProviderId.ToUpperInvariant();
-        var endpoint = catalog is null ? Config[$"{prefix}_BASE_URL"] ?? (ProviderId == "openai" ? "https://api.openai.com/v1/" : "https://api.deepseek.com/") : (await catalog.Resolve(ProviderId, model, ct)).Endpoint;
+        var endpoint = selectedEndpoint ?? (catalog is null ? Config[$"{prefix}_BASE_URL"] ?? (ProviderId == "openai" ? "https://api.openai.com/v1/" : "https://api.deepseek.com/") : (await catalog.Resolve(ProviderId, model, ct)).Endpoint);
         // HttpClient.BaseAddress cannot change after the first request; construct absolute URLs per call.
         endpoint = endpoint.TrimEnd('/') + "/";
         baseUri = new Uri(endpoint);

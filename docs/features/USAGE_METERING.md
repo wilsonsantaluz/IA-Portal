@@ -1,6 +1,6 @@
 # Telemetria de uso, tokens e custos
 
-**Estado após etapa 3:** `LlmUsage` registra as chamadas dos fluxos persistentes de chat SSE, chat sem streaming, análise de documentos e títulos, com tokens reportados opcionais, cache, duração, modelo e status. Há consultas autenticadas, agrupamentos e estimativa de custo quando preços explícitos estiverem configurados. Não há ainda gráficos ou tela de consumo (etapa 5). Provedores alternativos continuam para a etapa 4.
+**Estado após etapa 3:** `LlmUsage` registra as chamadas dos fluxos persistentes de chat SSE, chat sem streaming, análise de documentos e títulos, com tokens reportados opcionais, cache, duração, modelo e status. Há consultas autenticadas, agrupamentos e estimativa de custo quando preços explícitos estiverem configurados. A tela `/usage` da etapa 5 apresenta indicadores/tabelas reais e filtros com acesso por permissão. A etapa 4 integrou DeepSeek/OpenAI/Ollama; a interface de configuração está em `/settings/ai`.
 
 O parsing do adapter usa os campos `prompt_tokens`, `completion_tokens`, `total_tokens`, `prompt_cache_hit_tokens` (ou `prompt_tokens_details.cached_tokens`), conforme [a referência oficial DeepSeek](https://api-docs.deepseek.com/api/create-chat-completion/). Não recalcula nem soma cache ao total retornado. O stream solicita `include_usage`, aceita métricas junto ao conteúdo ou em chunk de choices vazio e exige `[DONE]` para reconhecer conclusão. Um EOF antecipado não transforma resposta parcial em sucesso.
 
@@ -15,7 +15,7 @@ O parsing do adapter usa os campos `prompt_tokens`, `completion_tokens`, `total_
 - Cada chamada reserva o registro antes de acessar o provedor e finaliza os metadados após a geração. Falha de reserva impede o consumo externo. Replay concluído não chama nem contabiliza novamente. Se o processo morrer ou a persistência final falhar, `started` significa resultado desconhecido; não é sucesso, erro comprovado nem consumo zero. Não há reconciliação automática com a cobrança do provedor.
 - Contadores ausentes permanecem NULL, com `source=unavailable`; nenhum estimador heurístico foi introduzido. `reported` pode conter apenas parte dos campos. Status: `started`, `completed`, `failed`, `timeout`, `cancelled`, `invalid_response`. Erros/cancelamentos podem conservar tokens efetivamente recebidos.
 - `Model` de uso captura o modelo retornado pelo provedor quando disponível. As mensagens ainda conservam o identificador solicitado pelo caminho atual; seleção e unificação completa de modelos serão tratadas na etapa 4.
-- Rotas experimentais SQL/Trino e serviços legados fora do fluxo persistente não estão instrumentados neste incremento. Não declarar esses totais como a fatura integral de todos os recursos/credenciais da conta externa. OpenAI/Ollama não foram ativados. Dados anteriores não recebem tokens ou preços inventados retroativamente.
+- Rotas experimentais SQL/Trino e serviços legados fora do fluxo persistente não estão instrumentados neste incremento. Não declarar esses totais como a fatura integral de todos os recursos/credenciais da conta externa. OpenAI/Ollama dependem de configuração explícita, sem fallback silencioso. Dados anteriores não recebem tokens ou preços inventados retroativamente.
 
 ## Consultas disponíveis
 
@@ -84,3 +84,5 @@ Migração `003_ChatUsage.sql`: acrescenta custo/versão opcionais e índices de
 - Usuário B não consegue consultar consumo de A.
 - Dados ausentes não são exibidos como zero medido.
 - Requisição auxiliar de título aparece em categoria separada.
+
+Tela de consumo, estados vazios/parciais, permissões e validação visual: [AI_SETTINGS.md](AI_SETTINGS.md). O custo zero de API externa para endpoint declarado local é uma exceção explícita: não depende de preço de API, não preenche tokens ausentes e não representa custo de infraestrutura zero.

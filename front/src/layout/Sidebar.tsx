@@ -17,8 +17,11 @@ import Brand from "../components/Brand";
 import { useAuth } from "../auth/AuthProvider";
 import PeopleOutline from "@mui/icons-material/PeopleOutline";
 import AdminPanelSettingsOutlined from "@mui/icons-material/AdminPanelSettingsOutlined";
+import SettingsOutlined from "@mui/icons-material/SettingsOutlined";
+import DataUsageOutlined from "@mui/icons-material/DataUsageOutlined";
+import type { ReactNode } from "react";
 
-const destinations = [
+const destinations: { to: string; label: string; icon: ReactNode; permission: string; alternatePermission?: string }[] = [
   {
     to: "/chat",
     label: "Chat IA",
@@ -37,6 +40,7 @@ const destinations = [
     icon: <LibraryBooksOutlined />,
     permission: "kb.view",
   },
+  { to: "/usage", label: "Consumo de IA", icon: <DataUsageOutlined />, permission: "chat.access", alternatePermission: "usage.admin" },
   {
     to: "/users",
     label: "Usuários",
@@ -49,6 +53,7 @@ const destinations = [
     icon: <AdminPanelSettingsOutlined />,
     permission: "access.manage",
   },
+  { to: "/settings/ai", label: "Inteligência Artificial", icon: <SettingsOutlined />, permission: "chat.access", alternatePermission: "ai.manage" },
 ];
 
 export default function Sidebar({
@@ -107,7 +112,7 @@ export default function Sidebar({
         )}
         <List component="div" disablePadding>
           {destinations
-            .filter((item) => hasPermission(item.permission))
+            .filter((item) => hasPermission(item.permission) || !!item.alternatePermission && hasPermission(item.alternatePermission))
             .map((item) => (
               <Tooltip
                 key={item.to}

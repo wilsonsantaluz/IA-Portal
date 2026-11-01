@@ -15,6 +15,9 @@ public sealed class AiProviderRouter(IEnumerable<IAiProviderAdapter> adapters, A
     {
         var info = await catalog.Resolve(provider, model, ct);
         current = adapters.Single(a => a.ProviderId == provider); Model = model; ApiBilling = info.ApiBilling;
+        // Freeze the validated destination with its billing classification for this call.
+        // Administrative changes affect the next selection, never redirect an already accepted call.
+        current.ConfigureEndpoint(info.Endpoint);
     }
     private async Task Ready(CancellationToken ct)
     {
@@ -25,6 +28,7 @@ public sealed class AiProviderRouter(IEnumerable<IAiProviderAdapter> adapters, A
     {
         try { return await call(); }
         catch (HttpRequestException) { throw new AiProviderException("network"); }
+        catch (IOException) { throw new AiProviderException("interrupted"); }
         catch (System.Text.Json.JsonException) { throw new AiProviderException("invalid_response"); }
     }
     public async Task<string> GenerateAsync(string model, string prompt, CancellationToken ct = default)

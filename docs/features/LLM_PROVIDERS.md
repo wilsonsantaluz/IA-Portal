@@ -22,6 +22,8 @@ Referências de implementação: [OpenAI Chat Completions](https://developers.op
 
 ## Princípios
 
+**Etapa 5 concluída:** administração, preferência pessoal e indicadores estão disponíveis em `/settings/ai` e `/usage`, protegidos pelas permissões documentadas em [AI_SETTINGS.md](AI_SETTINGS.md). O destino e a cobrança são mantidos no mesmo snapshot da chamada; alterações administrativas entram na próxima seleção, sem redirecionar uma requisição aceita.
+
 - Auditar implementações já presentes; **não duplicar adapters**.
 - Expor interface comum com provider, model, request, response, usage, duration, error e capabilities.
 - Separar configuração global de preferências do usuário e escolha por conversa.

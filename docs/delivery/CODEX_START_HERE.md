@@ -1,6 +1,6 @@
 # Instrução inicial para Codex
 
-**Estado atualizado em 01/11/2026:** a auditoria inicial abaixo já foi concluída e aprovada pelo proprietário, incluindo o refinamento do diagrama de entidades. A etapa 1 foi mergeada; a etapa 2 de títulos foi mergeada e a etapa 3 de consumo foi autorizada/implementada. Consultar o diário/roadmap antes de iniciar provedores. Não reiniciar a auditoria nem presumir que as etapas posteriores foram implementadas. A instrução de primeira tarefa abaixo registra o início do trabalho.
+**Estado atualizado em 01/11/2026:** a auditoria inicial abaixo já foi concluída e aprovada pelo proprietário, incluindo o refinamento do diagrama de entidades. A etapa 1 foi mergeada; a etapa 2 de títulos foi mergeada e a etapa 3 de consumo foi autorizada/implementada. As etapas 4/5 foram autorizadas em sequência na mesma branch, com merge pelo proprietário ao final. Consultar o diário/roadmap para estado e evidências atuais. Não reiniciar a auditoria nem presumir que as etapas posteriores foram implementadas. A instrução de primeira tarefa abaixo registra o início do trabalho.
 
 Leia `AGENTS.md` e `docs/README.md`. Leia também todos os documentos de `docs/architecture`, `docs/features`, `docs/security` e `docs/delivery/ROADMAP.md`.
 
