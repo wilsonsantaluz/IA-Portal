@@ -7,7 +7,7 @@ using System.Globalization;
 namespace Portal.AI.Gateway.Infrastructure;
 
 public sealed class ChatTitleService(PortalDbContext db, IHttpContextAccessor http,
-    IChatTitleGenerator generator, ILogger<ChatTitleService> logger)
+    IChatTitleGenerator generator, ILogger<ChatTitleService> logger, ModelPriceCatalog? prices = null)
 {
     // Bound by text elements so truncation does not split surrogate pairs/combining marks.
     public static string Shorten(string text, int max)
@@ -62,6 +62,7 @@ public sealed class ChatTitleService(PortalDbContext db, IHttpContextAccessor ht
         catch (OperationCanceledException) { attempt.Status = ct.IsCancellationRequested ? "cancelled" : "timeout"; }
         catch { attempt.Status = "failed"; }
         attempt.DurationMs = clock.ElapsedMilliseconds;
+        prices?.Apply(attempt);
         using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await using var final = await db.Database.BeginTransactionAsync(cleanup.Token);
         db.LlmUsages.Update(attempt);

@@ -48,3 +48,7 @@ Não declarar a aplicação pronta para produção sem revisão e execução des
 As verificações de propriedade nas operações de sessão/mensagem e a rejeição antes de OCR/LLM/SSE foram implementadas e testadas, inclusive chamadas diretas por outra conta e sessões inexistentes/excluídas. Erros do fluxo de chat são sanitizados. Backups e migração v1 foram testados em fixtures sintéticas. Isso atualiza esses itens do diagnóstico inicial; não encerra os requisitos de segurança do produto inteiro.
 
 Credencial literal e logs dos adapters alternativos inativos continuam pendentes antes de sua habilitação. Não houve configuração de novas chaves, SSRF configurável, gestão de preços ou tela administrativa de IA nesta etapa.
+
+## Atualização da etapa 3
+
+Consultas de consumo pessoal filtram o usuário JWT; filtro de conversa revalida posse/exclusão. Consumo administrativo agregado exige `usage.admin`, inclusive com JWT válido de um usuário que só possui `chat.access`/`dashboard.view`. Não há endpoint administrativo de prompts, mensagens ou chamadas detalhadas de terceiros. Testes HTTP A/B, endpoints administrativos, parâmetros e paginação executados no smoke. Novos registros não incluem prompts, respostas, bodies de erro ou segredos; erros brutos também foram removidos do caminho não streaming do adapter DeepSeek ativo. Preços são configuração local sem credenciais, com arquivo vazio por padrão. Esses ajustes não habilitam nem resolvem automaticamente os bloqueios dos adapters alternativos.

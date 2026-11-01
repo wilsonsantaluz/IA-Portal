@@ -190,4 +190,4 @@ This public version is a generalized demonstration. It must not be interpreted a
 
 For a detailed Portuguese audit and the current list of limitations, see [docs/REVISAO_PUBLICACAO.md](docs/REVISAO_PUBLICACAO.md).
 
-Automatic conversation titles are generated after the first successful response, with a safe first-question fallback and manual edits preserved. Title-call usage is stored separately; complete chat token metrics and provider settings remain planned. See [chat documentation](docs/features/CHAT_SESSIONS.md).
+Automatic conversation titles are generated after the first successful response, with a safe first-question fallback and manual edits preserved. Title-call usage is stored separately; persistent chat/document usage metrics and optional versioned pricing are now available through protected APIs; provider settings remain planned. See [usage documentation](docs/features/USAGE_METERING.md). See [chat documentation](docs/features/CHAT_SESSIONS.md).

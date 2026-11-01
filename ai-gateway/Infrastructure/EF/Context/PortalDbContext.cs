@@ -116,6 +116,10 @@ public class PortalDbContext : DbContext
             e.HasOne<ChatSession>().WithMany().HasForeignKey(x => x.SessionId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<ChatMessage>().WithMany().HasForeignKey(x => x.MessageId).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(x => new { x.SessionId, x.Purpose }).IsUnique().HasFilter("Purpose = 'title'");
+            e.HasIndex(x => new { x.MessageId, x.Purpose }).IsUnique().HasFilter("Purpose IN ('chat', 'document')");
+            e.HasIndex(x => new { x.SessionId, x.CreatedAt });
+            e.HasIndex(x => new { x.Purpose, x.CreatedAt });
+            e.HasIndex(x => new { x.CreatedAt, x.Id });
             e.HasIndex(x => new { x.OwnerUserId, x.CreatedAt });
             e.HasIndex(x => new { x.Provider, x.Model, x.CreatedAt });
         });
@@ -262,6 +266,8 @@ public class LlmUsage
     public long? TotalTokens { get; set; }
     public long? CacheTokens { get; set; }
     public long? DurationMs { get; set; }
+    public long? EstimatedCostNanoUsd { get; set; }
+    public string? PriceVersion { get; set; }
 }
 
 public class Permission

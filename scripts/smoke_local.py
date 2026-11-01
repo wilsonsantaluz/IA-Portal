@@ -70,10 +70,10 @@ class FakeServices(BaseHTTPRequestHandler):
                 payload = b"".join(
                     ("data: " + json.dumps({"choices": [{"delta": {"content": chunk}}]}) + "\n\n").encode()
                     for chunk in chunks
-                ) + b"data: [DONE]\n\n"
+                ) + ("data: " + json.dumps({"model": "deepseek-chat", "choices": [], "usage": {"prompt_tokens": 17, "completion_tokens": 5, "total_tokens": 22, "prompt_cache_hit_tokens": 7}}) + "\n\ndata: [DONE]\n\n").encode()
                 content_type = "text/event-stream"
             else:
-                payload = json.dumps({"choices": [{"message": {"content": "Analise sintetica do documento."}}]}).encode()
+                payload = json.dumps({"model": "deepseek-chat", "choices": [{"message": {"content": "Analise sintetica do documento."}}], "usage": {"prompt_tokens": 23, "completion_tokens": 6, "total_tokens": 29, "prompt_cache_hit_tokens": 5}}).encode()
                 content_type = "application/json"
         else:
             self.send_error(404)
@@ -111,6 +111,7 @@ def main():
             "DEEPSEEK_API_KEY": "test-only",
             "OCR_SERVICE_URL": f"http://127.0.0.1:{services.server_port}",
             "TRINO_URL": "http://127.0.0.1:1",
+            "LLM_PRICES_FILE": str(ROOT / "ai-gateway/config/model-prices.json"),
         })
         token = ""
         def request(path, data=None, raw=False, content_type="application/json", method=None):
@@ -165,7 +166,10 @@ def main():
                 assert title["title"] == "Organizacao de recebiveis" and title["titleSource"] == "automatic"
                 assert TITLE_PROMPTS == ["Explique recebiveis"], "Title received full RAG/history"
                 with closing(sqlite3.connect(dbfile)) as db:
-                    assert db.execute("SELECT Purpose, Source, InputTokens, OutputTokens, TotalTokens, CacheTokens FROM LlmUsage").fetchone() == ("title", "reported", 35, 6, 41, 20)
+                    assert db.execute("SELECT Purpose, Source, InputTokens, OutputTokens, TotalTokens, CacheTokens FROM LlmUsage WHERE Purpose='title'").fetchone() == ("title", "reported", 35, 6, 41, 20)
+                measured = request(f"/api/usage/summary?sessionId={session}")
+                assert measured["requests"] == 2 and measured["totalTokens"] == 63 and measured["cacheTokens"] == 27 and measured["tokensComplete"]
+                assert measured["estimatedCostUsd"] is None and not measured["costComplete"]
                 history = request(f"/api/chatBot/history/{session}")
                 assert len(history) == 2 and history[-1]["content"] == "Resposta de teste."
                 request("/api/ia/ask/stream", {"pergunta": "Continue", "sessionId": session}, raw=True)
@@ -208,6 +212,15 @@ def main():
                 group = request("/api/roles", {"name": "Chat test", "permissions": ["chat.access"]})
                 request("/api/users", {"userName": "Synthetic B", "userEmail": "b@example.test", "password": admin_secret, "groupIds": [group["id"]]})
                 token = request("/api/auth/login", {"email": "b@example.test", "password": admin_secret})["token"]
+                empty_usage = request("/api/usage/summary")
+                assert empty_usage["requests"] == 0 and empty_usage["totalTokens"] is None
+                assert request("/api/usage/calls")["items"] == []
+                rejected(f"/api/usage/summary?sessionId={session}")
+                rejected(f"/api/usage/calls?sessionId={session}")
+                rejected("/api/usage/admin/summary", expected=403)
+                rejected("/api/usage/admin/groups", expected=403)
+                rejected("/api/usage/summary?userId=1", expected=400)
+                rejected("/api/usage/groups?by=user", expected=400)
                 assert request("/api/chatBot/sessions")["items"] == []
                 rejected(f"/api/chatBot/sessions/{session}")
                 rejected(f"/api/chatBot/sessions/{session}/messages")
@@ -222,6 +235,16 @@ def main():
                 own_b = request("/api/chatBot/sessions", {"ownerUserId": 1, "userId": "1", "id": session})
                 assert own_b["id"] != session
                 token = admin_token
+                aggregate = request("/api/usage/admin/summary")
+                assert aggregate["requests"] == 4 and aggregate["totalTokens"] == 114
+                for by in ["day", "month", "model", "provider", "purpose", "user"]:
+                    groups = request("/api/usage/admin/groups?by=" + by)
+                    assert sum(item["totals"]["requests"] for item in groups["items"]) == 4
+                first_calls = request("/api/usage/calls?limit=1")
+                next_calls = request("/api/usage/calls?limit=1&page=2")
+                assert first_calls["nextPage"] == 2 and first_calls["items"][0]["id"] != next_calls["items"][0]["id"]
+                assert not {"content", "prompt", "userEmail", "apiKey"}.intersection(first_calls["items"][0])
+                rejected("/api/usage/summary?from=2020-01-01T00:00:00Z&to=2026-01-01T00:00:00Z", expected=400)
                 rejected(f"/api/chatBot/sessions/{own_b['id']}")
                 rejected("/api/ia/ask/stream", {"pergunta": "Desconhecida", "sessionId": str(uuid.uuid4())})
                 request_id = str(uuid.uuid4())
@@ -263,7 +286,10 @@ def main():
                 request("/api/chatBot/ask", {"question": "Continuar conversa", "sessionId": fallback_id})
                 assert len(TITLE_PROMPTS) == calls, "Restart retried a paid title attempt"
                 with closing(sqlite3.connect(dbfile)) as db:
-                    assert db.execute("SELECT Status, TotalTokens FROM LlmUsage WHERE SessionId=?", (fallback_id.upper(),)).fetchone() == ("failed", None)
+                    assert db.execute("SELECT Status, TotalTokens FROM LlmUsage WHERE SessionId=? AND Purpose='title'", (fallback_id.upper(),)).fetchone() == ("failed", None)
+                final_usage = request("/api/usage/summary")
+                assert final_usage["errors"] >= 2 and not final_usage["tokensComplete"] and final_usage["totalTokens"] > 114
+                print("PASS: real HTTP usage summary/groups/call pagination, A/B and administrative authorization, measured totals/cache, unknown costs, failures and restart persistence.")
                 print("PASS: automatic title via real SSE/API, reported usage persisted separately, failure fallback preserves chat success and restart never repeats title charges.")
                 print("PASS: SQLite creation, bootstrap/login, KB CRUD, chat streaming/history, ratings, OCR routing and restart persistence.")
                 print("LLM and OCR were HTTP doubles; external inference and real text extraction were not exercised.")

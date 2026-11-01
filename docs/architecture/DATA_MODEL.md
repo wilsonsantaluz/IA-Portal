@@ -1,8 +1,8 @@
 ﻿# Modelo de dados — proposta após auditoria
 
-Data: 01/11/2026. **Modelo evolutivo: etapas 1–2 implementadas; etapas 3–5 ainda propostas.** Evidências da base anterior em [AS_IS_AUDIT.md](AS_IS_AUDIT.md). As tabelas `ChatSession` e `ChatMessage` foram reutilizadas, sem uma segunda entidade de conversa.
+Data: 01/11/2026. **Modelo evolutivo: etapas 1–3 implementadas; etapas 4–5 ainda propostas.** Evidências da base anterior em [AS_IS_AUDIT.md](AS_IS_AUDIT.md). As tabelas `ChatSession` e `ChatMessage` foram reutilizadas, sem uma segunda entidade de conversa.
 
-**Atualização após aprovação:** o proprietário aprovou a proposta e o diagrama em 01/11/2026. A etapa 1 foi implementada: migração SQL v1, `OwnerUserId`, metadados da sessão, estado/request/fingerprint nas mensagens e índices. A lease está em `ChatSession` (`ActiveRequestId`, `LeaseUntil`). A etapa 2 adicionou `LlmUsage` para tentativas de título via migração v2; métricas completas e provedores continuam futuros. Resultados e limites em [CHAT_SESSIONS.md](../features/CHAT_SESSIONS.md) e no diário.
+**Atualização após aprovação:** o proprietário aprovou a proposta e o diagrama em 01/11/2026. A etapa 1 foi implementada: migração SQL v1, `OwnerUserId`, metadados da sessão, estado/request/fingerprint nas mensagens e índices. A lease está em `ChatSession` (`ActiveRequestId`, `LeaseUntil`). A etapa 2 adicionou `LlmUsage` para tentativas de título via migração v2; a etapa 3 estende a mesma tabela para consumo de chat/documentos, custo opcional e índices via migração v3. Provedores e preferências continuam futuros. Resultados e limites em [CHAT_SESSIONS.md](../features/CHAT_SESSIONS.md) e no diário.
 
 ## Organização conceitual fornecida pelo proprietário
 
@@ -70,6 +70,8 @@ Adicionar o registro de chamada necessário para medir o título desde sua imple
 Título recebe somente trecho limitado da primeira pergunta e, se necessário, pequeno trecho da resposta. Após resposta persistida, executar chamada curta com timeout/limite de saída e capturar seu consumo. Falha usa pergunta truncada, sem desfazer o chat. Atualização condicional por versão/origem protege edição manual concorrente. Não criar worker em background sem ciclo de vida ou persistência definidos.
 
 ## Etapas 3–5 — uso e configuração
+
+**Implementação da etapa 3:** reutilizada `LlmUsage`; migração v3 acrescenta `EstimatedCostNanoUsd`/`PriceVersion` opcionais e índices por mensagem/finalidade (unicidade somente chat/document), sessão/data, finalidade/data e data/ID. `MessageId` referencia a pergunta para chat/documentos e a primeira resposta para títulos. Provider/model efetivo, duração, tokens e status ficam por chamada. Preços foram implementados como arquivo JSON versionável (`ModelPriceCatalog`), sem tabela adicional: vigência e versão ficam na configuração, e a versão aplicada acompanha cada estimativa persistida. Não há recálculo retroativo. Configuração inicial vazia. `ProviderConfiguration`/`UserPreference` abaixo continuam propostos; não foram criados nesta etapa.
 
 | Entidade proposta | Campos mínimos | Regras |
 | --- | --- | --- |

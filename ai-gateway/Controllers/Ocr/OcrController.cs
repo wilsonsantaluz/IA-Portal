@@ -8,7 +8,7 @@ using System.Security.Cryptography;
 namespace AiGateway.Controllers.Ocr;
 
 [ApiController, Authorize(Policy = PortalAccess.Chat), Route("api/ocr")]
-public class OcrController(IOcrService ocr, IOllamaService llm, IChatRepository chats, IConfiguration cfg, ChatTitleService titles) : ControllerBase
+public class OcrController(IOcrService ocr, ChatUsageService usage, IChatRepository chats, IConfiguration cfg, ChatTitleService titles) : ControllerBase
 {
     [HttpPost("analisar"), RequestSizeLimit(22 * 1024 * 1024)]
     public async Task<ActionResult<OcrAnalyzeResponse>> AnalyzeDocument(IFormFile file, [FromForm] Guid sessionId, [FromForm] Guid? requestId, CancellationToken ct)
@@ -30,7 +30,7 @@ public class OcrController(IOcrService ocr, IOllamaService llm, IChatRepository 
             text = text[..Math.Min(text.Length, 50000)];
             var history = await chats.GetLastMessagesAsync(sessionId, 20, ct);
             var prompt = $"Analise o documento em português. Resuma os pontos principais, datas e valores presentes. Informe limitações.\nHISTÓRICO:\n{string.Join("\n", history.Select(m => $"{m.Role}: {m.Content[..Math.Min(m.Content.Length, 4000)]}"))}\nDOCUMENTO (até 50.000 caracteres):\n{text}";
-            var answer = await llm.GenerateAsync("deepseek-chat", prompt, timeout.Token);
+            var answer = await usage.GenerateAsync(sessionId, turn.UserMessage.Id, "document", cfg["DEEPSEEK_DEFAULT_MODEL"] ?? "deepseek-chat", prompt, timeout.Token);
             if (string.IsNullOrWhiteSpace(answer)) throw new InvalidOperationException();
             await chats.CompleteTurnAsync(sessionId, id, answer, timeout.Token, text, cfg["DEEPSEEK_DEFAULT_MODEL"] ?? "deepseek-chat");
             await titles.TryGenerateAsync(sessionId, ct);

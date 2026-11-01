@@ -8,6 +8,7 @@ namespace AiGateway.Security;
 
 public static class PortalAccess
 {
+    public const string UsageAdmin = "usage.admin";
     public const string Chat = "chat.access";
     public const string Dashboard = "dashboard.view";
     public const string Knowledge = "kb.view";
@@ -15,6 +16,7 @@ public static class PortalAccess
     public const string Administration = "access.manage";
     public static readonly (string Key, string Screen, string Description)[] Catalog =
     [
+        (UsageAdmin, "Consumo de IA", "Consultar consumo agregado de todos os usuários, sem acesso ao conteúdo das conversas"),
         (Chat, "Chat IA", "Conversar, consultar o próprio histórico e analisar documentos"),
         (Dashboard, "Dashboard", "Consultar indicadores de qualidade e avaliações"),
         (Knowledge, "Base de conhecimento", "Consultar conteúdos"),

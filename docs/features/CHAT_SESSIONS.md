@@ -78,6 +78,8 @@ Testes adicionais: `dotnet run --project tests/ChatTitles` (migração v1→v2, 
 
 ### SQLite v1 e preservação
 
+**Evolução posterior:** a etapa 3 contabiliza as chamadas de chat e análise de documentos, além do título, usando o mesmo `LlmUsage`. Consumo próprio/por conversa e agregados administrativos estão disponíveis por APIs protegidas, sem nova tela neste incremento. Preços são opcionais, explícitos e versionados; sem preço/tokens suficientes o custo permanece indisponível. A migração v3 é aditiva e preserva o histórico. Contratos, cobertura e limites em [USAGE_METERING.md](USAGE_METERING.md).
+
 `ChatSchemaMigrator` substitui a chamada direta a EnsureCreated no inicializador. Para banco novo usa o esquema do modelo e registra v1. Para banco legado reconhecido, cria backup por `SqliteConnection.BackupDatabase`, verifica integridade e aplica `001_ChatSessions.sql` em transação com registro de checksum em `SchemaVersions`. SQL é normalizado quanto a quebras de linha antes do checksum. Esquema parcial/desconhecido, versão futura ou checksum divergente impedem startup, sem recriar banco.
 
 O backup fica em `SQLITE_BACKUP_DIRECTORY`; padrão no Compose: `/app/data/backups`, no volume persistido. Fora do Docker, o padrão é a subpasta `backups` ao lado do banco. O destino do backup não usa pooling de conexão, para encerrar o arquivo físico ao terminar a cópia. Arquivos SQLite e backups continuam ignorados pelo Git.

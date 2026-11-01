@@ -11,7 +11,7 @@ using System.Text.Json;
 namespace AiGateway.Controllers.Chat;
 
 [ApiController, Authorize(Policy = PortalAccess.Chat), Route("api/ia")]
-public class SmartAskController(IAskSmartService service, IChatRepository chats, IOllamaService llm, ChatTitleService titles, ILogger<SmartAskController> logger) : ControllerBase
+public class SmartAskController(IAskSmartService service, IChatRepository chats, ChatUsageService usage, ChatTitleService titles, ILogger<SmartAskController> logger) : ControllerBase
 {
     [HttpPost("ask/stream")]
     public async Task AskStream(AskSmartRequest req, CancellationToken ct)
@@ -33,7 +33,7 @@ public class SmartAskController(IAskSmartService service, IChatRepository chats,
                 await sse.EmitAsync("status", "Consultando o conhecimento e preparando a resposta...");
                 var prompt = await service.AskAsync(req, sse);
                 var result = new StringBuilder();
-                await foreach (var part in llm.GenerateStreamAsync("deepseek-chat", prompt, timeout.Token)) { result.Append(part); await sse.EmitAsync("data", part); }
+                await foreach (var part in usage.GenerateStreamAsync(id, turn.UserMessage.Id, "deepseek-chat", prompt, timeout.Token)) { result.Append(part); await sse.EmitAsync("data", part); }
                 if (result.Length == 0) throw new InvalidOperationException("Resposta vazia.");
                 answer = await chats.CompleteTurnAsync(id, requestId, result.ToString(), timeout.Token);
             }

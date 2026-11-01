@@ -8,7 +8,7 @@ using Portal.AI.Gateway.Infrastructure;
 namespace AiGateway.Controllers.Chat;
 
 [ApiController, Authorize(Policy = PortalAccess.Chat), Route("api/chatBot")]
-public class ChatBotContoller(IChatRepository chats, IOllamaService llm, IKnowledgeBaseRepository knowledge, IConfiguration cfg, ChatTitleService titles) : ControllerBase
+public class ChatBotContoller(IChatRepository chats, ChatUsageService usage, IKnowledgeBaseRepository knowledge, IConfiguration cfg, ChatTitleService titles) : ControllerBase
 {
     [HttpGet("sessions")]
     public async Task<IActionResult> List([FromQuery] int limit = 30, [FromQuery] string? cursor = null, [FromQuery] string? search = null, CancellationToken ct = default) => Ok(await chats.ListSessionsAsync(limit, cursor, search, ct));
@@ -38,7 +38,7 @@ public class ChatBotContoller(IChatRepository chats, IOllamaService llm, IKnowle
             var history = await chats.GetLastMessagesAsync(id, 20, ct);
             var context = await knowledge.GetOrganizationBaseAsync(ct);
             var prompt = $"Responda em português com base no conhecimento e histórico.\nBASE:\n{context}\nHISTÓRICO:\n{string.Join("\n", history.Select(m => $"{m.Role}: {m.Content[..Math.Min(m.Content.Length, 4000)]}"))}\nDOCUMENTO:\n{req.DocumentContext}\nPERGUNTA:\n{req.Question}";
-            var response = await llm.GenerateAsync("deepseek-chat", prompt, timeout.Token);
+            var response = await usage.GenerateAsync(id, turn.UserMessage.Id, "chat", cfg["DEEPSEEK_DEFAULT_MODEL"] ?? "deepseek-chat", prompt, timeout.Token);
             if (string.IsNullOrWhiteSpace(response)) throw new InvalidOperationException();
             var answer = await chats.CompleteTurnAsync(id, requestId, response, timeout.Token, model: cfg["DEEPSEEK_DEFAULT_MODEL"] ?? "deepseek-chat");
             await titles.TryGenerateAsync(id, ct);
