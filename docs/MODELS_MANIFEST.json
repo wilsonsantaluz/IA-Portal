@@ -1,0 +1,54 @@
+{
+  "embeddings/nomic-v15/model.onnx": {
+    "bytes": 547310275,
+    "sha256": "147d5aa88c2101237358e17796cf3a227cead1ec304ec34b465bb08e9d952965"
+  },
+  "embeddings/nomic-v15/tokenizer.json": {
+    "bytes": 711396,
+    "sha256": "d241a60d5e8f04cc1b2b3e9ef7a4921b27bf526d9f6050ab90f9267a1f9e5c66"
+  },
+  "embeddings/nomic-v15/config.json": {
+    "bytes": 2331,
+    "sha256": "0168e0883705b0bf8f2b381e10f45a9f3e1ef4b13869b43c160e4c8a70ddf442"
+  },
+  "embeddings/nomic-v15/tokenizer_config.json": {
+    "bytes": 1191,
+    "sha256": "d7e0000bcc80134debd2222220427e6bf5fa20a669f40a0d0d1409cc18e0a9bc"
+  },
+  "embeddings/nomic-v15/special_tokens_map.json": {
+    "bytes": 695,
+    "sha256": "5d5b662e421ea9fac075174bb0688ee0d9431699900b90662acd44b2a350503a"
+  },
+  "embeddings/nomic-v15/vocab.txt": {
+    "bytes": 231508,
+    "sha256": "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3"
+  },
+  "embeddings/nomic-v15/modules.json": {
+    "bytes": 255,
+    "sha256": "f93c503b32fa7bc2e186843f0add961caa14eb68f7be516e327df3cadbcd541a"
+  },
+  "reranking/model.int8.onnx": {
+    "bytes": 571785841,
+    "sha256": "2e9848fee2f2d105803181958de873ecb158a9dc230aee3493975fe979949df7"
+  },
+  "reranking/tokenizer.json": {
+    "bytes": 17098273,
+    "sha256": "69564b696052886ed0ac63fa393e928384e0f8caada38c1f4864a9bfbf379c15"
+  },
+  "reranking/config.json": {
+    "bytes": 795,
+    "sha256": "13dcd6c31d9fec9d1d8e158702072f62d7fa7d312a64b9fe057bec9a08cfe41a"
+  },
+  "reranking/tokenizer_config.json": {
+    "bytes": 1173,
+    "sha256": "7e4c1cc848840aeccdd763458c18dd525eb0f795c992e00ebe9c28554e7db2d4"
+  },
+  "reranking/special_tokens_map.json": {
+    "bytes": 964,
+    "sha256": "8c785abebea9ae3257b61681b4e6fd8365ceafde980c21970d001e834cf10835"
+  },
+  "reranking/sentencepiece.bpe.model": {
+    "bytes": 5069051,
+    "sha256": "cfc8146abe2a0488e9e2a0c56de7952f7c11ab059eca145a0a727afce0db2865"
+  }
+}

@@ -2,11 +2,11 @@
   "profiles": {
     "MlService": {
       "commandName": "Project",
-      "launchBrowser": true,
+      "launchBrowser": false,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
-      "applicationUrl": "https://localhost:54224;http://localhost:54225"
+      "applicationUrl": "http://localhost:9081"
     }
   }
 }

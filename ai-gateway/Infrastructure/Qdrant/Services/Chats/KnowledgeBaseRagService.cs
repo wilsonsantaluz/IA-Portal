@@ -64,6 +64,7 @@ public class KnowledgeBaseRagService : IKnowledgeBaseRagService
 
         
         Console.WriteLine($"[{DateTime.Now}] Consutando banco vetorial");
+        await _qdrant.EnsureCollectionAsync(collection, queryEmbedding.Length);
         var raw = await _qdrant.SearchAsync(collection, queryEmbedding, limit, minScore);
 
         var candidates = raw.Result;       
