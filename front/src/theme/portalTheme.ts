@@ -1,58 +1,63 @@
 import { createTheme } from "@mui/material/styles";
 
-export const portalTheme = createTheme({
-  palette: {
-    mode: "light",
-    primary: {
-      main: "#012155", // Azul padrão do header
-      light: "#c2cf00",
-      dark: "#c2cf00",
-    },
-    secondary: {
-      main: "#012155", // Roxo
-    },
-    background: {
-      default: "#F6F7FB",
-      paper: "#FFFFFF",
-    },
-    success: { main: "#4CAF50" },
-    warning: { main: "#FFB020" },
-    error: { main: "#FF4C51" },
+// Provisional tokens from AGENTS.md; artwork is reviewed separately.
+export const portalTokens = {
+  light: {
+    background: "#F5F8FC", sidebar: "#FFFFFF", surface: "#FFFFFF",
+    text: "#14243D", muted: "#64748B", border: "#E4EAF2",
+    primary: "#1769E0", cyan: "#06B6D4", violet: "#6847E8",
   },
-
-  typography: {
-    fontFamily: "Inter, Roboto, sans-serif",
-    h1: { fontWeight: 700 },
-    h2: { fontWeight: 700 },
-    h3: { fontWeight: 700 },
+  dark: {
+    background: "#0B1220", sidebar: "#101B2E", surface: "#17243A",
+    text: "#F1F5FC", muted: "#A5B4C8", border: "#293B55",
+    primary: "#4D93FF", cyan: "#22D3EE", violet: "#9878FF",
   },
+} as const;
 
-  shape: {
-    borderRadius: 6,
-  },
-
-  shadows: Array(25).fill("0px 4px 20px rgba(0,0,0,0.05)") as any,
-
-  components: {
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          
-          padding: "20px",
-          background: "linear-gradient(145deg, #ffffff, #f4f5fa)",
-          boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
-          transition: "all .3s ease",
+export function createPortalTheme(mode: "light" | "dark") {
+  const t = portalTokens[mode];
+  return createTheme({
+    palette: {
+      mode,
+      primary: { main: t.primary, contrastText: mode === "light" ? "#FFFFFF" : "#0B1220" },
+      secondary: { main: t.cyan },
+      background: { default: t.background, paper: t.surface },
+      text: { primary: t.text, secondary: t.muted },
+      divider: t.border,
+    },
+    typography: {
+      fontFamily: 'Inter, "Segoe UI", system-ui, sans-serif',
+      h4: { fontWeight: 700, letterSpacing: "-.035em" },
+      h5: { fontWeight: 700, letterSpacing: "-.025em" },
+      h6: { fontWeight: 600 },
+      button: { textTransform: "none", fontWeight: 600 },
+    },
+    shape: { borderRadius: 12 },
+    components: {
+      MuiCssBaseline: {
+        styleOverrides: {
+          ":root": {
+            "--portal-sidebar": t.sidebar,
+            "--portal-surface": t.surface,
+            "--portal-background": t.background,
+            "--portal-text": t.text,
+            "--portal-muted": t.muted,
+            "--portal-border": t.border,
+            "--portal-primary": t.primary,
+            "--portal-cyan": t.cyan,
+            "--portal-violet": t.violet,
+          },
+          body: { backgroundColor: t.background, color: t.text },
+          ":focus-visible": { outline: `3px solid ${t.primary}`, outlineOffset: 3 },
         },
       },
+      MuiButtonBase: { styleOverrides: { root: { "&:focus-visible": { outline: `3px solid ${t.primary}`, outlineOffset: 3 } } } },
+      MuiPaper: { defaultProps: { elevation: 0 }, styleOverrides: { root: { backgroundImage: "none" } } },
+      MuiButton: { defaultProps: { disableElevation: true }, styleOverrides: { root: { borderRadius: 10 } } },
+      MuiIconButton: { styleOverrides: { root: { borderRadius: 10 } } },
+      MuiCard: { styleOverrides: { root: { border: `1px solid ${t.border}`, boxShadow: "none" } } },
     },
+  });
+}
 
-    MuiPaper: {
-      styleOverrides: {
-        root: {
-          borderRadius: 6,
-        },
-      },
-    },
-  },
-  
-});
+export const portalTheme = createPortalTheme("light");

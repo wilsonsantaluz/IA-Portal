@@ -75,7 +75,7 @@ namespace AiGateway.Infrastructure.Qdrant
                 })
             };
 
-            var resp = await _http.PutAsJsonAsync($"collections/{collection}/points", body, ct);
+            var resp = await _http.PutAsJsonAsync($"collections/{collection}/points?wait=true", body, ct);
             var content = await resp.Content.ReadAsStringAsync(ct);
             Console.WriteLine("QDRANT UPSERT RESPONSE: " + content);
             resp.EnsureSuccessStatusCode();
@@ -111,7 +111,7 @@ namespace AiGateway.Infrastructure.Qdrant
                 }
             };
 
-            var resp = await _http.PostAsJsonAsync($"collections/{collection}/points/delete", body, ct);
+            var resp = await _http.PostAsJsonAsync($"collections/{collection}/points/delete?wait=true", body, ct);
             var content = await resp.Content.ReadAsStringAsync(ct);
             //Console.WriteLine("QDRANT DELETE RESPONSE: " + content);
             resp.EnsureSuccessStatusCode();

@@ -71,7 +71,7 @@ The document-upload control accepts PDF, PNG, and JPEG files up to 20 MB. OCR an
 
 ## Run components outside Docker
 
-Requirements: .NET 8 SDK, Node.js 22.12+, and Yarn Classic.
+Requirements: .NET 8 SDK, Node.js 22.12+, and Yarn Classic 1.22.22. For OCR outside Docker, use Linux/WSL with Bash, Tesseract CLI (Portuguese and English language data), and Poppler (`pdftoppm`) on PATH. On Ubuntu: `sudo apt-get install tesseract-ocr tesseract-ocr-por tesseract-ocr-eng poppler-utils`.
 
 Configure these environment variables for the gateway process:
 
@@ -86,6 +86,13 @@ The root `.env` is read by Docker Compose, **not automatically by .NET**.
 ```powershell
 cd ai-gateway
 dotnet run --urls http://localhost:9089
+```
+
+Start OCR and ML in separate terminals (their launch profiles use ports 9082 and 9081, matching the gateway defaults):
+
+```powershell
+dotnet run --project ocr-service/OcrService.csproj
+dotnet run --project ml-service/MlService.csproj
 ```
 
 In a separate terminal:
@@ -107,6 +114,8 @@ docker compose run --rm -p 127.0.0.1:9082:8080 ocr-service
 **Database limitation:** initialization uses EF Core `EnsureCreatedAsync`, not migrations. It does not upgrade existing SQLite schemas or import data from earlier SQL Server implementations.
 
 ## Optional advanced RAG
+
+See [local RAG setup](docs/RAG_LOCAL.md) for model placement and activation. The vector chat flow uses knowledge retrieval without invoking the SQL planner or Trino.
 
 Advanced retrieval is separate from the default local workflow. It requires compatible external models/tokenizers and additional infrastructure.
 
@@ -139,7 +148,7 @@ cd front
 yarn build
 ```
 
-The local smoke test uses a real API and temporary SQLite database, but substitutes HTTP test doubles for the AI provider and OCR service. It does **not** validate live model quality, Tesseract extraction, ONNX inference, Trino connectivity, or browser-based end-to-end flows. These commands are documented for reproduction; they have not been rerun as part of this README update.
+The local smoke test uses a real API and temporary SQLite database, but substitutes HTTP test doubles for the AI provider and OCR service. It does **not** validate live model quality, Tesseract extraction, ONNX inference, Trino connectivity, or browser-based end-to-end flows. Build and local validation results are recorded in [the local build report](docs/VALIDACAO_LOCAL.md).
 
 ## Security and publication notes
 

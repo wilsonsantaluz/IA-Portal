@@ -61,7 +61,8 @@ export default function MarkdownRenderer({
            * - Markdown colapsar espaços
            * - normalizações externas destruírem as linhas
            */
-          code({ inline, className, children, ...props }) {
+          code({ node, className, children, ...props }) {
+            const inline = !className && !String(children).endsWith("\n");
             const lang = (className || "").replace("language-", "").trim().toLowerCase();
             const isMermaid = !inline && (lang === "mermaid");
 

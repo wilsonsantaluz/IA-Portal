@@ -79,7 +79,7 @@ export default function LoginPage() {
           </Box>
 
           <Typography variant="h5" fontWeight={600}>
-            Portal de Conhecimento IA
+            IA-Portal
           </Typography>
 
           <Typography variant="body2" color="text.secondary">

@@ -52,7 +52,7 @@ builder.Services.AddScoped<IOcrService, OcrService>();
 builder.Services.AddScoped<IDataRagService, DataRagService>();
 
 if (builder.Configuration.GetValue<bool>("Chat:UseAdvancedRag"))
-    builder.Services.AddScoped<IAskSmartService, AskSmartService>();
+    builder.Services.AddScoped<IAskSmartService, VectorChatContextService>();
 else
     builder.Services.AddScoped<IAskSmartService, LocalChatContextService>();
 builder.Services.AddHttpClient<OllamaPdfService>();

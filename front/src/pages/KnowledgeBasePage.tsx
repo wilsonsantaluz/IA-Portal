@@ -18,7 +18,7 @@ import {
     IconButton,
 } from "@mui/material";
 
-import { DataGrid, GridToolbar } from "@mui/x-data-grid";
+import { DataGrid, GridToolbar, GridColumns } from "@mui/x-data-grid";
 
 import EditIcon from "@mui/icons-material/Edit";
 import ToggleOffIcon from "@mui/icons-material/ToggleOff";
@@ -40,6 +40,7 @@ interface KbItem {
 export default function KnowledgeBasePage() {
     const [items, setItems] = useState<KbItem[]>([]);
     const [sections, setSections] = useState<string[]>([]);
+    const [pageSize, setPageSize] = useState(10);
     const [search, setSearch] = useState("");
 
     const [open, setOpen] = useState(false);
@@ -208,7 +209,7 @@ export default function KnowledgeBasePage() {
     // ============================================================
     // DATAGRID COLUMNS
     // ============================================================
-    const columns = [
+    const columns: GridColumns<KbItem> = [
         { field: "id", headerName: "ID", width: 70 },
         { field: "section", headerName: "Seção", width: 150 },
         { field: "subsection", headerName: "Subseção", width: 180 },
@@ -312,19 +313,21 @@ export default function KnowledgeBasePage() {
                         rows={items.filter((x) => {
                             const q = search.toLowerCase();
                             return (
-                                x.title.toLowerCase().includes(q) ||
+                                (x.title || "").toLowerCase().includes(q) ||
                                 x.section.toLowerCase().includes(q) ||
-                                x.subsection.toLowerCase().includes(q) ||
+                                (x.subsection || "").toLowerCase().includes(q) ||
                                 x.keyName.toLowerCase().includes(q)
                             );
                         })}
                         columns={columns}
                         getRowId={(row) => row.id}
-                        pageSizeOptions={[10, 20, 50]}
+                        rowsPerPageOptions={[10, 20, 50]}
+                        pageSize={pageSize}
+                        onPageSizeChange={setPageSize}
                         initialState={{
-                            pagination: { paginationModel: { pageSize: 10 } },
+                            pagination: { page: 0, pageSize: 10 },
                         }}
-                        slots={{ toolbar: GridToolbar }}
+                        components={{ Toolbar: GridToolbar }}
                         sx={{
                             borderRadius: 2,
                             "& .MuiDataGrid-row:hover": {

@@ -2,9 +2,22 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/portal.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Portal de Conhecimento IA</title>
+    <title>IA-Portal</title>
+    <script>
+      // Apply the saved preference before React and the stylesheet load.
+      try {
+        var portalMode = localStorage.getItem("theme-mode") === "dark" ? "dark" : "light";
+        document.documentElement.dataset.theme = portalMode;
+        document.documentElement.style.colorScheme = portalMode;
+      } catch (_) { document.documentElement.dataset.theme = "light"; }
+    </script>
+    <style>
+      html { background: #F5F8FC; color: #14243D; }
+      html[data-theme="dark"] { background: #0B1220; color: #F1F5FC; }
+      body { margin: 0; }
+    </style>
   </head>
   <body>
     <div id="root"></div>
