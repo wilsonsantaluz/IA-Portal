@@ -1,5 +1,9 @@
 # Telemetria de uso, tokens e custos
 
+**Estado após etapa 2:** `LlmUsage` já registra exclusivamente tentativas automáticas de título (`purpose=title`), separadas de sessões/mensagens, com tokens reportados opcionais, cache, duração, modelo e status. Não há ainda contabilização completa de chat, preços, custo estimado ou endpoints/gráficos de agregação. `started` é uma tentativa reservada cujo resultado pode ser desconhecido após interrupção; não tratar como sucesso ou consumo zero. Ver [comportamento implementado](CHAT_SESSIONS.md).
+
+O parsing do adapter usa os campos `prompt_tokens`, `completion_tokens`, `total_tokens`, `prompt_cache_hit_tokens` (ou `prompt_tokens_details.cached_tokens`), conforme [a referência oficial DeepSeek](https://api-docs.deepseek.com/api/create-chat-completion/). Não recalcula nem soma cache ao total retornado. Nenhuma tabela de preços foi preenchida neste incremento.
+
 ## Dimensões obrigatórias
 
 - Usuário autenticado, conversa, mensagem/chamada, provedor, modelo, finalidade (`chat`, `title`, etc.), timestamp UTC e status.

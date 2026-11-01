@@ -11,7 +11,7 @@ using System.Text.Json;
 namespace AiGateway.Controllers.Chat;
 
 [ApiController, Authorize(Policy = PortalAccess.Chat), Route("api/ia")]
-public class SmartAskController(IAskSmartService service, IChatRepository chats, IOllamaService llm, ILogger<SmartAskController> logger) : ControllerBase
+public class SmartAskController(IAskSmartService service, IChatRepository chats, IOllamaService llm, ChatTitleService titles, ILogger<SmartAskController> logger) : ControllerBase
 {
     [HttpPost("ask/stream")]
     public async Task AskStream(AskSmartRequest req, CancellationToken ct)
@@ -38,6 +38,10 @@ public class SmartAskController(IAskSmartService service, IChatRepository chats,
                 answer = await chats.CompleteTurnAsync(id, requestId, result.ToString(), timeout.Token);
             }
             await sse.EmitAsync("persisted", JsonSerializer.Serialize(new { id = answer.Id, requestId, status = answer.Status }));
+            if (!turn.Replayed) {
+                await sse.EmitAsync("status", "Finalizando conversa...");
+                await titles.TryGenerateAsync(id, ct);
+            }
             await sse.EmitAsync("done", "[*ENDSTREAN*]");
         }
         catch (Exception ex) {

@@ -18,7 +18,7 @@ public class ChatRepository(PortalDbContext db, IHttpContextAccessor http) : ICh
         var s = new ChatSession { Id = Guid.NewGuid(), OwnerUserId = Owner, UserId = Owner.ToString(), Title = "Nova conversa", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow, Provider = "deepseek", Model = "deepseek-chat" };
         db.ChatSessions.Add(s); await db.SaveChangesAsync(ct); return Dto(s);
     }
-    public async Task<SessionDto> GetSessionAsync(Guid id, CancellationToken ct) => Dto(await Session(id, ct));
+    public async Task<SessionDto> GetSessionAsync(Guid id, CancellationToken ct) => Dto(await Owned.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id, ct) ?? throw new ChatException(404, "Conversa não encontrada."));
     public async Task<SessionPage> ListSessionsAsync(int limit, string? cursor, string? search, CancellationToken ct) {
         if (limit is < 1 or > 100 || (search?.Length ?? 0) > 120) throw new ChatException(400, "Filtro ou limite inválido.");
         search = search?.Trim() ?? "";

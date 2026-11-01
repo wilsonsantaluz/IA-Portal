@@ -1,8 +1,8 @@
 ﻿# Contratos de API — conversas, consumo e provedores
 
-Data: 01/11/2026. **Etapa 1 implementada; contratos das etapas 2–5 continuam propostos.** Os endpoints `/api/ia/ask/stream`, `/api/chatBot/ask`, `/api/chatBot/history/{sessionId}` e `/api/ocr/analisar` foram evoluídos, sem uma segunda pilha de chat. `/api/chatkb/rate` permanece existente.
+Data: 01/11/2026. **Etapas 1–2 implementadas; contratos das etapas 3–5 continuam propostos.** Os endpoints `/api/ia/ask/stream`, `/api/chatBot/ask`, `/api/chatBot/history/{sessionId}` e `/api/ocr/analisar` foram evoluídos, sem uma segunda pilha de chat. `/api/chatkb/rate` permanece existente.
 
-**Atualização da etapa 1 aprovada:** rotas de sessões/metadados/renomeação/exclusão e mensagens da tabela abaixo estão implementadas. A criação aceita body vazio e gera o título provisório; título inicial customizado não é aceito (usar PATCH). Envios sem `requestId` continuam aceitos por compatibilidade e recebem ID do servidor, mas só um ID explícito permite replay idempotente. Todas as sessões devem ser criadas antes do envio. O cursor `before` de mensagens é o ID da âncora, validado na própria sessão; a ordenação usa horário + ID. Títulos automáticos, uso e contratos de seleção/configuração continuam não implementados. O índice da documentação e o diário registram os testes executados.
+**Atualização da etapa 1 aprovada:** rotas de sessões/metadados/renomeação/exclusão e mensagens da tabela abaixo estão implementadas. A criação aceita body vazio e gera o título provisório; título inicial customizado não é aceito (usar PATCH). Envios sem `requestId` continuam aceitos por compatibilidade e recebem ID do servidor, mas só um ID explícito permite replay idempotente. Todas as sessões devem ser criadas antes do envio. O cursor `before` de mensagens é o ID da âncora, validado na própria sessão; a ordenação usa horário + ID. Títulos automáticos e consumo auxiliar estão implementados na etapa 2; métricas completas e seleção/configuração continuam pendentes. O índice da documentação e o diário registram os testes executados.
 
 ## Segurança comum
 
@@ -40,7 +40,7 @@ Cursores opacos contêm a posição composta e contexto de busca; serão limitad
 
 ## Etapa 2 — títulos
 
-Não exige endpoint novo de escrita pública além do PATCH manual. Automação após primeira interação bem-sucedida usa modelo da conversa, contexto mínimo e limite curto. Publica `session_updated` no SSE quando disponível. Falha preserva resposta e produz título truncado `fallback`; edição manual concorrente vence por update condicional. Toda chamada auxiliar recebe request ID e finalidade `title` no registro de uso.
+Não exige endpoint novo de escrita pública além do PATCH manual. Automação após primeira interação bem-sucedida usa modelo da conversa, contexto mínimo e limite curto. O frontend recarrega os metadados após `done`; nenhum evento SSE novo é exigido. Falha preserva resposta e produz título truncado `fallback`; edição manual concorrente vence por update condicional. Toda chamada auxiliar recebe request ID e finalidade `title` no registro de uso.
 
 ## Etapas 3–5 — métricas e configuração
 

@@ -36,3 +36,7 @@ A tela administrativa deve mostrar **configurado/não configurado**, endpoint pe
 ## Estado após a etapa 1
 
 A injeção do chat continua selecionando DeepSeek; OpenAI/Ollama não foram habilitados nem duplicados. A única correção do adapter DeepSeek neste incremento foi tornar a leitura do stream cancelável sem sondagem síncrona e descartar corretamente request/response HTTP. Contagem de tokens, identificação do modelo resolvido pelo provedor, normalização de erros entre adapters e seleção/configuração continuam para as próximas etapas.
+
+## Etapa 2 — capacidade auxiliar de título
+
+O mesmo adapter DeepSeek implementa `IChatTitleGenerator`, com chamada JSON sem streaming limitada a 64 tokens. Respeita o modelo registrado na primeira resposta e captura, nessa chamada auxiliar, modelo retornado e tokens reais quando disponíveis. Não muda a seleção nem o contrato textual do chat existente. O consumo completo de chat e a normalização entre provedores continuam pendentes; não habilita OpenAI/Ollama. Detalhes de timeout/fallback e limites em [CHAT_SESSIONS.md](CHAT_SESSIONS.md).
