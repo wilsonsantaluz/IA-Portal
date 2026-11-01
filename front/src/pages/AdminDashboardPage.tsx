@@ -36,6 +36,7 @@ import AutoAwesomeOutlined from "@mui/icons-material/AutoAwesomeOutlined";
 import LibraryBooksOutlined from "@mui/icons-material/LibraryBooksOutlined";
 import api from "../services/api";
 import { DashboardCard } from "../components/DashboardCard";
+import { useAuth } from "../auth/AuthProvider";
 
 type Summary = {
   totalRatings: number;
@@ -52,6 +53,7 @@ const number = (value: number, digits = 0) =>
   });
 export default function AdminDashboardPage() {
   const theme = useTheme();
+  const { hasPermission } = useAuth();
   const [summary, setSummary] = useState<Summary | null>(null);
   const [byMonth, setByMonth] = useState<Month[]>([]);
   const [bySection, setBySection] = useState<Section[]>([]);
@@ -128,7 +130,7 @@ export default function AdminDashboardPage() {
           ? "Tente atualizar o painel novamente."
           : "Avalie as respostas no chat para acompanhar a qualidade da IA."}
       </Typography>
-      {!error && (
+      {!error && hasPermission("chat.access") && (
         <Button
           component={Link}
           to="/chat"
@@ -436,23 +438,29 @@ export default function AdminDashboardPage() {
                   acompanhar a experiência com a IA.
                 </Typography>
               </Box>
-              <Button
-                component={Link}
-                to="/kb"
-                variant="outlined"
-                startIcon={<LibraryBooksOutlined />}
-                sx={{ borderColor: "divider", bgcolor: "background.paper" }}
-              >
-                Gerenciar base
-              </Button>
-              <Button
-                component={Link}
-                to="/chat"
-                variant="contained"
-                endIcon={<ArrowForwardRounded />}
-              >
-                Conversar com a IA
-              </Button>
+              {hasPermission("kb.view") && (
+                <Button
+                  component={Link}
+                  to="/kb"
+                  variant="outlined"
+                  startIcon={<LibraryBooksOutlined />}
+                  sx={{ borderColor: "divider", bgcolor: "background.paper" }}
+                >
+                  {hasPermission("kb.manage")
+                    ? "Gerenciar base"
+                    : "Consultar base"}
+                </Button>
+              )}
+              {hasPermission("chat.access") && (
+                <Button
+                  component={Link}
+                  to="/chat"
+                  variant="contained"
+                  endIcon={<ArrowForwardRounded />}
+                >
+                  Conversar com a IA
+                </Button>
+              )}
             </Stack>
           </Paper>
         </Grid>

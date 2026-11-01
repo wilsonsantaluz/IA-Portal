@@ -1,3 +1,5 @@
+using AiGateway.Security;
+using Microsoft.AspNetCore.Authorization;
 using System.Text.Json;
 using Portal.AI.Gateway.Application.DTOs;
 using Portal.AI.Gateway.Application.Interfaces;
@@ -5,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AiGateway.Controllers.Chat;
 
-[ApiController]
+[ApiController, Authorize(Policy = PortalAccess.Chat)]
 [Route("api/sql")]
 public class SqlController : ControllerBase
 {

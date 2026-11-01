@@ -1,3 +1,5 @@
+using AiGateway.Security;
+using Microsoft.AspNetCore.Authorization;
 using Portal.AI.Gateway.Application.DTOs;
 using Portal.AI.Gateway.Application.Interfaces;
 using Portal.AI.Gateway.Infrastructure;
@@ -6,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AiGateway.Controllers.Ocr;
 
-[ApiController]
+[ApiController, Authorize(Policy = PortalAccess.Chat)]
 [Route("api/ocr")]
 public class OcrController : ControllerBase
 {

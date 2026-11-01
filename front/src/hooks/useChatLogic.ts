@@ -16,7 +16,7 @@ interface Message {
 const GUID = () =>
   "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : ((r & 0x3) | 0x8);
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
 
@@ -25,7 +25,6 @@ export const useChatLogic = () => {
   const [input, setInput] = useState("");
   const [sessionId, setSessionId] = useState("");
   const [loading, setLoading] = useState(false);
-
 
   const [statusMessage, setStatusMessage] = useState("");
 
@@ -58,10 +57,12 @@ export const useChatLogic = () => {
   // Sessão
   // =========================
   useEffect(() => {
-    let sid = localStorage.getItem("portal_session_id");
+    const auth = JSON.parse(localStorage.getItem("auth") || "null");
+    const sessionKey = `portal_session_id_${auth?.userId}`;
+    let sid = localStorage.getItem(sessionKey);
     if (!sid) {
       sid = GUID();
-      localStorage.setItem("portal_session_id", sid);
+      localStorage.setItem(sessionKey, sid);
     }
     setSessionId(sid);
   }, []);
@@ -86,7 +87,7 @@ export const useChatLogic = () => {
             rating: item.rating,
             rated: !!item.rating,
             expanded: false,
-          }))
+          })),
         );
       } catch (err) {
         console.error(err);
@@ -100,7 +101,7 @@ export const useChatLogic = () => {
   // Expansão global (mantido)
   // =========================
   const hasAnyCollapsed = messages.some(
-    (m) => m.from === "ia" && m.finished && m.finalText && m.expanded === false
+    (m) => m.from === "ia" && m.finished && m.finalText && m.expanded === false,
   );
 
   useEffect(() => {
@@ -110,8 +111,8 @@ export const useChatLogic = () => {
   const toggleExpanded = useCallback((id: string) => {
     setMessages((prev) =>
       prev.map((m) =>
-        m.id === id ? { ...m, expanded: !(m.expanded !== false) } : m
-      )
+        m.id === id ? { ...m, expanded: !(m.expanded !== false) } : m,
+      ),
     );
   }, []);
 
@@ -121,8 +122,8 @@ export const useChatLogic = () => {
         p.map((m) =>
           m.from === "ia" && m.finished && m.finalText
             ? { ...m, expanded: hasAnyCollapsed }
-            : m
-        )
+            : m,
+        ),
       );
     });
   }, [registerToggle, hasAnyCollapsed]);
@@ -139,11 +140,15 @@ export const useChatLogic = () => {
         rating: score,
       });
       setMessages((p) =>
-        p.map((m, i) => (i === idx ? { ...m, rated: true, rating: score } : m))
+        p.map((m, i) => (i === idx ? { ...m, rated: true, rating: score } : m)),
       );
       setSnackbar({ open: true, type: "success", text: "Avaliação salva" });
     } catch {
-      setSnackbar({ open: true, type: "error", text: "Erro ao salvar avaliação" });
+      setSnackbar({
+        open: true,
+        type: "error",
+        text: "Erro ao salvar avaliação",
+      });
     }
   };
 
@@ -165,7 +170,13 @@ export const useChatLogic = () => {
 
     setMessages((p) => [
       ...p,
-      { id: GUID(), from: "user", finalText: q, finished: true, expanded: true },
+      {
+        id: GUID(),
+        from: "user",
+        finalText: q,
+        finished: true,
+        expanded: true,
+      },
       { id: aiId, from: "ia", streamText: "", finished: false, expanded: true },
     ]);
 
@@ -214,12 +225,9 @@ export const useChatLogic = () => {
           const rawData = dataLines.join("\n");
           if (evtName === "error") throw new Error(rawData);
 
-
           if (evtName.includes("status") || evtName.includes("step")) {
-            console.log('status recebido ' + rawData)
-            const cleanStatus = rawData
-              .replace(/^[⏳🔎🤖🧠]\s*/g, "")
-              .trim();
+            console.log("status recebido " + rawData);
+            const cleanStatus = rawData.replace(/^[⏳🔎🤖🧠]\s*/g, "").trim();
 
             setMessages((p) =>
               p.map((m) => {
@@ -230,18 +238,16 @@ export const useChatLogic = () => {
                 // remove status anterior (blockquote de status)
                 const withoutStatus = content.replace(
                   /^> \*\*.*?\*\*\n?\n?/m,
-                  ""
+                  "",
                 );
 
                 return {
                   ...m,
                   streamText:
-                  `> **${cleanStatus}**\n\n` +
-                  withoutStatus.trimStart(),
+                    `> **${cleanStatus}**\n\n` + withoutStatus.trimStart(),
                 };
-              })
+              }),
             );
-
 
             continue;
           }
@@ -253,15 +259,14 @@ export const useChatLogic = () => {
               p.map((m) =>
                 m.id === aiId
                   ? {
-                    ...m,
-                    finished: true,
-                    finalText: fullTextRef.current,
-                    streamText: "",
-                  }
-                  : m
-              )
+                      ...m,
+                      finished: true,
+                      finalText: fullTextRef.current,
+                      streamText: "",
+                    }
+                  : m,
+              ),
             );
-
 
             setLoading(false);
             activeStreamIdRef.current = null;
@@ -277,17 +282,23 @@ export const useChatLogic = () => {
 
             setMessages((p) =>
               p.map((m) =>
-                m.id === aiId ? { ...m, streamText: fullTextRef.current } : m
-              )
+                m.id === aiId ? { ...m, streamText: fullTextRef.current } : m,
+              ),
             );
           }
         }
       }
-      throw new Error("A conexão foi interrompida antes de concluir a resposta. Tente novamente.");
+      throw new Error(
+        "A conexão foi interrompida antes de concluir a resposta. Tente novamente.",
+      );
     } catch (err) {
       console.error(err);
       setMessages((p) => p.filter((m) => m.id !== aiId));
-      setSnackbar({ open: true, type: "error", text: err instanceof Error ? err.message : "Falha na resposta da IA" });
+      setSnackbar({
+        open: true,
+        type: "error",
+        text: err instanceof Error ? err.message : "Falha na resposta da IA",
+      });
     } finally {
       setLoading(false);
       activeStreamIdRef.current = null;
@@ -300,7 +311,11 @@ export const useChatLogic = () => {
   const uploadDocument = async (file: File) => {
     if (loading || !sessionId) return;
     if (file.size > 20 * 1024 * 1024) {
-      setSnackbar({ open: true, type: "error", text: "O limite é de 20 MB por documento." });
+      setSnackbar({
+        open: true,
+        type: "error",
+        text: "O limite é de 20 MB por documento.",
+      });
       return;
     }
     setLoading(true);
@@ -310,13 +325,34 @@ export const useChatLogic = () => {
       form.append("file", file);
       form.append("sessionId", sessionId);
       const { data } = await api.post("api/ocr/analisar", form);
-      if (!data.texto?.trim()) throw new Error("Nenhum texto foi encontrado no documento.");
-      setMessages((previous) => [...previous,
-        { id: GUID(), from: "user", finalText: data.texto, finished: true, expanded: false },
-        { id: GUID(), from: "ia", finalText: data.analise, finished: true, expanded: true },
+      if (!data.texto?.trim())
+        throw new Error("Nenhum texto foi encontrado no documento.");
+      setMessages((previous) => [
+        ...previous,
+        {
+          id: GUID(),
+          from: "user",
+          finalText: data.texto,
+          finished: true,
+          expanded: false,
+        },
+        {
+          id: GUID(),
+          from: "ia",
+          finalText: data.analise,
+          finished: true,
+          expanded: true,
+        },
       ]);
     } catch (error) {
-      setSnackbar({ open: true, type: "error", text: error instanceof Error ? error.message : "Falha na análise do documento" });
+      setSnackbar({
+        open: true,
+        type: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : "Falha na análise do documento",
+      });
     } finally {
       setStatusMessage("");
       setLoading(false);

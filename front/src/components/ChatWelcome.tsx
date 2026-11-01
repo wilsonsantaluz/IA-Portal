@@ -7,6 +7,7 @@ import CompareArrowsRounded from "@mui/icons-material/CompareArrowsRounded";
 import ArrowForwardRounded from "@mui/icons-material/ArrowForwardRounded";
 import AutoAwesomeOutlined from "@mui/icons-material/AutoAwesomeOutlined";
 import { Link } from "react-router-dom";
+import { useAuth } from "../auth/AuthProvider";
 const actions = [
   {
     title: "Perguntar sobre um documento",
@@ -45,6 +46,7 @@ export default function ChatWelcome({
   onChoose: (prompt: string) => void;
 }) {
   const theme = useTheme();
+  const { hasPermission } = useAuth();
   return (
     <Box
       className="portal-page"
@@ -187,14 +189,16 @@ export default function ChatWelcome({
             Organize os conteúdos que dão contexto às suas conversas.
           </Typography>
         </Box>
-        <Button
-          component={Link}
-          to="/kb"
-          size="small"
-          endIcon={<ArrowForwardRounded />}
-        >
-          Explorar base
-        </Button>
+        {hasPermission("kb.view") && (
+          <Button
+            component={Link}
+            to="/kb"
+            size="small"
+            endIcon={<ArrowForwardRounded />}
+          >
+            Explorar base
+          </Button>
+        )}
       </Box>
     </Box>
   );

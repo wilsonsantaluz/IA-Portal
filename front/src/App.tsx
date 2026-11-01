@@ -10,6 +10,8 @@ import PublicRoute from "./auth/PublicRoute";
 
 import DashboardLayout from "./layout/DashboardLayout";
 import React from "react";
+import AccessManagementPage from "./pages/AccessManagementPage";
+import RequirePermission, { HomeRoute } from "./auth/RequirePermission";
 
 export default function App() {
   return (
@@ -33,13 +35,49 @@ export default function App() {
           </RequireAuth>
         }
       >
-        <Route index element={<Navigate to="/chat" replace />} />
-        <Route path="chat" element={<ChatPage />} />
-        <Route path="dashboard" element={<AdminDashboardPage />} />
-        <Route path="kb" element={<KnowledgeBasePage />} />
+        <Route index element={<HomeRoute />} />
+        <Route
+          path="chat"
+          element={
+            <RequirePermission permission="chat.access">
+              <ChatPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="dashboard"
+          element={
+            <RequirePermission permission="dashboard.view">
+              <AdminDashboardPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="kb"
+          element={
+            <RequirePermission permission="kb.view">
+              <KnowledgeBasePage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="users"
+          element={
+            <RequirePermission permission="access.manage">
+              <AccessManagementPage mode="users" />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="groups"
+          element={
+            <RequirePermission permission="access.manage">
+              <AccessManagementPage mode="groups" />
+            </RequirePermission>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
-
-   
     </Routes>
   );
 }

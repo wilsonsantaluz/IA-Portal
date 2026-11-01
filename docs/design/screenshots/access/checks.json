@@ -1,0 +1,10 @@
+{
+  "checks": [
+    "Maintenance through real forms: rename group/user, deactivate/reactivate user, delete unassigned group with confirmation; both light dialogs accessible.",
+    "Real admin login, group creation with knowledge read permission, user creation with group association, light/dark tables and dialogs accessible.",
+    "Users/groups at 390px and 320px: only table scrolls horizontally, page and main remain within viewport.",
+    "Restricted user lands on knowledge, sees read-only controls, has no admin/chat menu, and cannot bypass frontend/API guards with direct URL or reload.",
+    "Revoked group access is reflected by /auth/me after reload without issuing another JWT."
+  ],
+  "errors": []
+}

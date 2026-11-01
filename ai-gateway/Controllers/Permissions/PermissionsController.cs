@@ -1,57 +1,11 @@
-using Portal.AI.Gateway.Infrastructure;
+﻿using AiGateway.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+namespace AiGateway.Controllers.Permissions;
 
-namespace AiGateway.Controllers.Permissions
+[ApiController, Route("api/permissions"), Authorize(Policy = PortalAccess.Administration)]
+public class PermissionsController : ControllerBase
 {
-
-
-        [ApiController]
-        [Route("api/permissions")]
-        public class PermissionsController : ControllerBase
-        {
-            private readonly PortalDbContext _db;
-
-            public PermissionsController(PortalDbContext db)
-            {
-                _db = db;
-            }
-
-            [HttpGet]
-            public async Task<IActionResult> GetAll(CancellationToken ct)
-            {
-                return Ok(await _db.Permissions.ToListAsync(ct));
-            }
-
-            [HttpPost]
-            public async Task<IActionResult> Create(
-                string permissionKey,
-                string? description,
-                CancellationToken ct)
-            {
-                var perm = new Permission
-                {
-                    PermissionKey = permissionKey,
-                    Description = description
-                };
-
-                _db.Permissions.Add(perm);
-                await _db.SaveChangesAsync(ct);
-
-                return Ok(perm);
-            }
-
-            [HttpDelete("{id}")]
-            public async Task<IActionResult> Delete(int id, CancellationToken ct)
-            {
-                var perm = await _db.Permissions.FindAsync(new object[] { id }, ct);
-                if (perm == null) return NotFound();
-
-                _db.Permissions.Remove(perm);
-                await _db.SaveChangesAsync(ct);
-                return NoContent();
-            }
-        }
-
-
+    [HttpGet]
+    public IActionResult GetAll() => Ok(PortalAccess.Catalog.Select(x => new { key = x.Key, screen = x.Screen, description = x.Description }));
 }

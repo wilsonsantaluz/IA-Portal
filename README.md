@@ -158,10 +158,12 @@ The local smoke test uses a real API and temporary SQLite database, but substitu
 
 ## Security and publication notes
 
+User and group administration is available at `/users` and `/groups` to accounts with `access.manage`. Groups grant screen access to chat, dashboard, knowledge viewing/editing, and administration. Permissions are enforced by the API on every request; see [the access-management guide](docs/ACCESS_MANAGEMENT.md) for setup, session changes, tests, and limitations.
+
 **Do not expose this application to the public internet as-is.** The [publication review](docs/REVISAO_PUBLICACAO.md) records outstanding work, including:
 
 - Rotating any credentials previously exposed in earlier local materials.
-- Completing server-side authorization and per-user ownership checks on administrative and history endpoints.
+- Continuing security review beyond the implemented screen permissions, administrative authorization, and per-user conversation ownership checks.
 - Hardening AI-generated SQL with restricted read-only database permissions, validation, and limits.
 - Reviewing untrusted Markdown/HTML, OCR resource limits, temporary-file cleanup, CORS, HTTPS, and data retention.
 - Implementing schema migrations and a production backup/recovery strategy.

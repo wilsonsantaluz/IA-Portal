@@ -1,3 +1,5 @@
+using AiGateway.Security;
+using Microsoft.AspNetCore.Authorization;
 using AiGateway.Application.Interfaces;
 using AiGateway.Dtos;
 using Portal.AI.Gateway.Application.DTOs;
@@ -12,7 +14,7 @@ namespace AiGateway.Controllers.Chat
     /// Endpoint de chat baseado em RAG sobre a Knowledge Base.
     /// Não interfere no ChatBotController atual.
     /// </summary>
-    [ApiController]
+    [ApiController, Authorize(Policy = PortalAccess.Chat)]
     [Route("api/chatkb")]
     public class ChatRagController : ControllerBase
     {
@@ -32,9 +34,10 @@ namespace AiGateway.Controllers.Chat
         [HttpPost("rate")]
         public async Task<IActionResult> Rate([FromBody] ChatKbRatingDto dto)
         {
+            if (dto.Rating < 1 || dto.Rating > 10) return BadRequest(new { error = "A nota deve ser de 1 a 10." });
             var entity = new ChatKbRating
             {
-                UserId = dto.UserId,
+                UserId = PortalAccess.UserId(User).ToString(),
                 Question = dto.Question,
                 Sources = dto.Sources,
                 Rating = dto.Rating,

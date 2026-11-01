@@ -31,7 +31,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      navigate("/chat");
+      navigate("/");
     } catch {
       setError("Usuário ou senha inválidos");
     } finally {

@@ -1,9 +1,11 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace AiGateway.Dtos
 {
 
     public record LoginRequest(
-    string Email,
-    string Password
+    [Required, EmailAddress, StringLength(150)] string Email,
+    [Required, StringLength(72)] string Password
 );
 
     public record LoginResponse(
