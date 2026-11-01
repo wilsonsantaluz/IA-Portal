@@ -1,111 +1,50 @@
+using AiGateway.Dtos;
 using AiGateway.Security;
 using Microsoft.AspNetCore.Authorization;
-using AiGateway.Application.SeedWork;
+using Microsoft.AspNetCore.Mvc;
 using Portal.AI.Gateway.Application.DTOs;
 using Portal.AI.Gateway.Application.Interfaces;
 using Portal.AI.Gateway.Infrastructure;
-using Microsoft.AspNetCore.Mvc;
-
 namespace AiGateway.Controllers.Chat;
 
-[ApiController, Authorize(Policy = PortalAccess.Chat)]
-[Route("api/chatBot")]
-public class ChatBotContoller : ControllerBase
+[ApiController, Authorize(Policy = PortalAccess.Chat), Route("api/chatBot")]
+public class ChatBotContoller(IChatRepository chats, IOllamaService llm, IKnowledgeBaseRepository knowledge, IConfiguration cfg) : ControllerBase
 {
-    private readonly IOllamaService _ollama;
-    private readonly IChatRepository _chatRepo;
-    private readonly IKnowledgeBaseRepository _kbRepo;
-
-    public ChatBotContoller(
-        IOllamaService ollama,
-        IChatRepository chatRepo,
-        IKnowledgeBaseRepository kbRepo)
-    {
-        _ollama = ollama;
-        _chatRepo = chatRepo;
-        _kbRepo = kbRepo;
+    [HttpGet("sessions")]
+    public async Task<IActionResult> List([FromQuery] int limit = 30, [FromQuery] string? cursor = null, [FromQuery] string? search = null, CancellationToken ct = default) => Ok(await chats.ListSessionsAsync(limit, cursor, search, ct));
+    [HttpPost("sessions")]
+    public async Task<IActionResult> Create(CancellationToken ct) {
+        var session = await chats.CreateSessionAsync(ct); return CreatedAtAction(nameof(Get), new { id = session.Id }, session);
     }
+    [HttpGet("sessions/{id:guid}")]
+    public async Task<IActionResult> Get(Guid id, CancellationToken ct) => Ok(await chats.GetSessionAsync(id, ct));
+    [HttpGet("sessions/{id:guid}/messages")]
+    public async Task<IActionResult> Messages(Guid id, [FromQuery] int limit = 50, [FromQuery] string? before = null, CancellationToken ct = default) => Ok(await chats.ListMessagesAsync(id, limit, before, ct));
+    [HttpPatch("sessions/{id:guid}")]
+    public async Task<IActionResult> Rename(Guid id, RenameSessionRequest request, CancellationToken ct) => Ok(await chats.RenameAsync(id, request, ct));
+    [HttpDelete("sessions/{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct) { await chats.DeleteAsync(id, ct); return NoContent(); }
+    [HttpGet("history/{sessionId:guid}")]
+    public async Task<IActionResult> GetHistory(Guid sessionId, CancellationToken ct) => Ok((await chats.GetLastMessagesAsync(sessionId, 100, ct)).Select(m => new { m.Id, m.Role, m.Content, m.CreatedAt, m.Status }));
 
     [HttpPost("ask")]
-    public async Task<ActionResult<object>> AskSql([FromBody] AskSqlRequest req, CancellationToken ct)
-    {
-        if (string.IsNullOrWhiteSpace(req.Question))
-            return BadRequest("Pergunta vazia.");
-
-        // SessionId vindo do front (mantido em localStorage)
-        Guid sessionId = string.IsNullOrWhiteSpace(req.SessionId)
-            ? Guid.NewGuid()
-            : Guid.Parse(req.SessionId);
-
-        var session = await _chatRepo.GetOrCreateSessionAsync(sessionId, req.UserId, ct);
-
-        // Histórico recente
-        var lastMessages = await _chatRepo.GetLastMessagesAsync(sessionId, 20, ct);
-
-        var historyText = string.Join("\n", lastMessages.Select(m => $"{m.Role}: {m.Content}"));
-
-        // Knowledge base do banco (fallback SeedWork se não achar)
-        var organizationBase = await _kbRepo.GetOrganizationBaseAsync(ct)
-                           ?? KnowledgeBaseSeed.Content;
-
-        var docContext = string.IsNullOrWhiteSpace(req.DocumentContext)
-            ? ""
-            : $"\n\nContexto do documento atual (OCR / análise):\n{req.DocumentContext}\n";
-
-        var prompt = $@"
-Você é um assistente de conhecimento corporativo, consultoria financeira e auditoria de recebíveis.
-Use a base de conhecimento abaixo e o histórico da conversa para responder.
-
-BASE DE CONHECIMENTO:
-{organizationBase}
-
-{docContext}
-
-HISTÓRICO (últimas mensagens):
-{historyText}
-
-Usuário: {req.Question}
-IA (responda em Markdown, com tabelas quando fizer sentido):
-";
-
-        var resposta = await _ollama.GenerateAsync("deepseek-chat", prompt, ct);
-
-        // Persiste mensagens
-        await _chatRepo.AddMessageAsync(new ChatMessage
-        {
-            SessionId = sessionId,
-            Role = "user",
-            Content = req.Question,
-            CreatedAt = DateTime.UtcNow
-        }, ct);
-
-        await _chatRepo.AddMessageAsync(new ChatMessage
-        {
-            SessionId = sessionId,
-            Role = "assistant",
-            Content = resposta,
-            CreatedAt = DateTime.UtcNow
-        }, ct);
-
-        return Ok(new
-        {
-            sessionId = sessionId.ToString(),
-            texto = resposta
-        });
-    }
-
-    [HttpGet("history/{sessionId:guid}")]
-    public async Task<ActionResult<IEnumerable<object>>> GetHistory(Guid sessionId, CancellationToken ct)
-    {
-        var msgs = await _chatRepo.GetLastMessagesAsync(sessionId, 100, ct);
-
-        var dto = msgs.Select(m => new
-        {
-            m.Role,
-            m.Content,
-            m.CreatedAt
-        });
-
-        return Ok(dto);
+    public async Task<IActionResult> AskSql(AskSqlRequest req, CancellationToken ct) {
+        if (string.IsNullOrWhiteSpace(req.Question) || req.Question.Length > 50000 || (req.DocumentContext?.Length ?? 0) > 12000 || !Guid.TryParse(req.SessionId, out var id)) throw new ChatException(400, "Pergunta ou conversa inválida.");
+        var requestId = req.RequestId ?? Guid.NewGuid();
+        var turn = await chats.BeginTurnAsync(id, requestId, req.Question, ChatRequest.Fingerprint("plain", req.Question, req.DocumentContext), ct);
+        if (turn.Replayed) return Ok(new { sessionId = id, texto = turn.Answer!.Content, messageId = turn.Answer.Id });
+        try {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct); timeout.CancelAfter(TimeSpan.FromMinutes(2));
+            var history = await chats.GetLastMessagesAsync(id, 20, ct);
+            var context = await knowledge.GetOrganizationBaseAsync(ct);
+            var prompt = $"Responda em português com base no conhecimento e histórico.\nBASE:\n{context}\nHISTÓRICO:\n{string.Join("\n", history.Select(m => $"{m.Role}: {m.Content[..Math.Min(m.Content.Length, 4000)]}"))}\nDOCUMENTO:\n{req.DocumentContext}\nPERGUNTA:\n{req.Question}";
+            var response = await llm.GenerateAsync("deepseek-chat", prompt, timeout.Token);
+            if (string.IsNullOrWhiteSpace(response)) throw new InvalidOperationException();
+            var answer = await chats.CompleteTurnAsync(id, requestId, response, timeout.Token, model: cfg["DEEPSEEK_DEFAULT_MODEL"] ?? "deepseek-chat");
+            return Ok(new { sessionId = id, texto = response, messageId = answer.Id });
+        } catch {
+            using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(10)); await chats.FailTurnAsync(id, requestId, ct.IsCancellationRequested ? "cancelled" : "failed", cleanup.Token);
+            throw new ChatException(502, "Não foi possível concluir a resposta. A pergunta foi preservada.");
+        }
     }
 }

@@ -1,0 +1,18 @@
+﻿ALTER TABLE ChatSession ADD COLUMN OwnerUserId INTEGER NULL REFERENCES Users(UserId) ON DELETE RESTRICT;
+ALTER TABLE ChatSession ADD COLUMN UpdatedAt TEXT NOT NULL DEFAULT '0001-01-01 00:00:00';
+ALTER TABLE ChatSession ADD COLUMN TitleSource TEXT NOT NULL DEFAULT 'legacy';
+ALTER TABLE ChatSession ADD COLUMN Provider TEXT NULL;
+ALTER TABLE ChatSession ADD COLUMN Model TEXT NULL;
+ALTER TABLE ChatSession ADD COLUMN DeletedAt TEXT NULL;
+ALTER TABLE ChatSession ADD COLUMN Version INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE ChatSession ADD COLUMN ActiveRequestId TEXT NULL;
+ALTER TABLE ChatSession ADD COLUMN LeaseUntil TEXT NULL;
+ALTER TABLE ChatMessage ADD COLUMN RequestId TEXT NULL;
+ALTER TABLE ChatMessage ADD COLUMN Status TEXT NOT NULL DEFAULT 'completed';
+ALTER TABLE ChatMessage ADD COLUMN Provider TEXT NULL;
+ALTER TABLE ChatMessage ADD COLUMN Model TEXT NULL;
+ALTER TABLE ChatMessage ADD COLUMN RequestFingerprint TEXT NULL;
+UPDATE ChatSession SET UpdatedAt = COALESCE((SELECT MAX(CreatedAt) FROM ChatMessage WHERE SessionId = ChatSession.Id), CreatedAt);
+CREATE INDEX IX_ChatSession_OwnerUserId_DeletedAt_UpdatedAt_Id ON ChatSession(OwnerUserId, DeletedAt, UpdatedAt, Id);
+CREATE INDEX IX_ChatMessage_SessionId_CreatedAt_Id ON ChatMessage(SessionId, CreatedAt, Id);
+CREATE UNIQUE INDEX IX_ChatMessage_SessionId_RequestId_Role ON ChatMessage(SessionId, RequestId, Role) WHERE RequestId IS NOT NULL;

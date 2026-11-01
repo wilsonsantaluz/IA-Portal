@@ -10,7 +10,7 @@ public static class DatabaseInitializer
     {
         // Local prototype: creates a new schema, never deletes existing data.
         // Schema evolution must be handled explicitly before changing this model.
-        await db.Database.EnsureCreatedAsync();
+        await ChatSchemaMigrator.InitializeAsync(db, config);
         if (!await db.KnowledgeBaseItems.AnyAsync(x => x.KeyName == "organization_base"))
         {
             db.KnowledgeBaseItems.Add(new KnowledgeBaseItem

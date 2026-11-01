@@ -2,12 +2,21 @@ import { useChatLogic } from "../hooks/useChatLogic";
 import "./markdown.css";
 import { ChatInput, MessageList } from "../components/ChatPage";
 import React, { useEffect, useMemo, useRef } from "react";
-import { Box, Snackbar, Alert } from "@mui/material";
+import {
+  Box,
+  Snackbar,
+  Alert,
+  Button,
+  Typography,
+  LinearProgress,
+} from "@mui/material";
 import "./markdown.css";
 import { useChatScroll } from "../hooks/useChatScroll";
 import ChatWelcome from "../components/ChatWelcome";
+import ConversationPanel from "../components/ConversationPanel";
 
 export default function ChatPage() {
+  const chat = useChatLogic();
   const {
     messages,
     input,
@@ -21,7 +30,7 @@ export default function ChatPage() {
     sendRating,
     handleScroll,
     closeSnackbar,
-  } = useChatLogic();
+  } = chat;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -94,56 +103,101 @@ export default function ChatPage() {
       sx={{
         height: "100%",
         display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
+        minWidth: 0,
+        position: "relative",
       }}
     >
-      {!messages.length ? (
-        <Box sx={{ flex: 1, minHeight: 0, overflow: "auto" }}>
-          <ChatWelcome
-            onChoose={(prompt) => {
-              setInput(prompt);
-              requestAnimationFrame(() =>
-                document
-                  .querySelector<HTMLTextAreaElement>("[data-chat-input]")
-                  ?.focus(),
-              );
-            }}
-          />
-        </Box>
-      ) : (
-        <MessageList
-          messages={messages}
-          statusMessage={statusMessage}
-          onToggleExpand={onToggleExpand}
-          onSendRating={sendRating}
-          onScroll={onScroll}
-          containerRef={containerRef}
-          endRef={endRef}
-        />
-      )}
-
-      <ChatInput
-        input={input}
-        loading={loading}
-        onInputChange={setInput}
-        onUpload={uploadDocument}
-        onSend={() => {
-          autoScrollRef.current = true;
-          scheduleScrollToBottom("smooth");
-          sendMessage();
+      <ConversationPanel chat={chat} />
+      <Box
+        sx={{
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          flex: 1,
+          minWidth: 0,
         }}
-      />
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={closeSnackbar}
       >
-        <Alert severity={snackbar.type} variant="filled">
-          {snackbar.text}
-        </Alert>
-      </Snackbar>
+        <Box
+          sx={{
+            px: { xs: 7, lg: 4 },
+            py: 1.5,
+            borderBottom: "1px solid",
+            borderColor: "divider",
+          }}
+        >
+          <Typography fontSize={13} fontWeight={600} noWrap>
+            {chat.session?.title || "Nova conversa"}
+          </Typography>
+          <Typography fontSize={10} color="text.secondary">
+            {chat.session?.provider || "DeepSeek"} ·{" "}
+            {chat.session?.model || "deepseek-chat"}
+          </Typography>
+        </Box>
+        {chat.historyLoading && (
+          <LinearProgress aria-label="Carregando histórico" />
+        )}
+        {chat.messagesCursor && (
+          <Button
+            disabled={chat.historyLoading || loading}
+            onClick={() => void chat.loadOlder()}
+          >
+            Carregar mensagens anteriores
+          </Button>
+        )}
+        {messages.some((m) => m.status && m.status !== "completed") && (
+          <Alert severity="info" sx={{ mx: 2, mt: 1 }}>
+            Há uma interação pendente ou interrompida neste histórico. Confira
+            antes de enviar novamente.
+          </Alert>
+        )}
+        {!messages.length ? (
+          <Box sx={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+            <ChatWelcome
+              onChoose={(prompt) => {
+                setInput(prompt);
+                requestAnimationFrame(() =>
+                  document
+                    .querySelector<HTMLTextAreaElement>("[data-chat-input]")
+                    ?.focus(),
+                );
+              }}
+            />
+          </Box>
+        ) : (
+          <MessageList
+            messages={messages}
+            statusMessage={statusMessage}
+            onToggleExpand={onToggleExpand}
+            onSendRating={sendRating}
+            onScroll={onScroll}
+            containerRef={containerRef}
+            endRef={endRef}
+          />
+        )}
+
+        <ChatInput
+          input={input}
+          loading={loading || chat.historyLoading}
+          onInputChange={setInput}
+          onUpload={uploadDocument}
+          onSend={() => {
+            autoScrollRef.current = true;
+            scheduleScrollToBottom("smooth");
+            sendMessage();
+          }}
+        />
+
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={3000}
+          onClose={closeSnackbar}
+        >
+          <Alert severity={snackbar.type} variant="filled">
+            {snackbar.text}
+          </Alert>
+        </Snackbar>
+      </Box>
     </Box>
   );
 }

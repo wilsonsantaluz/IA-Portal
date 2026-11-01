@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Typography, IconButton, Collapse } from "@mui/material";
+import { Box, Typography, IconButton, Collapse, Chip } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import StarIcon from "@mui/icons-material/Star";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
@@ -16,6 +16,7 @@ interface MessageItemProps {
     rating?: number;
     rated?: boolean;
     expanded?: boolean;
+    status?: string;
   };
   index: number;
   statusMessage?: string;
@@ -59,6 +60,18 @@ export default function MessageItem({
             />
             <span className="user-question-label">{message.finalText}</span>
           </Box>
+          {message.status && message.status !== "completed" && (
+            <Chip
+              size="small"
+              color={message.status === "pending" ? "default" : "warning"}
+              label={
+                message.status === "pending"
+                  ? "Em processamento"
+                  : "Interação não concluída"
+              }
+              sx={{ mt: 1, color: "text.primary" }}
+            />
+          )}
         </Box>
       </Box>
     );

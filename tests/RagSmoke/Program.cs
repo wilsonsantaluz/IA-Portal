@@ -85,9 +85,11 @@ try
     login.EnsureSuccessStatusCode();
     var auth = await login.Content.ReadFromJsonAsync<JsonElement>();
     http.DefaultRequestHeaders.Authorization = new("Bearer", auth.GetProperty("token").GetString());
+    async Task<Guid> NewSession() { using var created = await http.PostAsJsonAsync("/api/chatBot/sessions", new { }); created.EnsureSuccessStatusCode(); var body = await created.Content.ReadFromJsonAsync<JsonElement>(); return body.GetProperty("id").GetGuid(); }
+    var emptySession = await NewSession();
     using var empty = await http.PostAsJsonAsync("/api/ia/ask/stream", new
     {
-        pergunta = "Verificacao com indice vazio", sessionId = Guid.NewGuid().ToString()
+        pergunta = "Verificacao com indice vazio", sessionId = emptySession.ToString()
     });
     empty.EnsureSuccessStatusCode();
     var emptyText = await empty.Content.ReadAsStringAsync();
@@ -99,7 +101,7 @@ try
         content = "O protocolo TEST-RAG-MARKER realiza conciliacao sintetica de recebiveis.", isActive = true
     });
     if (!saved.IsSuccessStatusCode) throw new Exception("KB upsert failed: " + await saved.Content.ReadAsStringAsync());
-    var streamSession = Guid.NewGuid();
+    var streamSession = await NewSession();
     using var stream = await http.PostAsJsonAsync("/api/ia/ask/stream", new
     {
         pergunta = "Explique o protocolo de conciliacao de recebiveis", sessionId = streamSession.ToString(), userId = "spoofed-user"
@@ -120,8 +122,8 @@ try
     using var otherLogin = await http.PostAsJsonAsync("/api/auth/login", new { email = "other@example.test", password = secret });
     var other = await otherLogin.Content.ReadFromJsonAsync<JsonElement>();
     http.DefaultRequestHeaders.Authorization = new("Bearer", other.GetProperty("token").GetString());
-    var hiddenHistory = await http.GetFromJsonAsync<JsonElement>($"/api/chatBot/history/{streamSession}");
-    if (hiddenHistory.GetArrayLength() != 0) throw new Exception("Another user could read private conversation history.");
+    using var hiddenHistory = await http.GetAsync($"/api/chatBot/history/{streamSession}");
+    if (hiddenHistory.StatusCode != HttpStatusCode.NotFound) throw new Exception("Another user could identify private conversation history.");
     Console.WriteLine("PASS: conversation ownership is derived from JWT; another authenticated account cannot read history.");
     Console.WriteLine("PASS: synthetic login, empty index, real ONNX embedding, Qdrant index/search, real reranking and chat streaming; SQLite isolated, LLM simulated, no Trino.");
 }

@@ -2,7 +2,7 @@
 
 Data: 01/11/2026. Base inspecionada: `ec9d14e` (`main`), com a entrega de usuários em `f44b803`. Branch de trabalho: `feature/chat-sessions-providers`.
 
-**Estado: auditoria concluída por leitura de código; proposta pendente de revisão. Nenhuma entidade, API, adapter ou banco foi alterado neste incremento.** Os resultados de execução desta auditoria estão em [IMPLEMENTATION_LOG.md](../delivery/IMPLEMENTATION_LOG.md); evidências da entrega anterior não são apresentadas como testes novos.
+**Registro histórico da etapa 0:** auditoria concluída, proposta posteriormente aprovada pelo proprietário. Nenhuma entidade, API, adapter ou banco foi alterado durante a auditoria. A implementação posterior da etapa 1 está descrita em [CHAT_SESSIONS.md](../features/CHAT_SESSIONS.md). Os resultados de execução estão em [IMPLEMENTATION_LOG.md](../delivery/IMPLEMENTATION_LOG.md); evidências da entrega anterior não são apresentadas como testes novos.
 
 ## Inventário confirmado
 

@@ -7,9 +7,10 @@ Este conjunto documenta **o objetivo e os contratos propostos**, não uma afirma
 - IA-Portal executa localmente via Docker Compose, com frontend acessível em `127.0.0.1:9080`.
 - Login e uma resposta via API DeepSeek foram observados no ambiente local.
 - A interface foi renovada e exibe navegação para chat, dashboard, base de conhecimento, usuários e grupos/permissões.
-- A leitura de código confirmou persistência em `ChatSession`/`ChatMessage`, dono derivado do JWT na criação e filtro de dono no histórico. A verificação de propriedade ainda precisa ser aplicada a cada escrita e antes de chamadas externas; não é uma garantia completa de isolamento de todos os fluxos.
-- Frontend guarda uma sessão por conta/navegador; não existe CRUD/lista de conversas persistentes, títulos automáticos, uso/custo ou migração versionada. Os adapters OpenAI/Ollama existem, mas não estão habilitados no fluxo principal.
-- Auditoria e proposta de dados/API registradas; **etapa 0 aguarda revisão**, conforme o roadmap. Código, esquema e containers não foram alterados neste incremento.
+- A auditoria inicial confirmou persistência em `ChatSession`/`ChatMessage` e identificou verificações de propriedade incompletas. A etapa 1 acrescentou filtros por proprietário em leituras/escritas e rejeição antes de OCR/LLM/SSE; os testes A/B estão registrados no diário. Isso não equivale a uma auditoria de segurança completa do produto.
+- Após aprovação, a etapa 1 acrescentou sessões criadas pelo servidor, lista/busca, CRUD, recuperação entre navegadores e mensagens paginadas, com dono validado em cada operação. A migração SQL v1 preserva dados e faz backup consistente antes de alterar um esquema legado.
+- Títulos automáticos, uso/custo, seleção de modelos e configurações administrativas de IA continuam para as próximas etapas. Os adapters OpenAI/Ollama existem, mas não estão habilitados no fluxo principal.
+- A auditoria descreve a base anterior ao incremento; consulte [o estado implementado de conversas](features/CHAT_SESSIONS.md) e o diário para testes, aplicação local e limitações. A etapa 0 foi aprovada; a etapa 1 será revisada antes de iniciar títulos.
 
 ## Leitura recomendada
 

@@ -14,12 +14,14 @@ public class SqlController : ControllerBase
     private readonly IOllamaService _ollama;
     private readonly ITrinoQueryService _trino;
     private readonly ITrinoMetadataService _trinoMetadata;
+    private readonly IChatRepository _chats;
 
-    public SqlController(IOllamaService ollama, ITrinoQueryService trino, ITrinoMetadataService trinoMetadata)
+    public SqlController(IOllamaService ollama, ITrinoQueryService trino, ITrinoMetadataService trinoMetadata, IChatRepository chats)
     {
         _ollama = ollama;
         _trino = trino;
         _trinoMetadata = trinoMetadata;
+        _chats = chats;
     }
 
     // -------------------------------------------------------------
@@ -28,6 +30,7 @@ public class SqlController : ControllerBase
     [HttpPost("ask")]
     public async Task<ActionResult<AskSqlResponse>> AskSql([FromBody] AskSqlRequest req, CancellationToken ct)
     {
+        await CheckSession(req.SessionId, ct);
         var prompt = $@"
 Você é um assistente especialista em SQL para TRINO.
 Converta a pergunta abaixo em UMA ÚNICA QUERY SQL válida.
@@ -58,6 +61,7 @@ IMPORTANTE:
     [HttpPost("ask-rag")]
     public async Task<IActionResult> AskRag([FromBody] AskSqlRequest req, CancellationToken ct)
     {
+        await CheckSession(req.SessionId, ct);
         // 0) Puxar metadata real do Trino
         var metadata = await _trinoMetadata.GetCatalogMetadataAsync(req.Schema, ct);
 
@@ -135,5 +139,11 @@ INSTRUÇÕES:
             Rows = rows,
             Answer = answer
         });
+    }
+    private async Task CheckSession(string? sessionId, CancellationToken ct)
+    {
+        if (sessionId is null) return;
+        if (!Guid.TryParse(sessionId, out var id)) throw new Portal.AI.Gateway.Infrastructure.ChatException(400, "Conversa inválida.");
+        await _chats.GetSessionAsync(id, ct);
     }
 }

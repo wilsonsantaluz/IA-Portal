@@ -91,6 +91,8 @@ public class PortalDbContext : DbContext
             e.HasKey(x => x.Id);
             e.Property(x => x.UserId).HasMaxLength(100);
             e.Property(x => x.Title).HasMaxLength(200);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => new { x.OwnerUserId, x.DeletedAt, x.UpdatedAt, x.Id });
         });
 
         modelBuilder.Entity<ChatMessage>(e =>
@@ -98,6 +100,8 @@ public class PortalDbContext : DbContext
             e.ToTable("ChatMessage");
             e.HasKey(x => x.Id);
             e.Property(x => x.Role).HasMaxLength(20).IsRequired();
+            e.HasIndex(x => new { x.SessionId, x.CreatedAt, x.Id });
+            e.HasIndex(x => new { x.SessionId, x.RequestId, x.Role }).IsUnique().HasFilter("RequestId IS NOT NULL");
             e.HasOne(x => x.Session)
              .WithMany(x => x.Messages)
              .HasForeignKey(x => x.SessionId);
@@ -130,6 +134,15 @@ public class ChatSession
     public string? UserId { get; set; }
     public string? Title { get; set; }
     public DateTime CreatedAt { get; set; }
+    public int? OwnerUserId { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public string TitleSource { get; set; } = "provisional";
+    public string? Provider { get; set; }
+    public string? Model { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public int Version { get; set; }
+    public Guid? ActiveRequestId { get; set; }
+    public DateTime? LeaseUntil { get; set; }
     public ICollection<ChatMessage> Messages { get; set; } = new List<ChatMessage>();
 }
 public class User
@@ -163,6 +176,11 @@ public class ChatMessage
     public string Role { get; set; } = default!;
     public string Content { get; set; } = default!;
     public DateTime CreatedAt { get; set; }
+    public Guid? RequestId { get; set; }
+    public string Status { get; set; } = "completed";
+    public string? Provider { get; set; }
+    public string? Model { get; set; }
+    public string? RequestFingerprint { get; set; }
 
     public ChatSession Session { get; set; } = default!;
 }

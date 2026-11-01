@@ -42,3 +42,9 @@ Não declarar a aplicação pronta para produção sem revisão e execução des
 - Autorização de sessão deve acontecer antes de SSE/OCR/LLM; o repositório deve revalidar dono em cada escrita, não apenas na abertura da sessão.
 - Métricas globais de consumo exigem permissão administrativa específica; não reutilizar automaticamente `dashboard.view`, que atualmente libera métricas globais de avaliações.
 - Plano e evidências completos: [AS_IS_AUDIT.md](../architecture/AS_IS_AUDIT.md). Este registro não representa correção já aplicada.
+
+## Atualização da etapa 1
+
+As verificações de propriedade nas operações de sessão/mensagem e a rejeição antes de OCR/LLM/SSE foram implementadas e testadas, inclusive chamadas diretas por outra conta e sessões inexistentes/excluídas. Erros do fluxo de chat são sanitizados. Backups e migração v1 foram testados em fixtures sintéticas. Isso atualiza esses itens do diagnóstico inicial; não encerra os requisitos de segurança do produto inteiro.
+
+Credencial literal e logs dos adapters alternativos inativos continuam pendentes antes de sua habilitação. Não houve configuração de novas chaves, SSRF configurável, gestão de preços ou tela administrativa de IA nesta etapa.

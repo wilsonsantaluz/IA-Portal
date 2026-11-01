@@ -46,11 +46,11 @@ namespace AiGateway.Infrastructure.Qdrant.Services.LLMs
             };
             _http.DefaultRequestHeaders.Add("Accept", "text/event-stream");
             _http.DefaultRequestHeaders.Add("Cache-Control", "no-cache");
-            var req = new HttpRequestMessage(HttpMethod.Post, "/chat/completions");
+            using var req = new HttpRequestMessage(HttpMethod.Post, "/chat/completions");
             
             req.Content = JsonContent.Create(payload);
 
-            var resp = await _http.SendAsync(
+            using var resp = await _http.SendAsync(
                 req,
                 HttpCompletionOption.ResponseHeadersRead,
                 ct
@@ -61,9 +61,10 @@ namespace AiGateway.Infrastructure.Qdrant.Services.LLMs
             using var stream = await resp.Content.ReadAsStreamAsync(ct);
             using var reader = new StreamReader(stream);
 
-            while (!reader.EndOfStream && !ct.IsCancellationRequested)
+            while (!ct.IsCancellationRequested)
             {
-                var line = await reader.ReadLineAsync();
+                var line = await reader.ReadLineAsync(ct);
+                if (line is null) yield break;
                 if (string.IsNullOrWhiteSpace(line)) continue;
 
                 if (line.StartsWith("data: "))

@@ -1,0 +1,11 @@
+{
+  "checks": [
+    "Real login and mocked-provider streaming: two independent conversations, manual rename/search, selection and history recovered after reload.",
+    "52 real persisted messages: latest page loads first and older messages load progressively.",
+    "Rejected-send UI fixture preserves unsent input instead of silently losing the question.",
+    "Fresh browser storage recovers server-owned sessions and opens an earlier conversation.",
+    "Light/dark main accessibility and conversation drawer at 390/320px without horizontal page overflow.",
+    "Conversation deletion requires confirmation and removes the item from history."
+  ],
+  "errors": []
+}

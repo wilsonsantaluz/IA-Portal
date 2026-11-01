@@ -1,6 +1,8 @@
 ﻿# Contratos de API — conversas, consumo e provedores
 
-Data: 01/11/2026. **Proposta para revisão.** Nenhuma rota abaixo foi implementada neste incremento. O backend já usa `/api/ia/ask/stream`, `/api/chatBot/ask`, `/api/chatBot/history/{sessionId}`, `/api/ocr/analisar` e `/api/chatkb/rate`; serão evoluídos, não duplicados em uma segunda pilha de chat.
+Data: 01/11/2026. **Etapa 1 implementada; contratos das etapas 2–5 continuam propostos.** Os endpoints `/api/ia/ask/stream`, `/api/chatBot/ask`, `/api/chatBot/history/{sessionId}` e `/api/ocr/analisar` foram evoluídos, sem uma segunda pilha de chat. `/api/chatkb/rate` permanece existente.
+
+**Atualização da etapa 1 aprovada:** rotas de sessões/metadados/renomeação/exclusão e mensagens da tabela abaixo estão implementadas. A criação aceita body vazio e gera o título provisório; título inicial customizado não é aceito (usar PATCH). Envios sem `requestId` continuam aceitos por compatibilidade e recebem ID do servidor, mas só um ID explícito permite replay idempotente. Todas as sessões devem ser criadas antes do envio. O cursor `before` de mensagens é o ID da âncora, validado na própria sessão; a ordenação usa horário + ID. Títulos automáticos, uso e contratos de seleção/configuração continuam não implementados. O índice da documentação e o diário registram os testes executados.
 
 ## Segurança comum
 

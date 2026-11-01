@@ -14,6 +14,8 @@ Interface em português, com tema escuro por padrão e opção de tema claro.
 
 ## What works in local mode
 
+The chat now supports separate conversations per authenticated user: create, search, rename, remove from history, reopen, and progressively load earlier messages. Conversations are recovered from the server across browsers. Existing sessions with unverified ownership are preserved but not automatically reassigned. See [conversation behavior and SQLite migration](docs/features/CHAT_SESSIONS.md). Automatic titles, token accounting, and provider selection remain subsequent increments.
+
 - Automatic creation of a local SQLite database on first run.
 - Initial administrator bootstrap through environment variables; no hardcoded default password.
 - JWT login, knowledge-base entries, streaming chat, persisted conversations, and response ratings.

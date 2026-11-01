@@ -32,3 +32,7 @@ A tela administrativa deve mostrar **configurado/não configurado**, endpoint pe
 - Para Ollama no Docker, `localhost` dentro do container não é o host Windows; verificar conectividade e endpoint apropriado ao ambiente.
 - Validar endpoints configuráveis para mitigar SSRF; permitir destinos autorizados e proibir acesso arbitrário a metadados internos.
 - Testar cada adapter com mocks; integração real opcional, com custo controlado.
+
+## Estado após a etapa 1
+
+A injeção do chat continua selecionando DeepSeek; OpenAI/Ollama não foram habilitados nem duplicados. A única correção do adapter DeepSeek neste incremento foi tornar a leitura do stream cancelável sem sondagem síncrona e descartar corretamente request/response HTTP. Contagem de tokens, identificação do modelo resolvido pelo provedor, normalização de erros entre adapters e seleção/configuração continuam para as próximas etapas.

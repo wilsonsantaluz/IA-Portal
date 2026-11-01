@@ -1,6 +1,36 @@
 ﻿# Modelo de dados — proposta após auditoria
 
-Data: 01/11/2026. **Proposta para revisão; nenhuma migração aplicada.** Evidências em [AS_IS_AUDIT.md](AS_IS_AUDIT.md). As tabelas atuais são `ChatSession` e `ChatMessage`; reutilizá-las, sem criar uma segunda entidade de conversa.
+Data: 01/11/2026. **Modelo evolutivo: etapa 1 implementada após aprovação; etapas posteriores ainda propostas.** Evidências da base anterior em [AS_IS_AUDIT.md](AS_IS_AUDIT.md). As tabelas `ChatSession` e `ChatMessage` foram reutilizadas, sem uma segunda entidade de conversa.
+
+**Atualização após aprovação:** o proprietário aprovou a proposta e o diagrama em 01/11/2026. A etapa 1 foi implementada: migração SQL v1, `OwnerUserId`, metadados da sessão, estado/request/fingerprint nas mensagens e índices. A lease está em `ChatSession` (`ActiveRequestId`, `LeaseUntil`). As etapas de títulos, uso e provedores abaixo continuam como propostas futuras. Resultados e limites em [CHAT_SESSIONS.md](../features/CHAT_SESSIONS.md) e no diário.
+
+## Organização conceitual fornecida pelo proprietário
+
+O diagrama enviado em 01/11/2026 orienta a separação entre usuários, sessões, mensagens, consumo e provedores. Os nomes conceituais são mapeados às estruturas existentes, sem renomear tabelas apenas para coincidir com a imagem.
+
+```mermaid
+erDiagram
+    Users ||--o{ ChatSession : possui
+    ChatSession ||--o{ ChatMessage : contem
+    ChatSession ||--o{ LlmRequestUsage : registra
+    ProviderConfiguration ||--o{ LlmRequestUsage : identifica_provedor
+```
+
+| No diagrama fornecido | Mapeamento proposto no projeto | Responsabilidade |
+| --- | --- | --- |
+| Users | `Users` existente | Identidade autenticada e acesso; não guardar mensagens ou totais de consumo na conta. |
+| ChatSessions | `ChatSession` existente | Proprietário, título, seleção atual de modelo e datas da conversa. |
+| ChatMessages | `ChatMessage` existente | Papel, conteúdo, estado e modelo efetivo de cada mensagem. |
+| LlmUsage | `LlmRequestUsage`, nova na etapa de títulos/consumo | Uma linha por chamada ao modelo, inclusive chamadas auxiliares e falhas; não uma linha por sessão nem obrigatoriamente por mensagem. |
+| AI Providers | `ProviderConfiguration`, introduzida na etapa de configuração | Identificador estável do provedor e configuração permitida; sem segredo em texto puro. Reutiliza os adapters existentes. |
+
+O relacionamento com provedor será feito por identificador estável (`deepseek`, `openai`, `ollama`), não pelo nome exibido ou endpoint. Antes de existir a tabela de configuração, o registro de chamadas usa esse identificador validado no backend; a migração posterior estabelece a FK sem perder registros. Desabilitar um provedor não apaga sua identidade nem o consumo histórico. Não é necessária uma segunda tabela `AiProviders` além de `ProviderConfiguration` para representar o mesmo cadastro.
+
+Consumo pode referenciar uma mensagem, mas esse vínculo é opcional: geração de título e chamadas que falham antes de produzir resposta também precisam de registro. Para chamadas associadas à conversa, o usuário do consumo deve coincidir com seu proprietário; o cliente não escolhe esse usuário. Chamadas administrativas de teste de conectividade poderão ter sessão nula e usuário executor autenticado, com finalidade distinta, sem inventar uma conversa.
+
+Trocar o modelo da sessão não altera os identificadores de provedor/modelo já registrados nas respostas e chamadas anteriores. Tokens e custos ficam na tabela de consumo; totais por usuário/conversa/período são agregações dessas chamadas, evitando duplicação e divergência entre tabelas.
+
+O desenho mostra a cardinalidade de novas conversas válidas. A exceção temporária de dono nulo em sessões legadas, necessária para preservação segura dos dados, continua descrita abaixo. O envio do diagrama refina esta proposta; a migração e os contratos ainda não foram implementados.
 
 ## Etapa 1 — sessões e mensagens
 

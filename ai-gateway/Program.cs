@@ -144,6 +144,16 @@ builder.Services.AddAuthorization(options =>
 
 var app =builder.Build();
 
+app.Use(async (context, next) =>
+{
+    try { await next(); }
+    catch (ChatException ex) when (!context.Response.HasStarted)
+    {
+        context.Response.StatusCode = ex.Status;
+        await context.Response.WriteAsJsonAsync(new { error = ex.Message });
+    }
+});
+
 await using (var scope = app.Services.CreateAsyncScope())
 {
     await DatabaseInitializer.InitializeAsync(
