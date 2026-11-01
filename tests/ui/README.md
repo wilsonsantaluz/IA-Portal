@@ -35,3 +35,9 @@ Remove-Item $phaseACredentials
 Se usar outro navegador Chromium, ajuste `IA_CHROME_PATH`. `IA_UI_BASE_URL` permite alterar a URL do frontend de teste. As capturas e o resumo das verificações são gravados em `docs/design/screenshots/`. O teste não imprime senhas nem tokens.
 
 O comportamento preexistente do interceptor HTTP em uma resposta 401 no login é recarregar a página. O teste verifica a rejeição das credenciais sem presumir que a mensagem de erro permaneça visível. A melhoria desse retorno pertence à Fase B.
+
+## Revisão visual das telas existentes
+
+`phase-b.cjs` usa as mesmas variáveis de Playwright, Chrome e credenciais sintéticas acima e a mesma instalação descartável. Execute `node tests/ui/phase-b.cjs` após construir e iniciar o frontend de teste. Cobre sugestões editáveis do chat, dashboard vazio com API real, erro e nova tentativa, gráficos com fixtures restritas ao navegador, contraste automatizado do conteúdo principal de chat/dashboard e larguras de 320/390 px em ambos os temas. As capturas ficam em `docs/design/screenshots/redesign/`.
+
+Para guardar as capturas do teste anterior nessa mesma pasta sem sobrescrever evidências antigas, configure `IA_UI_SCREENSHOTS` com seu caminho absoluto antes de executar `phase-a.cjs`. Os gráficos sintéticos não são capturados como dados reais.

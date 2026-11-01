@@ -1,0 +1,31 @@
+﻿<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>IA-Portal — Social preview</title>
+<style>
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 1280px; height: 640px; overflow: hidden; }
+body { font-family: 'Segoe UI', Arial, sans-serif; color: #f1f5fc; background: #0b1220; }
+.card { width: 100%; height: 100%; padding: 80px; position: relative; background: radial-gradient(ellipse at 85% 20%, #143c553d, transparent 60%), radial-gradient(ellipse at 10% 90%, #2563eb18, transparent 50%); }
+.brand { display: block; width: 210px; height: auto; margin-bottom: 38px; }
+.content { display: grid; grid-template-columns: 350px 1fr; gap: 32px; align-items: center; }
+h1 { font-size: 42px; letter-spacing: -1.4px; line-height: 1.12; margin: 0 0 20px; font-weight: 700; }
+h1 span { color: #60a5fa; }
+p { color: #a5b4c8; font-size: 18px; line-height: 1.6; margin: 0 0 26px; }
+.tags { display: flex; flex-wrap: wrap; gap: 9px; }
+.tags span { color: #c6d9f4; border: 1px solid #293b55; border-radius: 8px; background: #132238; padding: 8px 12px; font-size: 13px; }
+.preview { border-radius: 15px; border: 1px solid #344a68; overflow: hidden; box-shadow: 0 24px 60px #0006; background: #132238; }
+.browser { height: 30px; background: #17243a; display: flex; align-items: center; gap: 6px; padding: 0 12px; border-bottom: 1px solid #293b55; }
+.dot { width: 6px; height: 6px; background: #64748b; border-radius: 50%; }
+.preview img { display: block; width: 100%; height: auto; }
+footer { position: absolute; bottom: 80px; left: 80px; right: 80px; display: flex; align-items: center; justify-content: space-between; color: #a5b4c8; font-size: 14px; }
+.rule { height: 2px; width: 70px; background: linear-gradient(90deg, #2563eb, #06b6d4, #7c3aed); }
+</style>
+</head>
+<body><main class="card">
+<img class="brand" src="../../front/public/brand/ia-portal-logo-dark.svg" alt="IA-Portal">
+<div class="content"><section><h1>Conhecimento<br>em ação.<br><span>Com IA.</span></h1><p>Documentos, busca semântica<br>e conversas com contexto.</p><div class="tags"><span>.NET 8</span><span>React</span><span>RAG</span><span>Qdrant</span></div></section>
+<div class="preview"><div class="browser"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><img src="../../screns/login.png" alt="Interface de acesso do portal em modo escuro"></div></div>
+<footer><span>github.com/wilsonsantaluz/IA-Portal</span><span class="rule"></span></footer>
+</main></body></html>

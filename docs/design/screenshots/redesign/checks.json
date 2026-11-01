@@ -1,0 +1,16 @@
+{
+  "checks": [
+    "Protected navigation and real login: invalid credentials rejected, valid synthetic account accepted.",
+    "Default light theme, desktop navigation and WCAG A/AA shell checks.",
+    "Dark theme, accessible shell, and preference persistence after reload.",
+    "Theme preference synchronizes across tabs.",
+    "Collapsed sidebar remains usable; existing dashboard, knowledge and chat routes navigate successfully.",
+    "390px mobile layout: no page overflow, accessible header, functional drawer and both themes.",
+    "320px viewport: no horizontal page overflow.",
+    "Keyboard skip link reaches the main content.",
+    "Header controls have a visible keyboard focus outline.",
+    "Logout clears authentication and returns to login.",
+    "Saved dark theme applies in the initial HTML before app JavaScript runs."
+  ],
+  "pageErrors": []
+}

@@ -15,15 +15,15 @@ interface Message {
 }
 
 interface MessageListProps {
-    messages: Message[];
-    statusMessage: string;
-    onToggleExpand: (id: string) => void;
-    onSendRating: (score: number, idx: number) => void;
-    onScroll: (isAtBottom: boolean) => void;
-  
-    containerRef: React.RefObject<HTMLDivElement>;
-    endRef: React.RefObject<HTMLDivElement>;
-  }
+  messages: Message[];
+  statusMessage: string;
+  onToggleExpand: (id: string) => void;
+  onSendRating: (score: number, idx: number) => void;
+  onScroll: (isAtBottom: boolean) => void;
+
+  containerRef: React.RefObject<HTMLDivElement>;
+  endRef: React.RefObject<HTMLDivElement>;
+}
 
 export default function MessageList({
   messages,
@@ -54,8 +54,8 @@ export default function MessageList({
   }, [onScroll, resolvedContainerRef]);
 
   return (
-    <Box sx={{ flex: 1, overflow: "auto" }} ref={containerRef}>
-      <Stack maxWidth={1200} mx="auto" px={2} spacing={1} pt={2}>
+    <Box sx={{ flex: 1, minHeight: 0, overflow: "auto" }} ref={containerRef}>
+      <Stack maxWidth={1040} mx="auto" px={{ xs: 2, md: 4 }} spacing={3} py={3}>
         {messages.map((message, index) => (
           <MessageItem
             key={message.id}
@@ -70,6 +70,4 @@ export default function MessageList({
       </Stack>
     </Box>
   );
-  
-
 }

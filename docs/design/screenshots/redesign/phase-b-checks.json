@@ -1,0 +1,12 @@
+{
+  "checks": [
+    "Suggestion prefills and focuses composer without sending a message.",
+    "Real API with empty temporary SQLite: honest empty states, light/dark main accessibility.",
+    "Dashboard/chat/knowledge at 320 and 390px in both themes: no page or main horizontal overflow.",
+    "503 error shows retry and unavailable values rather than fabricated zero metrics.",
+    "Retry recovers from error using the real API.",
+    "Browser-only synthetic fixtures: both charts render in light/dark without JavaScript errors.",
+    "Reduced-motion preference suppresses entry animations."
+  ],
+  "errors": []
+}

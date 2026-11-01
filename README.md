@@ -4,6 +4,12 @@ A portfolio-oriented prototype of a corporate knowledge portal combining a **.NE
 
 > **Status: local development prototype, not production-ready.** This public repository has a reduced, generalized scope. It is not a complete production deployment, and its optional advanced RAG integrations require additional setup.
 
+## Interface
+
+Interface em português, com tema escuro por padrão e opção de tema claro.
+
+![Tela de acesso do IA-Portal em modo escuro](screns/login.png)
+
 ## What works in local mode
 
 - Automatic creation of a local SQLite database on first run.

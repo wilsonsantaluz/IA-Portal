@@ -8,7 +8,7 @@ const AxeBuilder = require(process.env.IA_AXE_MODULE || '@axe-core/playwright').
 const baseURL = process.env.IA_UI_BASE_URL || 'http://127.0.0.1:19080';
 if (!process.env.IA_UI_CREDENTIALS) throw new Error('IA_UI_CREDENTIALS must point to a temporary synthetic credentials JSON file.');
 const credentials = JSON.parse(fs.readFileSync(process.env.IA_UI_CREDENTIALS, 'utf8'));
-const screenshotDirectory = path.resolve(__dirname, '../../docs/design/screenshots');
+const screenshotDirectory = process.env.IA_UI_SCREENSHOTS || path.resolve(__dirname, '../../docs/design/screenshots');
 fs.mkdirSync(screenshotDirectory, { recursive: true });
 
 (async () => {
@@ -35,17 +35,19 @@ fs.mkdirSync(screenshotDirectory, { recursive: true });
   try {
     await page.goto(`${baseURL}/chat`);
     await page.waitForURL('**/login');
+    await theme('dark');
+    await page.getByRole('button', { name: 'Ativar tema claro', exact: true }).click();
     await theme('light');
-    await page.getByLabel('Email', { exact: true }).fill(credentials.email);
-    await page.getByLabel('Senha', { exact: true }).fill('wrong-synthetic-password');
+    await page.getByRole('textbox', { name: /^Email/ }).fill(credentials.email);
+    await page.getByLabel(/^Senha/).fill('wrong-synthetic-password');
     // The existing 401 interceptor reloads login; Phase A preserves that behavior.
     await Promise.all([
       page.waitForEvent('domcontentloaded'),
       page.waitForResponse(response => response.url().endsWith('/api/auth/login') && response.status() === 401),
       page.getByRole('button', { name: 'Entrar', exact: true }).click(),
     ]);
-    await page.getByLabel('Email', { exact: true }).fill(credentials.email);
-    await page.getByLabel('Senha', { exact: true }).fill(credentials.password);
+    await page.getByRole('textbox', { name: /^Email/ }).fill(credentials.email);
+    await page.getByLabel(/^Senha/).fill(credentials.password);
     await page.getByRole('button', { name: 'Entrar', exact: true }).click();
     await page.waitForURL('**/chat');
     await page.getByRole('heading', { name: 'Chat IA', exact: true }).waitFor();
@@ -57,7 +59,7 @@ fs.mkdirSync(screenshotDirectory, { recursive: true });
     await page.waitForTimeout(300);
     await screenshot('phase-a-light-desktop.png');
     await shellAccessibility();
-    checks.push('Default light theme, desktop navigation and WCAG A/AA shell checks.');
+    checks.push('Default dark theme, manual light selection, desktop navigation and WCAG A/AA shell checks.');
 
     await page.getByRole('button', { name: 'Ativar tema escuro', exact: true }).click();
     await theme('dark');

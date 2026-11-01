@@ -42,8 +42,8 @@ export default function MessageItem({
   const iaText =
     message.from === "ia"
       ? message.finished
-        ? message.finalText ?? ""
-        : message.streamText ?? ""
+        ? (message.finalText ?? "")
+        : (message.streamText ?? "")
       : "";
 
   // =========================
@@ -54,7 +54,9 @@ export default function MessageItem({
       <Box display="flex" justifyContent="flex-end">
         <Box maxWidth="80%" className="user-question-card">
           <Box className="user-question-header">
-            <HelpOutlineIcon sx={{ fontSize: 34, color: "#c2cf00" }} />
+            <HelpOutlineIcon
+              sx={{ fontSize: 20, color: "primary.main", flexShrink: 0 }}
+            />
             <span className="user-question-label">{message.finalText}</span>
           </Box>
         </Box>
@@ -90,22 +92,22 @@ export default function MessageItem({
         )}
 
         {!message.finished && (
-          <Typography fontSize={12} color={theme.palette.text.secondary} fontStyle="italic">
+          <Typography
+            fontSize={12}
+            color={theme.palette.text.secondary}
+            fontStyle="italic"
+          >
             Respondendo…
           </Typography>
         )}
 
         <Box
           sx={{
-            border: message.finished ? "1px solid ${theme.palette.divider}": "none",
+            border: `1px solid ${theme.palette.divider}`,
             borderRadius: 2,
             backgroundColor: theme.palette.background.paper,
-            padding: "8px 10px",
-            borderLeft: message.finished ? "3px solid #c2cf00" : undefined,
-            boxShadow:
-            theme.palette.mode === "dark"
-              ? "0 10px 28px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.04)"
-              : "0 14px 36px rgba(0,0,0,.25)",
+            padding: { xs: "12px 16px", md: "18px 24px" },
+            boxShadow: "var(--portal-shadow)",
           }}
         >
           {message.finished && (
@@ -117,6 +119,9 @@ export default function MessageItem({
               onClick={() => onToggleExpand(message.id)}
             >
               <IconButton
+                aria-label={
+                  isExpanded ? "Recolher resposta" : "Expandir resposta"
+                }
                 size="small"
                 sx={{
                   transition: "transform 180ms ease",
@@ -130,7 +135,7 @@ export default function MessageItem({
 
           {message.finished && (
             <Collapse in={!isExpanded} timeout="auto" unmountOnExit>
-              <Typography fontSize={13} color="#475569" mt={1}>
+              <Typography fontSize={13} color="text.secondary" mt={1}>
                 {preview}
               </Typography>
             </Collapse>
@@ -150,6 +155,7 @@ export default function MessageItem({
                 <Box mt={0.5}>
                   {[...Array(10)].map((_, i) => (
                     <IconButton
+                      aria-label={`Avaliar resposta com nota ${i + 1}`}
                       key={i}
                       size="small"
                       onClick={() => onSendRating(i + 1, index)}

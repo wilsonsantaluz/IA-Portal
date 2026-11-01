@@ -1,4 +1,3 @@
-
 import { useChatLogic } from "../hooks/useChatLogic";
 import "./markdown.css";
 import { ChatInput, MessageList } from "../components/ChatPage";
@@ -6,7 +5,7 @@ import React, { useEffect, useMemo, useRef } from "react";
 import { Box, Snackbar, Alert } from "@mui/material";
 import "./markdown.css";
 import { useChatScroll } from "../hooks/useChatScroll";
-
+import ChatWelcome from "../components/ChatWelcome";
 
 export default function ChatPage() {
   const {
@@ -24,13 +23,10 @@ export default function ChatPage() {
     closeSnackbar,
   } = useChatLogic();
 
- 
-
   const containerRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
-  const { scrollHardToBottom, scrollCardSoft } =
-  useChatScroll(containerRef);
+  const { scrollHardToBottom, scrollCardSoft } = useChatScroll(containerRef);
   const autoScrollRef = useRef(true);
   const lastScrollAtRef = useRef(0);
   const rafRef = useRef<number | null>(null);
@@ -39,14 +35,13 @@ export default function ChatPage() {
     if (!autoScrollRef.current) return;
 
     const now = Date.now();
-    if (now - lastScrollAtRef.current < 480) return; 
+    if (now - lastScrollAtRef.current < 480) return;
     lastScrollAtRef.current = now;
     scrollHardToBottom();
 
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(() => {
       endRef.current?.scrollIntoView({ behavior, block: "end" });
-     
     });
   };
   const onScroll = (isAtBottom: boolean) => {
@@ -64,16 +59,13 @@ export default function ChatPage() {
     const last = messages[messages.length - 1];
     if (last?.from === "ia" && !last.finished) {
       scheduleScrollToBottom("smooth");
-    } 
-
+    }
   }, [messages.length]);
-
 
   useEffect(() => {
     if (!isStreaming) return;
     scheduleScrollToBottom("auto");
   }, [isStreaming, messages]);
-
 
   const prevLastFinishedRef = useRef<boolean | null>(null);
   useEffect(() => {
@@ -93,24 +85,43 @@ export default function ChatPage() {
   const onToggleExpand = (id: string) => {
     const m = messages.find((x) => x.id === id);
     const nextExpanded = !(m?.expanded !== false);
-    toggleExpanded(id); 
+    toggleExpanded(id);
     scrollCardSoft(id);
- 
-
   };
-  
 
   return (
-    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <MessageList
-        messages={messages}
-        statusMessage={statusMessage}
-        onToggleExpand={onToggleExpand}
-        onSendRating={sendRating}
-        onScroll={onScroll}
-        containerRef={containerRef}
-        endRef={endRef}
-      />
+    <Box
+      sx={{
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+      }}
+    >
+      {!messages.length ? (
+        <Box sx={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+          <ChatWelcome
+            onChoose={(prompt) => {
+              setInput(prompt);
+              requestAnimationFrame(() =>
+                document
+                  .querySelector<HTMLTextAreaElement>("[data-chat-input]")
+                  ?.focus(),
+              );
+            }}
+          />
+        </Box>
+      ) : (
+        <MessageList
+          messages={messages}
+          statusMessage={statusMessage}
+          onToggleExpand={onToggleExpand}
+          onSendRating={sendRating}
+          onScroll={onScroll}
+          containerRef={containerRef}
+          endRef={endRef}
+        />
+      )}
 
       <ChatInput
         input={input}
@@ -124,7 +135,11 @@ export default function ChatPage() {
         }}
       />
 
-      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={closeSnackbar}>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={closeSnackbar}
+      >
         <Alert severity={snackbar.type} variant="filled">
           {snackbar.text}
         </Alert>
