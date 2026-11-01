@@ -5,6 +5,7 @@ namespace AiGateway.Dtos
         public string Pergunta { get; set; } = default!;
 
         public string? SessionId { get; set; }
+        public Guid? RequestId { get; set; }
 
         public string? Model { get; set; }
 

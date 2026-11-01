@@ -1,0 +1,103 @@
+# Diário de implementação
+
+> Documento vivo. Atualizar após cada etapa; **não declarar testes não executados**.
+
+## Modelo de registro
+
+### YYYY-MM-DD — Etapa X — Título
+
+- **Branch/commit:**
+- **Objetivo:**
+- **Estado anterior / evidência:**
+- **Arquivos alterados:**
+- **Mudanças de API/banco:**
+- **Migração/backup/rollback:**
+- **Comandos executados:**
+- **Testes aprovados:**
+- **Testes falhos ou não executados:**
+- **Riscos e pendências:**
+- **Decisão/revisão do proprietário:**
+
+## Estado inicial conhecido
+
+- O proprietário confirmou execução local via Docker e resposta do DeepSeek.
+- A interface atual foi refatorada pelo Codex; menus administrativos aparecem.
+- Histórico por usuário, título automático, medição de tokens e múltiplos provedores **ainda exigem verificação técnica**.
+
+### 2026-11-01 — Etapa 0 — Auditoria e proposta para revisão
+
+- **Branch/base:** `feature/chat-sessions-providers`, criada a partir de `ec9d14e`. A implementação de usuários/grupos já está commitada em `f44b803` e incorporada à main pelo PR #4; nenhum commit duplicado dessa entrega foi criado.
+- **Objetivo:** confrontar a documentação fornecida pelo proprietário com controllers, entidades, repositórios, frontend, adapters e inicialização reais. Respeitar a parada de revisão explícita do roadmap.
+- **Estado anterior:** pacote técnico novo e atualização de AGENTS ainda não rastreados/commitados; código de usuários limpo. Preservados e incorporados ao registro técnico.
+- **Diagnóstico:** mensagens persistem em SQLite, mas há uma sessão por navegador/conta, sem CRUD/lista/títulos/uso. Existe vínculo JWT para novas sessões e filtro de leitura, porém faltam verificações em cada escrita e autorização antecipada de OCR/SSE. DeepSeek ativo; OpenAI/Ollama existem, mas não estão selecionados no chat. Credencial literal no Ollama e logging de payloads são bloqueios registrados, sem transcrição/teste do segredo.
+- **Arquivos alterados:** `AGENTS.md`, README raiz e índice em `docs/README.md`; auditoria e proposta em `docs/architecture/{AS_IS_AUDIT,DATA_MODEL,API_CONTRACTS}.md`; roadmap/diário; complemento de segurança; notas do design system e marcação da documentação visual antiga como histórico. Documentos conceituais de features e referências visuais fornecidos foram incluídos, sem alterar o frontend.
+- **Mudanças de API/banco:** nenhuma. Contratos, tabelas/campos, índices, registro de chamadas e runner SQL versionado são propostas, não implementação. `.env.example` permanece como está porque nenhuma variável foi introduzida neste incremento.
+- **Migração/backup/rollback:** somente plano. Não foi aberto/copiado/migrado/restaurado o SQLite diário. Nenhum container foi reconstruído ou recriado; testes usam dados sintéticos temporários.
+
+Comandos executados e resultados:
+
+| Comando | Resultado efetivo |
+| --- | --- |
+| `git status --short`, `git log -3 --oneline`, leitura dos manifests/fontes/docs | Auditoria realizada; último merge da etapa anterior confirmado |
+| `git switch -c feature/chat-sessions-providers` | Branch criada; sem alteração direta na main |
+| `dotnet build ai-gateway/AiGateway.csproj --no-restore -v quiet` | Passou, 0 erros e 14 avisos preexistentes |
+| `node front/node_modules/typescript/bin/tsc --noEmit -p front/tsconfig.json` | Passou |
+| `node node_modules/vite/bin/vite.js build` em `front/` | Passou; aviso preexistente de chunk maior que 500 kB |
+| `python scripts/smoke_local.py` | Passou: criação SQLite, bootstrap/login, KB, streaming/histórico, avaliações, rota OCR e persistência após reinício; LLM/OCR simulados |
+| `dotnet run --project tests/access/SeedSmoke` | Passou: inicialização idempotente preserva fixture de usuários/senhas/grupos/KB e não eleva não administradores |
+
+- **Não executado:** nova suíte de CRUD de conversas (não implementado); títulos/usage/providers; migração de esquema e restauração; testes reais de OpenAI/Ollama/DeepSeek; suíte de navegador, RAG/ONNX, Docker builds ou builds OCR/ML. Nenhuma chamada paga foi realizada. Builds demonstram compilação, não validação de integração externa.
+- **Fontes externas:** documentação oficial de usage DeepSeek, OpenAI e Ollama e `EnsureCreated`/EF Core, vinculada na auditoria; sem adoção de preços ou troca de modelo. Skill OpenAI Docs usada para a consulta de contrato OpenAI; nenhuma chave solicitada ou necessária para leitura de documentação.
+- **Riscos e pendências:** resolver segredo literal/logging antes de habilitar adapters alternativos; endurecer posse em OCR/SSE/repositório; revisão do plano de quarentena dos legados, exclusão lógica, backup e migração antes de implementação. Remover segredo do código não revoga seu valor nem o histórico; revogação exige ação do responsável no provedor.
+- **Decisão/revisão do proprietário:** pendente. `ROADMAP.md` etapa 0 manda **Parar para revisão**; `CODEX_START_HERE.md` determina primeira tarefa somente auditoria. Não iniciadas etapas 1–5, nem criadas entidades/APIs de fase posterior.
+
+### 2026-11-01 — Refinamento do modelo conceitual
+
+- **Branch:** `feature/chat-sessions-providers`.
+- **Entrada do proprietário:** diagrama Users → ChatSessions → ChatMessages/LlmUsage e LlmUsage → AI Providers, com orientação de adaptar às entidades existentes.
+- **Alteração:** `docs/architecture/DATA_MODEL.md` recebeu diagrama Mermaid, mapeamento de nomes e limites entre metadados da sessão, conteúdo das mensagens e consumo por chamada. Especificados vínculo opcional de mensagem, identidade estável de provedor, preservação de consumo após desabilitação e testes administrativos sem conversa fictícia.
+- **Implementação/API/banco:** nenhuma alteração; não foram criadas tabelas paralelas. A associação à configuração será adicionada na etapa correspondente, com migração dos identificadores previamente registrados.
+- **Validação:** revisão documental e `git diff --check`. Nenhum build ou teste funcional repetido para esta alteração exclusivamente documental.
+- **Revisão:** diagrama incorporado como orientação conceitual; não representa aprovação presumida das decisões de migração, exclusão ou contratos ainda em revisão.
+
+### 2026-11-01 — Etapa 1 — Conversas persistentes por usuário
+
+- **Branch:** `feature/chat-sessions-providers`.
+- **Aprovação:** o proprietário confirmou “esta aprovado, pode proseguir”, após revisão do diagnóstico e inclusão do diagrama Users → ChatSessions → ChatMessages/LlmUsage → AI Providers. O refinamento documental pendente foi preservado.
+- **Escopo:** sessões criadas no servidor, isolamento por JWT em cada operação, CRUD, histórico paginado, interação persistida com estados/idempotência e interface integrada ao design existente. Títulos automáticos, usage, seleção de providers e configurações continuam para as próximas etapas.
+- **Banco:** reutilizados `ChatSession`/`ChatMessage`; adicionados dono tipado, metadados, versão, exclusão lógica, request/fingerprint/status e lease de geração. Runner v1 com SQL embutido, checksum normalizado, validação de baseline/chaves e registro em `SchemaVersions`. Migração legada faz backup consistente em diretório privado antes do DDL; transação protege DDL/versão. Backup com conexão sem pooling. Sem inferência de dono para legados; nenhuma tabela nova de consumo ou provider neste incremento.
+- **API:** `/api/chatBot/sessions` e subrotas de metadados/mensagens/renomeação/exclusão. SSE e OCR existentes foram evoluídos; exigem sessão previamente criada. IDs ausentes de interação são gerados por compatibilidade, mas replay exige requestId explícito. História alheia/inexistente/excluída retorna 404, inclusive no adaptador de history antigo. Administração não permite ler sessão alheia.
+- **Persistência:** reserva/lease curta antes de rede; pergunta preservada em falha; resposta/estado/atividade na mesma transação. Reenvio concluído com mesmo ID e fingerprint não chama LLM novamente; conflitos retornam 409. Cursor de mensagens usa âncora validada na sessão e ordenação por horário + ID. Cancelamento de stream DeepSeek foi corrigido sem trocar o adapter.
+- **Frontend:** lista agrupada por períodos, busca, seleção, nova conversa, diálogos de renomeação/exclusão, paginação e recuperação entre navegadores. Última seleção por conta no localStorage, fonte dos dados no servidor. IDs reais no histórico. Avisos de interação incompleta e preservação da entrada quando envio não é aceito. Painel de conversas com drawer em telas menores; temas preservados.
+- **Arquivos principais:** `PortalDbContext.cs`, `ChatSchemaMigrator.cs`, `Migrations/001_ChatSessions.sql`, `DatabaseInitializer.cs`, `IChatRepository.cs`/`ChatRepository.cs`, DTOs de chat/sessões, controllers ChatBot/SmartAsk/OCR/SQL, helper de fingerprint, tratamento de erro no Program e leitura cancelável no DeepSeek; `useChatLogic.ts`, `ConversationPanel.tsx`, `ChatPage.tsx`, estado visual em `MessageItem.tsx`; `.env.example`, Compose, ignore de caches Python, testes e documentação.
+- **Configuração nova:** `SQLITE_BACKUP_DIRECTORY`, padrão Compose `/app/data/backups` em volume persistido. Nenhuma chave nova introduzida nem `.env` real lido/exibido. O texto extraído para análise/persistência é limitado a 50.000 caracteres; análise de documentos maiores é parcial.
+
+Validações executadas neste incremento:
+
+| Comando | Resultado |
+| --- | --- |
+| `dotnet build ai-gateway/AiGateway.csproj --no-restore -v quiet` | Passou, 14 avisos preexistentes e 0 erros |
+| `node front/node_modules/typescript/bin/tsc --noEmit -p front/tsconfig.json` | Passou |
+| `docker build -t ia-portal-sessions-api C:/source/IA-Portal/ai-gateway` | Passou; publish Release |
+| `docker build -t ia-portal-sessions-front C:/source/IA-Portal/front` | Passou; typecheck e Vite |
+| `dotnet run --project tests/ChatSessions --no-restore` | Passou: stream bloqueado cancelável sem rede, migração/restauração/rollback, quarentena, checksum, isolamento do repositório, paginação com horários iguais, replay/conflito, lease expirada/cancelamento, versão de título e exclusão lógica |
+| `dotnet run --project tests/access/SeedSmoke --no-restore` | Passou: usuários/senhas/grupos/KB preservados e seed idempotente |
+| `python scripts/smoke_local.py` | Passou: CRUD/search, HTTP A/B inclusive OCR/SQL antes de chamadas externas, replay sem nova chamada, erro sanitizado, chat/OCR simulado e persistência após restart |
+| `dotnet run --project tests/RagSmoke -- C:/source/IA-Portal` com Qdrant descartável | Passou: ONNX, busca/indexação Qdrant, reranking reais e stream com LLM simulado; segunda conta recebe 404 |
+| `node tests/ChatSessions/ui.cjs` em ambiente Docker descartável | Passou nas imagens finais: conversas independentes, recarga, navegador novo, 52 mensagens paginadas, entrada preservada em envio recusado, exclusão confirmada, axe e 320/390 px nos dois temas |
+
+- **Evidências:** capturas e resumo em `docs/design/screenshots/sessions/`; roteiro de reprodução em `tests/ChatSessions/README.md`. Contas e documentos sintéticos apenas. O mock de erro de envio do navegador é uma fixture HTTP 409; os demais fluxos administrativos de sessão usam API real e o LLM é um double HTTP local.
+- **Problemas encontrados/corrigidos:** seletores do teste de UI agiam antes de a lista nova chegar; passaram a esperar o item correto. Rótulos com codificação incorreta foram corrigidos. Um teste adicional detectou que sondar EndOfStream fazia leitura síncrona; o adapter ativo agora usa ReadLineAsync com cancelamento, sem essa sondagem.
+- **Limites:** sem testes de carga/múltiplas réplicas; implantação da migração exige um gateway e ausência de outro escritor durante startup. Não foram feitos OCR real, chamadas a provedores externos, títulos automáticos, preços/usage ou testes de OpenAI/Ollama. Seus bloqueios de segredo/log permanecem antes da habilitação futura. Builds conservam avisos preexistentes C#/chunk Vite acima de 500 kB. Não houve refatoração do Trino nem mudança de armazenamento.
+- **Revisão seguinte:** etapa 2 (títulos) somente após revisão desta entrega, conforme roadmap incremental. Ela deverá registrar o consumo auxiliar em tabela própria, sem misturá-lo com sessões/mensagens.
+- **Aplicação local:** aguardando conclusão da conferência final das imagens; será registrado abaixo o resultado efetivo, sem presumir implantação pelo build.
+
+
+Resultado da aplicação local da etapa 1:
+
+- As imagens finais de gateway/frontend foram aplicadas com `docker compose up -d --no-deps --no-build ai-gateway portal-front`, após `docker compose config --quiet` passar. Tags locais `ia-portal-ai-gateway:before-chat-sessions` e `ia-portal-portal-front:before-chat-sessions` preservam as imagens anteriores para procedimento de rollback com backup.
+- Inicialização concluída e Swagger respondeu com as rotas de sessão. Um backup `pre-chat-v1-*.sqlite3` foi confirmado no volume privado, sem abrir ou imprimir seu conteúdo. A migração terminou antes de disponibilizar a API. Não foi feita restauração sobre o banco diário.
+- Frontend em http://127.0.0.1:9080/login respondeu HTTP 200; APIs de sessões e mensagens responderam HTTP 401 sem autenticação pelo Nginx. Validação autenticada/funcional usou apenas a instalação descartável; não foram lidas credenciais, conversas ou documentos diários para esse teste.
+- Qdrant, OCR e ML mantiveram IDs e horários de início. Qdrant retornou `all shards are ready`. Nenhum volume foi removido, nem histórico legado atribuído automaticamente. Nenhuma chamada real ao provedor foi feita na instalação diária.
+- O último smoke HTTP também verificou tentativa de forjar dono/ID no POST de sessão e rejeição anterior a qualquer chamada dos doubles LLM/OCR; Trino foi explicitamente apontado a loopback indisponível para evitar acessos acidentais durante testes.
+- `git diff --check` passou; links relativos de documentos foram conferidos antes do commit. Sem merge ou push automático. A etapa 2 continua não iniciada, aguardando revisão deste incremento.

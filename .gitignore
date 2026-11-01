@@ -103,3 +103,5 @@ node_modules/
 *.db-wal
 *.sqlite
 *.sqlite3
+__pycache__/
+*.pyc

@@ -11,7 +11,7 @@ IA-Portal is a standalone AI knowledge and document portal, adapted from an earl
 - Do not publish secrets, `.env` files, real customer information, database files, tokens, or generated personal data.
 - Prefer real, working integrations and honest empty states over fake dashboard metrics or mock business records.
 
-## Primary current goal: visual redesign
+## Identidade visual aprovada e manutenção do frontend
 
 The user approved a **clean enterprise-light design with optional dark mode** for the IA-Portal. The new identity should be consistent across the existing application, not a disconnected demo or a full rewrite.
 
@@ -43,7 +43,7 @@ These are **implementation starting points**, not colors sampled from the concep
 
 ### Layout and behavior
 
-- **Light mode is the default**; offer a clear light/dark toggle in the top bar.
+- **Dark mode is the default**, as subsequently requested by the owner; preserve saved light/dark preferences and offer a clear toggle in the top bar.
 - Persist the user's theme preference locally; apply it without an obvious flash of the wrong theme.
 - Use a consistent responsive application shell: collapsible left navigation, compact top bar, clear page title, sensible content width and spacing.
 - Retain working routes and features: chat, dashboard, knowledge base, authentication and any existing administration screens.
@@ -93,3 +93,17 @@ Repository areas include `front/`, `ai-gateway/`, `ocr-service/`, `ml-service/`,
 - After edits: summarize changed files, commands executed, pass/fail results, remaining risks and instructions to preview locally.
 - If a design reference image or logo SVG is unavailable, say so and request it. **Do not substitute a different final identity without approval.**
 - If something is ambiguous, favor a minimal reversible implementation and ask before proceeding.
+
+
+## Current delivery priority — chat platform (2026-11)
+
+The current priority is **persistent, user-isolated conversations; automatic titles; token accounting; and provider/model configuration**. Read `docs/README.md` and `docs/delivery/ROADMAP.md` before implementation. The existing UI redesign must be preserved.
+
+- Inspect the actual repository before assuming tables, services, endpoints, claims, or provider adapters exist. Document findings in `docs/architecture/AS_IS_AUDIT.md`.
+- Implement in increments: (1) session ownership and history, (2) titles, (3) usage, (4) provider abstraction, (5) settings and analytics.
+- Every conversation read/write must be scoped by validated authenticated identity; never trust a client-supplied user ID.
+- Never expose API keys through the browser or persist plaintext secrets in SQLite. Environment-backed secrets are the safe initial path.
+- Never erase or recreate the existing SQLite database to evolve its schema. Plan a tested migration and backup.
+- Do not assume a successful frontend build proves runtime, persistence or security correctness.
+- Do not commit directly to `main`, do not merge automatically, and do not use former employer data.
+- Record actual test results and limitations in `docs/delivery/IMPLEMENTATION_LOG.md`.

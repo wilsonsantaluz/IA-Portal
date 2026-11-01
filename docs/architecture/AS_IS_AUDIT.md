@@ -1,0 +1,97 @@
+﻿# Auditoria do estado atual — Fase 2
+
+Data: 01/11/2026. Base inspecionada: `ec9d14e` (`main`), com a entrega de usuários em `f44b803`. Branch de trabalho: `feature/chat-sessions-providers`.
+
+**Registro histórico da etapa 0:** auditoria concluída, proposta posteriormente aprovada pelo proprietário. Nenhuma entidade, API, adapter ou banco foi alterado durante a auditoria. A implementação posterior da etapa 1 está descrita em [CHAT_SESSIONS.md](../features/CHAT_SESSIONS.md). Os resultados de execução estão em [IMPLEMENTATION_LOG.md](../delivery/IMPLEMENTATION_LOG.md); evidências da entrega anterior não são apresentadas como testes novos.
+
+## Inventário confirmado
+
+| Área | Evidência no repositório | Resultado |
+| --- | --- | --- |
+| JWT e políticas | `ai-gateway/Program.cs`, `Security/PortalAccess.cs`, `Controllers/Auth/AuthController.cs` | Valida assinatura, issuer, audience e validade. Identidade vem de `ClaimTypes.NameIdentifier`; conta ativa e versão da senha são verificadas. Papéis/permissões são relidos no SQLite por requisição. |
+| Administração | Controllers de `Users`, `Roles`, `Permissions` e `RolePermissions` | Exigem `access.manage`; DTOs de usuários não retornam hash. Login é anônimo; `/api/auth/me` exige autenticação. |
+| Chat usado pela interface | `Controllers/Chat/SmartAskController.cs`, `Dtos/AskSmartRequest.cs` | `POST /api/ia/ask/stream`, política `chat.access`, recebe pergunta e GUID. Provedor injetado globalmente; modelo passado é fixo. |
+| Outros caminhos | `Controllers/Chat/ChatBotController.cs`, `SqlController.cs`, `ChatRagController.cs`, `Controllers/Ocr/OcrController.cs` | Chat sem streaming, SQL, avaliação e OCR continuam existentes. Não devem virar caminhos alternativos sem verificação de propriedade. |
+| Contexto | `Infrastructure/Qdrant/Services/Chats/LocalChatContextService.cs` e `VectorChatContextService.cs` | Recuperam até 20 mensagens; limitam conteúdo por mensagem a 4.000 caracteres. RAG vetorial não usa Trino. Prompt concatena papéis como texto, em vez de enviar mensagens estruturadas ao adapter. |
+| Persistência | `Infrastructure/EF/Context/PortalDbContext.cs` | SQLite; tabelas físicas `ChatSession` e `ChatMessage`, mais usuários/RBAC/KB/ratings. Sessão já possui GUID, `UserId` textual opcional, `Title` opcional e criação. Mensagem já possui ID longo, sessão, papel, conteúdo e horário. |
+| Repositório | `Application/Interfaces/IChatRepository.cs`, `Infrastructure/EF/Repository/ChatRepository.cs` | Sessões novas recebem o ID do JWT, ignorando o `userId` recebido. Leitura de histórico exige dono correspondente. `AddMessageAsync` não revalida propriedade. |
+| Esquema | `Infrastructure/EF/DatabaseInitializer.cs` | `EnsureCreatedAsync` e seed idempotente. Sem migrações EF, histórico versionado de SQL ou procedimento de backup/restauração implementado. |
+| Sessão no frontend | `front/src/hooks/useChatLogic.ts` | GUID gerado no navegador, salvo em `portal_session_id_{userId}`; uma sessão por conta/navegador. Recarregar depende dessa chave. |
+| Histórico visível | `front/src/pages/ChatPage.tsx`, `components/ChatPage/*` | Consome `GET /api/chatBot/history/{sessionId}`. Backend devolve até 100 mensagens, sem ID, cursor, status ou metadados do modelo. Interface usa GUID novo quando falta ID. |
+| Sidebar antiga | `front/src/components/SidebarHistory.tsx` | Não está integrada ao shell; consulta `/api/chatBot/sessions`, rota que não existe. Não representa funcionalidade pronta e precisa usar tokens visuais atuais. |
+| Upload | `useChatLogic.ts`, `Controllers/Ocr/OcrController.cs` | PDF/imagem envia `sessionId` multipart; extração e LLM precedem a rejeição de sessão alheia. Documento/análise viram duas mensagens. |
+| Configuração de IA | `Program.cs`, `.env.example`, `docker-compose.yml` | `IOllamaService` resolve para DeepSeek. Compose passa a chave DeepSeek, mas não passa `OPENAI_API_KEY`, endpoint/modelos OpenAI/Ollama ou mesmo todas as opções suportadas pelo adapter DeepSeek. Não foi lido o `.env` real. |
+| Métricas atuais | `Controllers/KbAnalytics/ChatKbAnalyticsController.cs` | Métricas de avaliações, não tokens nem custos. `by-user` e busca de avaliações são globais sob `dashboard.view`, não `access.manage`; não reutilizar essa política para o consumo administrativo. |
+| Testes existentes | `scripts/smoke_local.py`, `tests/access/*`, `tests/RagSmoke/*`, `tests/ui/*` | Cobrem login, permissões, persistência básica, OCR simulado, isolamento de leitura do histórico e RAG com modelos reais. Não há cobertura pronta de CRUD de sessões, migração de esquema, títulos ou usage. |
+
+## Fluxo atual
+
+```mermaid
+flowchart LR
+  UI[useChatLogic: GUID local por conta] -->|JWT + pergunta + sessionId| C[SmartAskController: SSE]
+  C --> R[ChatRepository: obter/criar sessão do JWT]
+  C --> K[IAskSmartService: contexto local ou vetorial]
+  K --> R
+  R --> DB[(SQLite: ChatSession / ChatMessage)]
+  C --> L[IOllamaService: DeepSeekService]
+  L --> DS[DeepSeek remoto]
+  DS -->|somente fragmentos de texto| C
+  C -->|duas gravações separadas após resposta| R
+  C -->|eventos data/status/error/done| UI
+```
+
+## Provedores existentes
+
+| Adapter | Situação real | Incompatibilidades e riscos |
+| --- | --- | --- |
+| `Infrastructure/Qdrant/Services/LLMs/DeepSeekService.cs` | Ativo via `IOllamaService`, endpoint de ambiente ou padrão remoto, chave no backend | Streaming sobrescreve o modelo com `deepseek-chat`; chamada simples sobrescreve com padrão configurado. Retorna só texto e descarta usage. Parser indexa `choices[0]` sem validar array vazio; erros podem incluir resposta bruta do provedor. |
+| `.../OpenAiService.cs` | Implementa a mesma interface, mas não está selecionado na injeção de dependência | Modelo e endpoint fixos. Chamada simples lê/injeta prompt de arquivo; streaming tem semântica diferente. Grava payload completo em `logs/openai-request-*.json`. Descarta usage e não trata adequadamente chunk com `choices=[]`. Não foi realizada chamada real. |
+| `.../OllamaService.cs` | Implementa a mesma interface; não está selecionado para chat. Há registro separado de HttpClient para a classe concreta | Usa endpoint cloud, modelo cloud fixo e **credencial literal no código**. Não é a integração local configurável pedida. Loga resposta bruta, mistura `thinking` com texto final e encerra em `done` antes de mapear estatísticas. Não foi testada validade da credencial nem conectividade. |
+| `Infrastructure/Qdrant/Services/OllamaPdfService.cs` | Serviço auxiliar registrado; nenhuma chamada encontrada no código dos controllers | Não é o adapter principal. Usa loopback fixo e multipart com contrato próprio; não substituir o OCR funcional por esse caminho sem validação. |
+
+**Bloqueio de segredo:** a credencial literal do adapter Ollama deve ser tratada como exposta. O responsável deve revogá-la/rotacioná-la no provedor; remover o literal do código não revoga a credencial nem limpa commits anteriores. Nenhum valor foi transcrito neste documento ou testado. Remover esse uso e os logs de payload antes de habilitar os adapters alternativos. Esta auditoria não modifica o código, conforme a etapa 0 solicitada.
+
+## O que as APIs podem informar sobre consumo
+
+A interface `IOllamaService` retorna `Task<string>` e `IAsyncEnumerable<string>`; não transporta usage, status, modelo efetivo ou identificador de requisição. Portanto **nenhum consumo real está sendo persistido atualmente**.
+
+- DeepSeek documenta entrada, saída, total e cache hit/miss; cache integra a entrada, não deve ser somado novamente. O adapter precisa ler usage independentemente do conteúdo de `choices`. [Referência oficial](https://api-docs.deepseek.com/api/create-chat-completion/).
+- OpenAI Chat Completions permite solicitar usage no streaming com `stream_options.include_usage`; o chunk de uso pode ter `choices` vazio. Stream interrompido pode não entregar essa informação. [Referência oficial](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create).
+- Ollama `/api/generate` informa `prompt_eval_count`, `eval_count`, cache quando disponível e durações em nanossegundos. Mapear a resposta final antes de encerrar o stream. Não presumir paridade entre versões/servidores. [Referência oficial](https://docs.ollama.com/api/generate).
+
+As fontes foram consultadas para planejar o contrato; não comprovam a integração real deste repositório. Os modelos atuais não serão trocados com base em exemplos dessas páginas. Não foi consultada nem inventada tabela de preços.
+
+## Lacunas priorizadas
+
+| Prioridade | Evidência | Ação proposta |
+| --- | --- | --- |
+| Crítica | Credencial embutida no adapter Ollama inativo | Remover dependência do literal, documentar revogação e impedir habilitação sem configuração segura. Nunca copiar o valor para `.env.example`. |
+| Alta | `AddMessageAsync` grava sem filtro de dono; consulta de mensagens filtra dono em etapa separada | Escopo por proprietário dentro de cada query de leitura/escrita; transação e validação no repositório, inclusive nos caminhos legados e OCR. |
+| Alta | SSE inicia HTTP 200 antes de validar propriedade; OCR pode chamar serviços antes de rejeitar sessão alheia | Autorizar sessão antes de abrir stream, extrair documentos, recuperar contexto ou chamar qualquer LLM. Retornar 404 genérico para sessão inexistente/alheia. |
+| Alta | Duas chamadas independentes a SaveChanges após stream; falhas/cancelamento não têm registro durável | Persistir pergunta antes da chamada, registrar estado e resposta atomicamente, com ID de requisição e prevenção de duplicação. Não manter transação SQLite aberta durante rede. |
+| Alta | `EnsureCreated` não evolui banco já existente | Introduzir baseline e alterações SQL versionadas, transacionais e testadas sobre esquema antigo, com backup consistente/restauração verificados. |
+| Alta | Payloads completos/raw em adapters e erros encaminhados ao SSE | Remover persistência de prompts em logs e sanitizar erro público, sem perder diagnóstico por request ID. |
+| Média | Sessão única local; título não preenchido; sem última atividade/paginação/índices de consulta | Reutilizar `ChatSession`, adicionar metadados/índices e APIs de CRUD/histórico. |
+| Média | Ordenação apenas por horário e `Include(Messages)` ao obter sessão | Ordenar por horário e ID, remover carregamento integral e usar cursor estável. |
+| Média | Modelo/provedor global e usage perdido | Evoluir a interface existente para resultados/eventos tipados; normalizar usage por adapter antes de introduzir seletor. |
+| Média | Métricas globais atuais são de avaliação | Criar políticas explícitas de consumo próprio/global, sem dar acesso global a quem apenas abre o dashboard. |
+
+## Decisões propostas para revisão
+
+1. Reutilizar tabelas, repositório, controllers e adapters existentes; `ChatSession` será a conversa. Não criar outra tabela `Conversation` com o mesmo propósito.
+2. Manter rotas de envio/SSE e OCR, acrescentando contratos de sessão em `/api/chatBot/sessions`. O componente antigo apontava para essa rota, mas ela ainda não existe. Contratos completos em [API_CONTRACTS.md](API_CONTRACTS.md).
+3. Acrescentar dono tipado verificável sem atribuir automaticamente sessões legadas por coincidência de GUID/ID. Preservar conteúdo antigo, mas mantê-lo fora das APIs novas até associação explicitamente revisada.
+4. Exclusão inicialmente lógica, com confirmação, preservando integridade de telemetria e dados locais; política de retenção/eliminação definitiva será documentada antes de exportações.
+5. Adotar migrações SQL ordenadas com tabela de versões e checksum, baseline real validado e sem `EnsureDeleted`. Não alternar simplesmente `EnsureCreated` por `Migrate` no banco em uso. A incompatibilidade de inicializadores é documentada pelo [EF Core](https://learn.microsoft.com/en-us/ef/core/managing-schemas/ensure-created).
+6. Na etapa de títulos, acrescentar contrato mínimo de resultado detalhado e registro de chamada para separar o consumo auxiliar desde o início. A etapa de métricas amplia streaming/agregações; a seleção de múltiplos provedores permanece posterior. Isso evita gerar títulos pagos sem registro nem criar uma arquitetura paralela.
+7. Manter chaves no ambiente, preços ausentes como não configurados e nunca usar fallback silencioso de provedor.
+
+## Próximo incremento e critérios de aceite
+
+**Etapa 1:** migração aditiva, CRUD de sessões do usuário, mensagens paginadas, persistência robusta, isolamento nas operações atuais e nova conversa/lista básica no chat. Sem títulos por IA, configuração de provedores ou indicadores de consumo neste incremento.
+
+Arquivos previstos: `PortalDbContext.cs`, inicializador e scripts/runner de migração; `IChatRepository.cs`/`ChatRepository.cs`; controllers ChatBot/SmartAsk/OCR; DTOs de sessão; hook do chat e lista reutilizada dentro do layout existente; testes e documentos técnicos.
+
+Testes bloqueadores: banco vazio/legado, backup restaurável, segunda execução sem efeitos adicionais, A/B em listar/ler/enviar/renomear/excluir/OCR, rejeição antes de serviços externos, persistência após restart, IDs/cursores estáveis e idempotência. Usar serviços de teste; nenhum crédito externo.
+
+**Parada para revisão:** exigida em `docs/delivery/ROADMAP.md` (etapa 0) e `CODEX_START_HERE.md`. O modelo de dados, contratos e comportamento dos legados devem ser revisados antes de criar entidades, rotas ou alterar o esquema.

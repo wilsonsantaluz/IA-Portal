@@ -4,6 +4,8 @@ A portfolio-oriented prototype of a corporate knowledge portal combining a **.NE
 
 > **Status: local development prototype, not production-ready.** This public repository has a reduced, generalized scope. It is not a complete production deployment, and its optional advanced RAG integrations require additional setup.
 
+Technical documentation and the incremental chat-platform plan are indexed in [docs/README.md](docs/README.md). The [current audit](docs/architecture/AS_IS_AUDIT.md) distinguishes implemented behavior from proposed conversation, usage, and provider features.
+
 ## Interface
 
 Interface em português, com tema escuro por padrão e opção de tema claro.
@@ -11,6 +13,8 @@ Interface em português, com tema escuro por padrão e opção de tema claro.
 ![Tela de acesso do IA-Portal em modo escuro](screns/login.png)
 
 ## What works in local mode
+
+The chat now supports separate conversations per authenticated user: create, search, rename, remove from history, reopen, and progressively load earlier messages. Conversations are recovered from the server across browsers. Existing sessions with unverified ownership are preserved but not automatically reassigned. See [conversation behavior and SQLite migration](docs/features/CHAT_SESSIONS.md). Automatic titles, token accounting, and provider selection remain subsequent increments.
 
 - Automatic creation of a local SQLite database on first run.
 - Initial administrator bootstrap through environment variables; no hardcoded default password.

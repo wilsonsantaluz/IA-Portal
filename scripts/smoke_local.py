@@ -20,12 +20,14 @@ from contextlib import closing
 
 ROOT = Path(__file__).resolve().parents[1]
 PROMPTS = []
+SERVICE_CALLS = []
 
 class FakeServices(BaseHTTPRequestHandler):
     def log_message(self, *_):
         pass
 
     def do_POST(self):
+        SERVICE_CALLS.append(self.path)
         if self.headers.get("Transfer-Encoding", "").lower() == "chunked":
             chunks = []
             while True:
@@ -46,6 +48,9 @@ class FakeServices(BaseHTTPRequestHandler):
         elif self.path == "/chat/completions":
             data = json.loads(body)
             PROMPTS.append(data["messages"][-1]["content"])
+            if "__provider_failure__" in PROMPTS[-1]:
+                self.send_error(503, "synthetic-provider-detail-must-not-leak")
+                return
             if data.get("stream"):
                 chunks = ["Resposta ", "de teste."]
                 payload = b"".join(
@@ -91,14 +96,15 @@ def main():
             "DEEPSEEK_BASE_URL": f"http://127.0.0.1:{services.server_port}",
             "DEEPSEEK_API_KEY": "test-only",
             "OCR_SERVICE_URL": f"http://127.0.0.1:{services.server_port}",
+            "TRINO_URL": "http://127.0.0.1:1",
         })
         token = ""
-        def request(path, data=None, raw=False, content_type="application/json"):
+        def request(path, data=None, raw=False, content_type="application/json", method=None):
             body = data if isinstance(data, bytes) else (json.dumps(data).encode() if data is not None else None)
             headers = {"Content-Type": content_type}
             if token:
                 headers["Authorization"] = f"Bearer {token}"
-            req = urllib.request.Request(base + path, data=body, headers=headers)
+            req = urllib.request.Request(base + path, data=body, headers=headers, method=method)
             with urllib.request.urlopen(req, timeout=20) as response:
                 text = response.read().decode()
                 return text if raw else (json.loads(text) if text else None)
@@ -136,7 +142,7 @@ def main():
                     "content": "Protocolo TEST-MARKER para conciliacao de recebiveis.", "isActive": True
                 })
                 assert request(f"/api/kb/{item['id']}")["content"].startswith("Protocolo")
-                session = str(uuid.uuid4())
+                session = request("/api/chatBot/sessions", {})["id"]
                 stream = request("/api/ia/ask/stream", {"pergunta": "Explique recebiveis", "sessionId": session}, raw=True)
                 assert "event: error" not in stream, stream
                 assert "[*ENDSTREAN*]" in stream
@@ -169,6 +175,62 @@ def main():
                 with closing(sqlite3.connect(dbfile)) as db:
                     assert db.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
                     assert db.execute("SELECT COUNT(*) FROM Users").fetchone()[0] == 1
+                # Session operations use real JWT ownership before touching any external service.
+                def rejected(path, data=None, method=None, expected=404, content_type="application/json"):
+                    calls = len(SERVICE_CALLS)
+                    try:
+                        request(path, data, method=method, content_type=content_type)
+                        raise AssertionError("Forbidden request accepted: " + path)
+                    except urllib.error.HTTPError as err:
+                        assert err.code == expected, (path, err.code)
+                    assert len(SERVICE_CALLS) == calls, "Forbidden request reached LLM/OCR"
+                admin_token = token
+                group = request("/api/roles", {"name": "Chat test", "permissions": ["chat.access"]})
+                request("/api/users", {"userName": "Synthetic B", "userEmail": "b@example.test", "password": admin_secret, "groupIds": [group["id"]]})
+                token = request("/api/auth/login", {"email": "b@example.test", "password": admin_secret})["token"]
+                assert request("/api/chatBot/sessions")["items"] == []
+                rejected(f"/api/chatBot/sessions/{session}")
+                rejected(f"/api/chatBot/sessions/{session}/messages")
+                rejected(f"/api/chatBot/history/{session}")
+                rejected(f"/api/chatBot/sessions/{session}", {"title": "Intrusão", "version": 0}, method="PATCH")
+                rejected(f"/api/chatBot/sessions/{session}", method="DELETE")
+                rejected("/api/ia/ask/stream", {"pergunta": "Intrusão", "sessionId": session})
+                rejected("/api/chatBot/ask", {"question": "Intrusão", "sessionId": session})
+                rejected("/api/sql/ask", {"question": "Intrusão", "sessionId": session})
+                rejected("/api/sql/ask-rag", {"question": "Intrusão", "sessionId": session})
+                rejected("/api/ocr/analisar", body, content_type=f"multipart/form-data; boundary={boundary}")
+                own_b = request("/api/chatBot/sessions", {"ownerUserId": 1, "userId": "1", "id": session})
+                assert own_b["id"] != session
+                token = admin_token
+                rejected(f"/api/chatBot/sessions/{own_b['id']}")
+                rejected("/api/ia/ask/stream", {"pergunta": "Desconhecida", "sessionId": str(uuid.uuid4())})
+                request_id = str(uuid.uuid4())
+                payload = {"pergunta": "Envio idempotente", "sessionId": session, "requestId": request_id}
+                request("/api/ia/ask/stream", payload, raw=True)
+                calls = len(PROMPTS)
+                replay = request("/api/ia/ask/stream", payload, raw=True)
+                assert "Resposta de teste." in replay and len(PROMPTS) == calls
+                rejected("/api/ia/ask/stream", {**payload, "pergunta": "Outro texto"}, expected=409)
+                assert len(request(f"/api/chatBot/history/{session}")) == 8
+                failed = request("/api/ia/ask/stream", {"pergunta": "__provider_failure__", "sessionId": session}, raw=True)
+                assert "event: error" in failed and "[*ENDSTREAN*]" not in failed
+                assert "synthetic-provider-detail-must-not-leak" not in failed
+                assert request(f"/api/chatBot/sessions/{session}/messages")["items"][-1]["status"] == "failed"
+                page = request(f"/api/chatBot/sessions/{session}/messages?limit=1")
+                previous = request(f"/api/chatBot/sessions/{session}/messages?limit=1&before={page['nextCursor']}")
+                assert previous["items"][0]["id"] < page["items"][0]["id"]
+                rejected(f"/api/chatBot/sessions/{session}/messages?before=bad", expected=400)
+                metadata = request(f"/api/chatBot/sessions/{session}")
+                renamed = request(f"/api/chatBot/sessions/{session}", {"title": "Conversa de teste", "version": metadata["version"]}, method="PATCH")
+                assert renamed["titleSource"] == "manual"
+                rejected(f"/api/chatBot/sessions/{session}", {"title": "Versão obsoleta", "version": metadata["version"]}, method="PATCH", expected=409)
+                assert request("/api/chatBot/sessions?search=Conversa")["items"][0]["id"] == session
+                request(f"/api/chatBot/sessions/{session}", method="DELETE")
+                rejected(f"/api/chatBot/sessions/{session}")
+                rejected("/api/ia/ask/stream", payload)
+                with closing(sqlite3.connect(dbfile)) as db:
+                    assert db.execute("SELECT COUNT(*) FROM ChatMessage WHERE SessionId=?", (session.upper(),)).fetchone()[0] == 9
+                print("PASS: session CRUD/search/pagination, cross-user isolation including OCR/SQL before external calls, logical deletion, and replay without duplicate LLM calls.")
                 print("PASS: SQLite creation, bootstrap/login, KB CRUD, chat streaming/history, ratings, OCR routing and restart persistence.")
                 print("LLM and OCR were HTTP doubles; external inference and real text extraction were not exercised.")
         finally:
