@@ -4,6 +4,8 @@ A portfolio-oriented prototype of a corporate knowledge portal combining a **.NE
 
 > **Status: local development prototype, not production-ready.** This public repository has a reduced, generalized scope. It is not a complete production deployment, and its optional advanced RAG integrations require additional setup.
 
+Technical documentation and the incremental chat-platform plan are indexed in [docs/README.md](docs/README.md). The [current audit](docs/architecture/AS_IS_AUDIT.md) distinguishes implemented behavior from proposed conversation, usage, and provider features.
+
 ## Interface
 
 Interface em português, com tema escuro por padrão e opção de tema claro.

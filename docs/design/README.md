@@ -1,5 +1,7 @@
 # IA-Portal — Fase A
 
+> Registro histórico da Fase A. O estado atual inclui as reformulações posteriores, SVGs fornecidos pelo proprietário, administração e modo escuro por padrão. Para novas alterações, consultar [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md), [REDESIGN_VALIDATION.md](REDESIGN_VALIDATION.md) e [ACCESS_MANAGEMENT.md](../ACCESS_MANAGEMENT.md). As pendências descritas abaixo pertencem à entrega original.
+
 Esta entrega limita-se à identidade tipográfica provisória, tokens de tema, layout principal, cabeçalho, navegação responsiva e alternância claro/escuro. O redesenho detalhado das páginas e a administração pertencem às fases seguintes.
 
 ## Referência e marca
