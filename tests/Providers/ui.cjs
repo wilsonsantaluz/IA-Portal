@@ -15,7 +15,21 @@ const output = path.resolve(__dirname, '../../docs/design/screenshots/ai-setting
   const errors = []; const checks = []; page.on('pageerror', e => errors.push(e.message));
   async function login(p, email, password) { await p.goto(base + '/login'); await p.getByRole('textbox', { name: /^Email/ }).fill(email); await p.getByLabel(/^Senha/).fill(password); await p.getByRole('button', { name: 'Entrar', exact: true }).click(); await p.waitForURL('**/chat', { waitUntil: 'domcontentloaded' }); }
   async function select(label, option) { await page.getByRole('combobox', { name: label }).click(); await page.getByRole('option', { name: option, exact: true }).click(); }
-  async function send(question) { await page.getByRole('textbox', { name: 'Sua pergunta para a IA' }).fill(question); const pending = page.waitForResponse(r => r.url().endsWith('/api/ia/ask/stream') && r.request().method() === 'POST'); await page.getByRole('button', { name: 'Enviar pergunta' }).click(); const response = await pending; assert.equal(response.status(), 200); await response.finished(); }
+  async function send(question) {
+    let release;
+    const gate = new Promise(resolve => { release = resolve; });
+    await page.route('**/api/ia/ask/stream', async route => { await gate; await route.continue(); }, { times: 1 });
+    await page.getByRole('textbox', { name: 'Sua pergunta para a IA' }).fill(question);
+    const pending = page.waitForResponse(r => r.url().endsWith('/api/ia/ask/stream') && r.request().method() === 'POST');
+    await page.getByRole('button', { name: 'Enviar pergunta' }).click();
+    try {
+      await page.getByRole('status').waitFor({ state: 'visible' });
+      assert.ok((await page.getByRole('status').innerText()).trim().length > 0, 'Processing requires a visible explanation');
+      assert.equal(await page.getByRole('button', { name: 'Enviar pergunta' }).isDisabled(), true);
+    } finally { release(); }
+    const response = await pending; assert.equal(response.status(), 200); await response.finished();
+    await page.getByRole('status').waitFor({ state: 'hidden' });
+  }
   async function axe() { const r = await new AxeBuilder({ page }).include('main').withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze(); assert.deepEqual(r.violations.map(v => ({ id: v.id, targets: v.nodes.map(n => n.target) })), []); }
   async function shot(name) { await page.locator('main').evaluate(e => { e.scrollTop = 0; }); await page.screenshot({ path: path.join(output, name + '.png'), fullPage: true }); }
   try {

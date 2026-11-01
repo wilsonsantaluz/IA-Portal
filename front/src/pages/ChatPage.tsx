@@ -15,6 +15,7 @@ import { useChatScroll } from "../hooks/useChatScroll";
 import ChatWelcome from "../components/ChatWelcome";
 import ConversationPanel from "../components/ConversationPanel";
 import ConversationModelPicker from "../components/ConversationModelPicker";
+import { ChatStatus } from "../components/ChatPage/ChatStatus";
 import { Link } from "react-router-dom";
 
 export default function ChatPage() {
@@ -179,6 +180,9 @@ export default function ChatPage() {
           />
         )}
 
+        {loading && <Box sx={{ width: "100%", maxWidth: 1040, mx: "auto", flexShrink: 0 }}>
+          <ChatStatus text={statusMessage || "Processando sua solicitação…"} />
+        </Box>}
         <ChatInput
           input={input}
           loading={loading || chat.historyLoading}

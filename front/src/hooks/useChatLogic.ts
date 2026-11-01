@@ -231,9 +231,11 @@ export const useChatLogic = () => {
   const sendMessage = async (prompt?: string) => {
     const question = (prompt ?? input).trim();
     if (!question || loading || historyLoading) return;
+    setLoading(true);
+    setStatusMessage("Preparando sua conversa...");
     let active = session;
     if (!active) active = await createConversation();
-    if (!active) return;
+    if (!active) { setLoading(false); setStatusMessage(""); return; }
     const id = active.id;
     const requestId = crypto.randomUUID();
     const aiId = "pending-" + requestId;
@@ -300,6 +302,7 @@ export const useChatLogic = () => {
           if (type === "done" && text.includes("[*ENDSTREAN*]"))
             completed = persisted;
           if (type === "data") {
+            if (!answer) setStatusMessage("Recebendo resposta da IA...");
             answer += text;
             setMessages((previous) =>
               previous.map((m) =>
@@ -330,9 +333,11 @@ export const useChatLogic = () => {
       report(new Error("O limite é de 20 MB por documento."));
       return;
     }
+    setLoading(true);
+    setStatusMessage("Preparando documento para análise...");
     let active = session;
     if (!active) active = await createConversation();
-    if (!active) return;
+    if (!active) { setLoading(false); setStatusMessage(""); return; }
     setLoading(true);
     setStatusMessage("Extraindo e analisando documento...");
     try {

@@ -1,25 +1,29 @@
 // src/components/ChatStatus.tsx
-import { Typography } from "@mui/material";
+import { Box, CircularProgress, Typography } from "@mui/material";
 import React from "react";
 
 export function ChatStatus({ text }: { text?: string }) {
   if (!text) return null;
 
   return (
-    <Typography
-      fontSize={13}
-      color="#6b7280"
-      fontStyle="italic"
+    <Box
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
       sx={{
-        backgroundColor: "#f8f9fa",
-        padding: "6px 10px",
-        borderRadius: 1,
-        borderLeft: "3px solid #3b82f6",
-        whiteSpace: "pre-wrap",
-        marginBottom: "6px",
+        display: "flex", alignItems: "center", gap: 1.5,
+        mx: { xs: 2, md: 4 }, mt: 1, px: 2, py: 1.5,
+        bgcolor: "background.paper", border: "1px solid", borderColor: "divider",
+        borderRadius: "12px", boxShadow: "var(--portal-shadow)",
+        "@media (prefers-reduced-motion: reduce)": {
+          "& .MuiCircularProgress-root, & .MuiCircularProgress-circle": { animation: "none" },
+        },
       }}
     >
-      {text}
-    </Typography>
+      <CircularProgress size={20} thickness={4} aria-hidden="true" sx={{ flexShrink: 0 }} />
+      <Typography fontSize={13} color="text.secondary" sx={{ overflowWrap: "anywhere" }}>
+        {text}
+      </Typography>
+    </Box>
   );
 }
