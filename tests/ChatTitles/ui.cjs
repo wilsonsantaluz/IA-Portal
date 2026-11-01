@@ -8,6 +8,7 @@ const base = process.env.IA_UI_BASE_URL || 'http://127.0.0.1:19080';
 (async () => {
   const browser = await chromium.launch({headless: true, executablePath: process.env.IA_CHROME_PATH});
   const page = await browser.newPage({viewport: {width: 1440, height: 1000}, reducedMotion: 'reduce'});
+  page.setDefaultNavigationTimeout(60000);
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   try {
@@ -21,7 +22,7 @@ const base = process.env.IA_UI_BASE_URL || 'http://127.0.0.1:19080';
     await page.getByRole('textbox', {name: /^Email/}).fill(credentials.email);
     await page.getByLabel(/^Senha/).fill(credentials.password);
     await page.getByRole('button', {name: 'Entrar', exact: true}).click();
-    await page.waitForURL('**/chat');
+    await page.waitForURL('**/chat', {waitUntil: 'domcontentloaded'});
     await page.getByRole('button', {name: 'Nova conversa', exact: true}).click();
     async function send(question) {
       await page.getByRole('textbox', {name: 'Sua pergunta para a IA'}).fill(question);
