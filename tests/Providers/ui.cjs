@@ -39,14 +39,25 @@ const output = path.resolve(__dirname, '../../docs/design/screenshots/ai-setting
     const after = await context.request.get(base + '/api/usage/summary', { headers }); assert.equal((await before.json()).requests, (await after.json()).requests);
     checks.push('Administrative provider models/global default and personal preference persist; metadata connectivity creates no paid inference usage.');
     await axe(); await shot('settings-dark');
-    await page.goto(base + '/chat'); await page.getByRole('button', { name: 'Nova conversa', exact: true }).click();
-    await page.getByRole('combobox', { name: 'Modelo da conversa' }).waitFor(); assert.ok((await page.getByRole('combobox', { name: 'Modelo da conversa' }).innerText()).includes('local-fixture'));
+    await page.goto(base + '/chat'); await page.getByRole('textbox', { name: 'Sua pergunta para a IA' }).waitFor();
+    assert.equal((await (await context.request.get(base + '/api/chatBot/sessions', { headers })).json()).items.length, 0, 'New conversation must remain an unsaved draft');
     await send('Primeiro assunto sintetico'); await page.getByText('Resposta local.', { exact: true }).waitFor();
     await page.getByRole('button', { name: 'Titulo local', exact: true }).waitFor();
     await select('Modelo da conversa', 'deepseek · deepseek-fixture-ui'); await page.getByRole('dialog').getByRole('button', { name: 'Confirmar troca', exact: true }).click(); await page.getByRole('dialog').waitFor({ state: 'hidden' });
     await page.waitForFunction(() => [...document.querySelectorAll('[role=combobox]')].some(e => e.textContent.includes('deepseek-fixture-ui')));
     await send('Continue o assunto sintetico'); await page.getByText('Resposta de teste.', { exact: true }).waitFor();
-    await page.reload(); await page.getByText('Resposta local.', { exact: true }).waitFor(); await page.getByText('Resposta de teste.', { exact: true }).waitFor();
+    await page.reload();
+    await page.getByRole('button', { name: 'Titulo local', exact: true }).waitFor();
+    assert.equal(await page.getByText('Resposta local.', { exact: true }).count(), 0, 'Reload must open an empty chat');
+    assert.equal(await page.locator('[aria-current="page"]').filter({ hasText: 'Titulo local' }).count(), 0);
+    await page.getByRole('button', { name: 'Titulo local', exact: true }).click();
+    await page.getByText('Resposta local.', { exact: true }).waitFor(); await page.getByText('Resposta de teste.', { exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Nova conversa', exact: true }).click();
+    assert.equal(await page.getByText('Resposta local.', { exact: true }).count(), 0);
+    assert.equal((await (await context.request.get(base + '/api/chatBot/sessions', { headers })).json()).items.length, 1, 'Reset must not create an empty session');
+    await page.goto(base + '/usage'); await page.goto(base + '/chat');
+    await page.getByRole('button', { name: 'Titulo local', exact: true }).waitFor();
+    assert.equal(await page.getByText('Resposta local.', { exact: true }).count(), 0, 'Route entry must open an empty chat');
     const listing = await context.request.get(base + '/api/chatBot/sessions', { headers }); const session = (await listing.json()).items[0];
     for (let i = 0; i < 31; i++) { const r = await context.request.post(base + '/api/chatBot/ask', { headers, data: { sessionId: session.id, requestId: randomUUID(), question: 'Interacao sintetica ' + i } }); assert.equal(r.status(), 200); }
     checks.push('New conversation honors personal model; confirmed provider/model change preserves earlier answers and labels after reload.');
@@ -69,6 +80,12 @@ const output = path.resolve(__dirname, '../../docs/design/screenshots/ai-setting
     await login(readerPage, 'reader@example.test', readerPassword); await readerPage.goto(base + '/settings/ai'); await readerPage.getByRole('heading', { name: 'Seu modelo padrão', exact: true }).waitFor(); assert.equal(await readerPage.getByRole('region', { name: /Provedor/ }).count(), 0);
     await readerPage.goto(base + '/usage'); await readerPage.getByText('Nenhuma chamada registrada para este período e filtros.', { exact: true }).waitFor(); assert.equal(await readerPage.getByRole('tab', { name: 'Todos os usuários', exact: true }).count(), 0); await readerContext.close();
     checks.push('Regular user sees only personal preferences and own empty consumption; direct admin API and another owner conversation usage are rejected.');
+    await page.goto(base + '/chat');
+    await send('Outro assunto sintetico'); await page.getByText('Resposta local.', { exact: true }).waitFor();
+    const newListing = (await (await context.request.get(base + '/api/chatBot/sessions', { headers })).json()).items;
+    assert.equal(newListing.length, 2, 'First send on entry must create a separate conversation');
+    assert.notEqual(newListing[0].id, session.id, 'New question reused an old conversation');
+    checks.push('Chat entry/reload stays empty; explicit history selection restores messages; reset creates no empty sessions; first send creates a distinct conversation.');
     for (const theme of ['light', 'dark']) {
       if ((await page.locator('html').getAttribute('data-theme')) !== theme) await page.getByRole('button', { name: theme === 'light' ? 'Ativar tema claro' : 'Ativar tema escuro' }).click();
       for (const route of ['settings/ai', 'usage']) {

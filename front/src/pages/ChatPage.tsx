@@ -132,8 +132,7 @@ export default function ChatPage() {
             {chat.session?.title || "Nova conversa"}
           </Typography>
           <Typography fontSize={10} color="text.secondary">
-            {chat.session?.provider || "DeepSeek"} ·{" "}
-            {chat.session?.model || "deepseek-chat"}
+            {chat.session ? `${chat.session.provider} · ${chat.session.model}` : "Seu modelo padrão será usado ao enviar."}
           </Typography>
           {chat.session && <ConversationModelPicker session={chat.session} disabled={loading || chat.historyLoading} refresh={chat.reloadCurrent} />}
           {chat.session && <Button component={Link} to={`/usage?sessionId=${chat.session.id}`} size="small" sx={{ mt: 0.5 }}>Consumo desta conversa</Button>}

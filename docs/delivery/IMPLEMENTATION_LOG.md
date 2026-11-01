@@ -164,3 +164,9 @@ Chave nova confirmada no container por comparação em memória, sem imprimir cr
 
 `ChatCompletionAdapter` classifica 402 como `payment_required`; `SmartAskController` e `ChatBotController` preservam a mensagem fixa e segura. O corpo do erro externo continua oculto. Testes de Providers passaram para os três adapters em chamadas comuns e streaming, incluindo ausência do corpo sensível sintético. `python scripts/smoke_local.py` passou nos seis grupos com provedores simulados e SQLite temporário. A execução dos testes recompilou o gateway com avisos preexistentes; frontend não alterado. Nenhuma mudança de esquema ou dados locais.
 
+# Ajuste antes do merge — entrada do chat vazia (2026-11-01)
+
+O hook `useChatLogic` deixa de restaurar a seleção local ou selecionar a primeira conversa. Entrar, retornar à rota ou recarregar mantém a lista do servidor disponível, sem abrir mensagens. “Nova conversa” apenas limpa a seleção, o campo e as mensagens; o primeiro envio de pergunta ou documento cria a sessão usando a preferência existente. A seleção explícita do histórico continua carregando e permitindo continuar a conversa. O cabeçalho vazio deixa de apresentar DeepSeek como se fosse o modelo padrão de todas as contas. Sem alterações no backend, contratos ou banco.
+
+Validações executadas: `npm --prefix front run typecheck`, `npm --prefix front run build`, `docker build -t ia-portal-ai-final-front ./front` (inclui TypeScript/build) e `python scripts/test_ai_ui.py --skip-build`, todos aprovados. A suíte de navegador passou nos seis grupos com banco temporário e provedores simulados, incluindo criação no primeiro envio, conversa distinta, recarga vazia, recuperação por seleção e botão sem criação de sessão; nenhuma chamada paga. O build mantém o aviso existente sobre chunks grandes. Frontend aplicado localmente por tag da imagem e `docker compose up -d --no-deps --no-build portal-front`; backend e dados preservados. Sem merge automático.
+
