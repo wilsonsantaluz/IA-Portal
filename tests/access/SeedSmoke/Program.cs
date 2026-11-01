@@ -7,7 +7,7 @@ using AiGateway.Security;
 await using var connection = new SqliteConnection("Data Source=:memory:");
 await connection.OpenAsync();
 await using var db = new PortalDbContext(new DbContextOptionsBuilder<PortalDbContext>().UseSqlite(connection).Options);
-await db.Database.EnsureCreatedAsync();
+await ChatSchemaMigrator.InitializeAsync(db, new ConfigurationBuilder().Build());
 var originalHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N"));
 var admin = new Role { RoleName = "admin" };
 var legacy = new Role { RoleName = "Grupo existente" };

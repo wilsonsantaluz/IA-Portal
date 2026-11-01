@@ -189,3 +189,5 @@ This public version is a generalized demonstration. It must not be interpreted a
 **No open-source license has been selected.** Do not assume reuse or redistribution rights. Verify ownership and third-party dependency/model licenses before publishing a license.
 
 For a detailed Portuguese audit and the current list of limitations, see [docs/REVISAO_PUBLICACAO.md](docs/REVISAO_PUBLICACAO.md).
+
+Automatic conversation titles are generated after the first successful response, with a safe first-question fallback and manual edits preserved. Title-call usage is stored separately; complete chat token metrics and provider settings remain planned. See [chat documentation](docs/features/CHAT_SESSIONS.md).

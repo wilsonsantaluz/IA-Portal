@@ -20,6 +20,36 @@ public static class ChatSchemaMigrator
             using var r = await c.ExecuteReaderAsync(); var result = new HashSet<string>();
             while (await r.ReadAsync()) result.Add(r.GetString(1)); return result;
         }
+        async Task Backup(int version) {
+            var directory = !string.IsNullOrWhiteSpace(config["SQLITE_BACKUP_DIRECTORY"]) ? config["SQLITE_BACKUP_DIRECTORY"]! : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(connection.DataSource))!, "backups");
+            Directory.CreateDirectory(directory);
+            var file = Path.Combine(directory, $"pre-chat-v{version}-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid():N}.sqlite3");
+            using var backup = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = file, Pooling = false }.ToString());
+            await backup.OpenAsync(); connection.BackupDatabase(backup);
+            using var check = backup.CreateCommand(); check.CommandText = "PRAGMA integrity_check";
+            if ((string?)await check.ExecuteScalarAsync() != "ok") throw new InvalidOperationException("Backup SQLite inválido.");
+        }
+        async Task UpgradeTitles(bool fresh, bool alreadyBackedUp) {
+            using var resource2 = typeof(ChatSchemaMigrator).Assembly.GetManifestResourceStream("AiGateway.Infrastructure.EF.Migrations.002_TitleUsage.sql")!;
+            var script = (await new StreamReader(resource2).ReadToEndAsync()).Replace("\r\n", "\n");
+            var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(script)));
+            using var command = connection.CreateCommand(); command.CommandText = "SELECT Checksum FROM SchemaVersions WHERE Version=2";
+            var recorded = await command.ExecuteScalarAsync();
+            var columns = await Columns("LlmUsage");
+            if (recorded is not null) {
+                if (!Equals(recorded, hash) || !columns.IsSupersetOf(new[] { "Id", "OwnerUserId", "SessionId", "MessageId", "Provider", "Model", "Purpose", "CreatedAt", "Status", "Source", "InputTokens", "OutputTokens", "TotalTokens", "CacheTokens", "DurationMs" }))
+                    throw new InvalidOperationException("Versão/checksum de títulos incompatível.");
+                return;
+            }
+            if (!fresh && columns.Count > 0) throw new InvalidOperationException("Tabela de consumo sem migração reconhecida.");
+            if (!fresh && !alreadyBackedUp) await Backup(2);
+            await using var tx = await db.Database.BeginTransactionAsync();
+            if (!fresh) await db.Database.ExecuteSqlRawAsync(script);
+            await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO SchemaVersions VALUES (2, {hash}, {DateTime.UtcNow})");
+            using var check = connection.CreateCommand(); check.Transaction = (SqliteTransaction)tx.GetDbTransaction(); check.CommandText = "PRAGMA foreign_key_check";
+            using (var reader = await check.ExecuteReaderAsync()) if (await reader.ReadAsync()) throw new InvalidOperationException("Integridade referencial inválida na migração de títulos.");
+            await tx.CommitAsync();
+        }
         var isEmpty = await Count("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'") == 0;
         if (isEmpty) await db.Database.EnsureCreatedAsync();
         var expected = new Dictionary<string, string[]> {
@@ -46,21 +76,13 @@ public static class ChatSchemaMigrator
         if (ledger) {
             using var c = connection.CreateCommand(); c.CommandText = "SELECT Checksum FROM SchemaVersions WHERE Version=1";
             var recorded = await c.ExecuteScalarAsync();
-            if (recorded is not string value || value != checksum || !current || await Count("SELECT COUNT(*) FROM SchemaVersions WHERE Version>1") != 0)
+            if (recorded is not string value || value != checksum || !current || await Count("SELECT COUNT(*) FROM SchemaVersions WHERE Version>2") != 0)
                 throw new InvalidOperationException("Versão/checksum de esquema incompatível. Inicialização interrompida.");
-            return;
+            await UpgradeTitles(false, false); return;
         }
         if (partial && !current) throw new InvalidOperationException("Migração parcial desconhecida. Restaure um backup validado.");
-        if (!current) {
-            var directory = !string.IsNullOrWhiteSpace(config["SQLITE_BACKUP_DIRECTORY"]) ? config["SQLITE_BACKUP_DIRECTORY"]! : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(connection.DataSource))!, "backups");
-            Directory.CreateDirectory(directory);
-            var backupFile = Path.Combine(directory, $"pre-chat-v1-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid():N}.sqlite3");
-            using var backup = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = backupFile, Pooling = false }.ToString());
-            await backup.OpenAsync(); connection.BackupDatabase(backup);
-            using var check = backup.CreateCommand(); check.CommandText = "PRAGMA integrity_check";
-            if ((string?)await check.ExecuteScalarAsync() != "ok") throw new InvalidOperationException("Backup SQLite não passou na verificação de integridade.");
-        }
-        await using var transaction = await db.Database.BeginTransactionAsync();
+        if (!current) await Backup(1);
+        await using (var transaction = await db.Database.BeginTransactionAsync()) {
         if (!current) await db.Database.ExecuteSqlRawAsync(sql);
         await db.Database.ExecuteSqlRawAsync("CREATE TABLE SchemaVersions (Version INTEGER PRIMARY KEY, Checksum TEXT NOT NULL, AppliedAt TEXT NOT NULL)");
         await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO SchemaVersions VALUES (1, {checksum}, {DateTime.UtcNow})");
@@ -71,5 +93,7 @@ public static class ChatSchemaMigrator
             if (await reader.ReadAsync()) throw new InvalidOperationException("Integridade referencial inválida; migração revertida.");
         }
         await transaction.CommitAsync();
+        }
+        await UpgradeTitles(isEmpty, !current);
     }
 }

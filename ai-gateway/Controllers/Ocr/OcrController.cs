@@ -8,7 +8,7 @@ using System.Security.Cryptography;
 namespace AiGateway.Controllers.Ocr;
 
 [ApiController, Authorize(Policy = PortalAccess.Chat), Route("api/ocr")]
-public class OcrController(IOcrService ocr, IOllamaService llm, IChatRepository chats, IConfiguration cfg) : ControllerBase
+public class OcrController(IOcrService ocr, IOllamaService llm, IChatRepository chats, IConfiguration cfg, ChatTitleService titles) : ControllerBase
 {
     [HttpPost("analisar"), RequestSizeLimit(22 * 1024 * 1024)]
     public async Task<ActionResult<OcrAnalyzeResponse>> AnalyzeDocument(IFormFile file, [FromForm] Guid sessionId, [FromForm] Guid? requestId, CancellationToken ct)
@@ -33,6 +33,7 @@ public class OcrController(IOcrService ocr, IOllamaService llm, IChatRepository 
             var answer = await llm.GenerateAsync("deepseek-chat", prompt, timeout.Token);
             if (string.IsNullOrWhiteSpace(answer)) throw new InvalidOperationException();
             await chats.CompleteTurnAsync(sessionId, id, answer, timeout.Token, text, cfg["DEEPSEEK_DEFAULT_MODEL"] ?? "deepseek-chat");
+            await titles.TryGenerateAsync(sessionId, ct);
             return Ok(new OcrAnalyzeResponse { Texto = text, Analise = answer });
         } catch (Exception ex) {
             using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(10)); await chats.FailTurnAsync(sessionId, id, ct.IsCancellationRequested ? "cancelled" : "failed", cleanup.Token);

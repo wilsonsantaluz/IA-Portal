@@ -1,8 +1,8 @@
 ﻿# Modelo de dados — proposta após auditoria
 
-Data: 01/11/2026. **Modelo evolutivo: etapa 1 implementada após aprovação; etapas posteriores ainda propostas.** Evidências da base anterior em [AS_IS_AUDIT.md](AS_IS_AUDIT.md). As tabelas `ChatSession` e `ChatMessage` foram reutilizadas, sem uma segunda entidade de conversa.
+Data: 01/11/2026. **Modelo evolutivo: etapas 1–2 implementadas; etapas 3–5 ainda propostas.** Evidências da base anterior em [AS_IS_AUDIT.md](AS_IS_AUDIT.md). As tabelas `ChatSession` e `ChatMessage` foram reutilizadas, sem uma segunda entidade de conversa.
 
-**Atualização após aprovação:** o proprietário aprovou a proposta e o diagrama em 01/11/2026. A etapa 1 foi implementada: migração SQL v1, `OwnerUserId`, metadados da sessão, estado/request/fingerprint nas mensagens e índices. A lease está em `ChatSession` (`ActiveRequestId`, `LeaseUntil`). As etapas de títulos, uso e provedores abaixo continuam como propostas futuras. Resultados e limites em [CHAT_SESSIONS.md](../features/CHAT_SESSIONS.md) e no diário.
+**Atualização após aprovação:** o proprietário aprovou a proposta e o diagrama em 01/11/2026. A etapa 1 foi implementada: migração SQL v1, `OwnerUserId`, metadados da sessão, estado/request/fingerprint nas mensagens e índices. A lease está em `ChatSession` (`ActiveRequestId`, `LeaseUntil`). A etapa 2 adicionou `LlmUsage` para tentativas de título via migração v2; métricas completas e provedores continuam futuros. Resultados e limites em [CHAT_SESSIONS.md](../features/CHAT_SESSIONS.md) e no diário.
 
 ## Organização conceitual fornecida pelo proprietário
 
@@ -12,8 +12,8 @@ O diagrama enviado em 01/11/2026 orienta a separação entre usuários, sessões
 erDiagram
     Users ||--o{ ChatSession : possui
     ChatSession ||--o{ ChatMessage : contem
-    ChatSession ||--o{ LlmRequestUsage : registra
-    ProviderConfiguration ||--o{ LlmRequestUsage : identifica_provedor
+    ChatSession ||--o{ LlmUsage : registra
+    ProviderConfiguration ||--o{ LlmUsage : identifica_provedor
 ```
 
 | No diagrama fornecido | Mapeamento proposto no projeto | Responsabilidade |
@@ -21,7 +21,7 @@ erDiagram
 | Users | `Users` existente | Identidade autenticada e acesso; não guardar mensagens ou totais de consumo na conta. |
 | ChatSessions | `ChatSession` existente | Proprietário, título, seleção atual de modelo e datas da conversa. |
 | ChatMessages | `ChatMessage` existente | Papel, conteúdo, estado e modelo efetivo de cada mensagem. |
-| LlmUsage | `LlmRequestUsage`, nova na etapa de títulos/consumo | Uma linha por chamada ao modelo, inclusive chamadas auxiliares e falhas; não uma linha por sessão nem obrigatoriamente por mensagem. |
+| LlmUsage | `LlmUsage`, nova na etapa de títulos/consumo | Uma linha por chamada ao modelo, inclusive chamadas auxiliares e falhas; não uma linha por sessão nem obrigatoriamente por mensagem. |
 | AI Providers | `ProviderConfiguration`, introduzida na etapa de configuração | Identificador estável do provedor e configuração permitida; sem segredo em texto puro. Reutiliza os adapters existentes. |
 
 O relacionamento com provedor será feito por identificador estável (`deepseek`, `openai`, `ollama`), não pelo nome exibido ou endpoint. Antes de existir a tabela de configuração, o registro de chamadas usa esse identificador validado no backend; a migração posterior estabelece a FK sem perder registros. Desabilitar um provedor não apaga sua identidade nem o consumo histórico. Não é necessária uma segunda tabela `AiProviders` além de `ProviderConfiguration` para representar o mesmo cadastro.
@@ -65,7 +65,7 @@ Adicionar o registro de chamada necessário para medir o título desde sua imple
 
 | Tabela | Campos propostos | Regras |
 | --- | --- | --- |
-| `LlmRequestUsage` | ID único da chamada, usuário, sessão, mensagem/request relacionados quando houver, provedor, modelo solicitado/efetivo, finalidade, status, início/fim, duração, tokens de entrada/saída/cache/total opcionais, fonte do uso, erro categorizado | Sem prompts, respostas completas, API keys ou JWTs. Uma linha por chamada; atualização idempotente. Título usa `purpose=title`. |
+| `LlmUsage` | ID único da chamada, usuário, sessão, mensagem/request relacionados quando houver, provedor, modelo solicitado/efetivo, finalidade, status, início/fim, duração, tokens de entrada/saída/cache/total opcionais, fonte do uso, erro categorizado | Sem prompts, respostas completas, API keys ou JWTs. Uma linha por chamada; atualização idempotente. Título usa `purpose=title`. |
 
 Título recebe somente trecho limitado da primeira pergunta e, se necessário, pequeno trecho da resposta. Após resposta persistida, executar chamada curta com timeout/limite de saída e capturar seu consumo. Falha usa pergunta truncada, sem desfazer o chat. Atualização condicional por versão/origem protege edição manual concorrente. Não criar worker em background sem ciclo de vida ou persistência definidos.
 
@@ -73,7 +73,7 @@ Título recebe somente trecho limitado da primeira pergunta e, se necessário, p
 
 | Entidade proposta | Campos mínimos | Regras |
 | --- | --- | --- |
-| `LlmRequestUsage` (evolução) | Custo estimado decimal USD, referência/versionamento do preço, detalhes de cache suportados e índices de agregação | Medido, estimado e indisponível são categorias distintas. Ausência de tokens/preço é NULL, não zero inventado. |
+| `LlmUsage` (evolução) | Custo estimado decimal USD, referência/versionamento do preço, detalhes de cache suportados e índices de agregação | Medido, estimado e indisponível são categorias distintas. Ausência de tokens/preço é NULL, não zero inventado. |
 | `ProviderConfiguration` | Provider único, habilitado, endpoint validado, modelos permitidos, modelo padrão e versão | Sem chaves em texto puro; somente referência de variável de ambiente e estado configurado/não configurado. Sem URL arbitrária para credencial existente. |
 | `UserPreference` | UserId/FK único, provider/model preferidos | Escolha deve continuar habilitada na configuração administrativa; não redirecionar silenciosamente para outro provedor. |
 | `ModelPrice` | Provider/model, vigência UTC, unidade (USD por milhão de tokens), preços separados para entrada/saída/cache quando aplicáveis, origem do preço | Sem valores iniciais inventados. Salvar a versão usada no cálculo; mudanças futuras não reescrevem custos históricos. |

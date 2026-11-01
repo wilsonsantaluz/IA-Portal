@@ -21,6 +21,7 @@ from contextlib import closing
 ROOT = Path(__file__).resolve().parents[1]
 PROMPTS = []
 SERVICE_CALLS = []
+TITLE_PROMPTS = []
 
 class FakeServices(BaseHTTPRequestHandler):
     def log_message(self, *_):
@@ -47,6 +48,19 @@ class FakeServices(BaseHTTPRequestHandler):
             content_type = "application/json"
         elif self.path == "/chat/completions":
             data = json.loads(body)
+            if data.get("max_tokens") == 64:
+                assert not data.get("stream") and len(data["messages"]) == 2
+                TITLE_PROMPTS.append(data["messages"][-1]["content"])
+                if "__title_failure__" in TITLE_PROMPTS[-1]:
+                    self.send_error(503, "synthetic-title-secret-must-not-leak")
+                    return
+                payload = json.dumps({"model": data["model"], "choices": [{"message": {"content": "Organizacao de recebiveis"}}], "usage": {"prompt_tokens": 35, "completion_tokens": 6, "total_tokens": 41, "prompt_cache_hit_tokens": 20}}).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+                return
             PROMPTS.append(data["messages"][-1]["content"])
             if "__provider_failure__" in PROMPTS[-1]:
                 self.send_error(503, "synthetic-provider-detail-must-not-leak")
@@ -147,10 +161,16 @@ def main():
                 assert "event: error" not in stream, stream
                 assert "[*ENDSTREAN*]" in stream
                 assert "TEST-MARKER" in PROMPTS[-1]
+                title = request(f"/api/chatBot/sessions/{session}")
+                assert title["title"] == "Organizacao de recebiveis" and title["titleSource"] == "automatic"
+                assert TITLE_PROMPTS == ["Explique recebiveis"], "Title received full RAG/history"
+                with closing(sqlite3.connect(dbfile)) as db:
+                    assert db.execute("SELECT Purpose, Source, InputTokens, OutputTokens, TotalTokens, CacheTokens FROM LlmUsage").fetchone() == ("title", "reported", 35, 6, 41, 20)
                 history = request(f"/api/chatBot/history/{session}")
                 assert len(history) == 2 and history[-1]["content"] == "Resposta de teste."
                 request("/api/ia/ask/stream", {"pergunta": "Continue", "sessionId": session}, raw=True)
                 assert "Resposta de teste." in PROMPTS[-1]
+                assert len(TITLE_PROMPTS) == 1, "Title regenerated on follow-up"
                 request("/api/chatkb/rate", {"userId": session, "question": "Teste", "rating": 4})
                 assert request("/api/chatkb/metrics/summary")["totalRatings"] == 1
                 assert request("/api/chatkb/metrics/by-month")[0]["count"] == 1
@@ -231,6 +251,20 @@ def main():
                 with closing(sqlite3.connect(dbfile)) as db:
                     assert db.execute("SELECT COUNT(*) FROM ChatMessage WHERE SessionId=?", (session.upper(),)).fetchone()[0] == 9
                 print("PASS: session CRUD/search/pagination, cross-user isolation including OCR/SQL before external calls, logical deletion, and replay without duplicate LLM calls.")
+                fallback_id = request("/api/chatBot/sessions", {})["id"]
+                fallback_stream = request("/api/ia/ask/stream", {"pergunta": "__title_failure__ organizar dados", "sessionId": fallback_id}, raw=True)
+                assert "event: done" in fallback_stream and "event: error" not in fallback_stream and "synthetic-title-secret" not in fallback_stream
+                fallback = request(f"/api/chatBot/sessions/{fallback_id}")
+                assert fallback["titleSource"] == "fallback" and fallback["title"] == "__title_failure__ organizar dados"
+                stop()
+                start(log)
+                assert request(f"/api/chatBot/sessions/{fallback_id}")["title"] == fallback["title"]
+                calls = len(TITLE_PROMPTS)
+                request("/api/chatBot/ask", {"question": "Continuar conversa", "sessionId": fallback_id})
+                assert len(TITLE_PROMPTS) == calls, "Restart retried a paid title attempt"
+                with closing(sqlite3.connect(dbfile)) as db:
+                    assert db.execute("SELECT Status, TotalTokens FROM LlmUsage WHERE SessionId=?", (fallback_id.upper(),)).fetchone() == ("failed", None)
+                print("PASS: automatic title via real SSE/API, reported usage persisted separately, failure fallback preserves chat success and restart never repeats title charges.")
                 print("PASS: SQLite creation, bootstrap/login, KB CRUD, chat streaming/history, ratings, OCR routing and restart persistence.")
                 print("LLM and OCR were HTTP doubles; external inference and real text extraction were not exercised.")
         finally:

@@ -8,7 +8,7 @@ using Portal.AI.Gateway.Infrastructure;
 namespace AiGateway.Controllers.Chat;
 
 [ApiController, Authorize(Policy = PortalAccess.Chat), Route("api/chatBot")]
-public class ChatBotContoller(IChatRepository chats, IOllamaService llm, IKnowledgeBaseRepository knowledge, IConfiguration cfg) : ControllerBase
+public class ChatBotContoller(IChatRepository chats, IOllamaService llm, IKnowledgeBaseRepository knowledge, IConfiguration cfg, ChatTitleService titles) : ControllerBase
 {
     [HttpGet("sessions")]
     public async Task<IActionResult> List([FromQuery] int limit = 30, [FromQuery] string? cursor = null, [FromQuery] string? search = null, CancellationToken ct = default) => Ok(await chats.ListSessionsAsync(limit, cursor, search, ct));
@@ -41,6 +41,7 @@ public class ChatBotContoller(IChatRepository chats, IOllamaService llm, IKnowle
             var response = await llm.GenerateAsync("deepseek-chat", prompt, timeout.Token);
             if (string.IsNullOrWhiteSpace(response)) throw new InvalidOperationException();
             var answer = await chats.CompleteTurnAsync(id, requestId, response, timeout.Token, model: cfg["DEEPSEEK_DEFAULT_MODEL"] ?? "deepseek-chat");
+            await titles.TryGenerateAsync(id, ct);
             return Ok(new { sessionId = id, texto = response, messageId = answer.Id });
         } catch {
             using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(10)); await chats.FailTurnAsync(id, requestId, ct.IsCancellationRequested ? "cancelled" : "failed", cleanup.Token);

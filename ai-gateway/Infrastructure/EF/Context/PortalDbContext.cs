@@ -11,6 +11,7 @@ public class PortalDbContext : DbContext
 
     public DbSet<ChatSession> ChatSessions => Set<ChatSession>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+    public DbSet<LlmUsage> LlmUsages => Set<LlmUsage>();
     public DbSet<KnowledgeBaseItem> KnowledgeBaseItems => Set<KnowledgeBaseItem>();
     public DbSet<ChatKbRating> ChatKbRatings => Set<ChatKbRating>();
 
@@ -105,6 +106,18 @@ public class PortalDbContext : DbContext
             e.HasOne(x => x.Session)
              .WithMany(x => x.Messages)
              .HasForeignKey(x => x.SessionId);
+        });
+
+        modelBuilder.Entity<LlmUsage>(e =>
+        {
+            e.ToTable("LlmUsage");
+            e.HasKey(x => x.Id);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<ChatSession>().WithMany().HasForeignKey(x => x.SessionId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<ChatMessage>().WithMany().HasForeignKey(x => x.MessageId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => new { x.SessionId, x.Purpose }).IsUnique().HasFilter("Purpose = 'title'");
+            e.HasIndex(x => new { x.OwnerUserId, x.CreatedAt });
+            e.HasIndex(x => new { x.Provider, x.Model, x.CreatedAt });
         });
 
         modelBuilder.Entity<KnowledgeBaseItem>(e =>
@@ -232,6 +245,25 @@ public class ChatKbRating
     public string? Subsection { get; set; }
     public int? OperationId { get; set; }
 }
+public class LlmUsage
+{
+    public Guid Id { get; set; }
+    public int OwnerUserId { get; set; }
+    public Guid SessionId { get; set; }
+    public long MessageId { get; set; }
+    public string Provider { get; set; } = "";
+    public string Model { get; set; } = "";
+    public string Purpose { get; set; } = "title";
+    public DateTime CreatedAt { get; set; }
+    public string Status { get; set; } = "started";
+    public string Source { get; set; } = "unavailable";
+    public long? InputTokens { get; set; }
+    public long? OutputTokens { get; set; }
+    public long? TotalTokens { get; set; }
+    public long? CacheTokens { get; set; }
+    public long? DurationMs { get; set; }
+}
+
 public class Permission
 {
     public int PermissionId { get; set; }
