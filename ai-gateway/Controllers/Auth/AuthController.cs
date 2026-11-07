@@ -43,9 +43,7 @@ public class AuthController : ControllerBase
             return Unauthorized("Usuário ou senha inválidos.");
 
         // Roles
-        var organizationId = await _db.OrganizationMemberships.Where(x => x.UserId == user.UserId && x.IsActive)
-            .Join(_db.Organizations.Where(x => x.IsActive), m => m.OrganizationId, o => o.Id, (m,o) => o.Id)
-            .OrderBy(x => x).FirstOrDefaultAsync(ct);
+        var organizationId = await PortalAccess.DefaultOrganizationAsync(_db,user.UserId,_cfg,ct);
         if (organizationId == 0) return Unauthorized("Nenhuma organizacao autorizada.");
         var access = await PortalAccess.ReadAsync(_db, user.UserId, ct, organizationId);
         var roles = access.Roles;

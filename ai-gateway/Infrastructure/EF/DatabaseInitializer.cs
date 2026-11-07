@@ -14,7 +14,8 @@ public static class DatabaseInitializer
         // Schema evolution must be handled explicitly before changing this model.
         await ChatSchemaMigrator.InitializeAsync(db, config);
 
-        if (!await db.KnowledgeBaseItems.AnyAsync(x => x.OrganizationId == 1 && x.KeyName == "organization_base"))
+        var atlasOnlyKnowledge = config.GetValue<bool>("Demo:Atlas:SeedKnowledge") && config.GetValue<bool>("Demo:Atlas:OnlyKnowledge");
+        if (!atlasOnlyKnowledge && !await db.KnowledgeBaseItems.AnyAsync(x => x.OrganizationId == 1 && x.KeyName == "organization_base"))
         {
             db.KnowledgeBaseItems.Add(new KnowledgeBaseItem
             {

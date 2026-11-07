@@ -117,3 +117,12 @@ LLM/SQL, pois nao possuem fonte/grant. /api/chatBot/ask continua documental e
 pede o fluxo de fonte/data para perguntas analiticas. Sessao alheia continua 404
 antes de qualquer chamada externa. Nao ha endpoint que aceite usuario/tenant
 fornecido por modelo como autoridade de acesso.
+
+
+### Preferencia Atlas no ambiente local (07/11/2026)
+
+Com Demo:Atlas:PreferOrganization=true, login e requests sem X-Organization-Id
+preferem a membership ativa de atlas-demo, quando existente. Sem o flag permanece
+a primeira membership ativa por Id. A preferencia nunca ignora membership ou
+organizacao inativa; header explicito continua validado normalmente. O override
+Atlas ativa essa preferencia e OnlyKnowledge, sem apagar dados automaticamente.

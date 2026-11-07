@@ -16,6 +16,9 @@ services:
   ai-gateway:
     environment:
       Demo__Atlas__SeedKnowledge: "true"
+      Demo__Atlas__OnlyKnowledge: "true"
+      Demo__Atlas__PreferOrganization: "true"
+      Chat__UseAdvancedRag: "false"
       TRINO_CONNECTORS_FILE: /app/config/atlas-compose-sources.json
     volumes:
       - ./trino/atlas/sources.compose.json:/app/config/atlas-compose-sources.json:ro

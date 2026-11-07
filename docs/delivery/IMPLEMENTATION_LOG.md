@@ -457,3 +457,65 @@ Relatorio final, inventario de arquivos, migrations, comandos, limitacoes e
 instrucoes: docs/demo/ATLAS_DELIVERY_REPORT.md e ATLAS_LOCAL.md. Sem push, merge,
 deploy publico/producao ou alteracao de dados da instalacao. Modelos pagos,
 RAG vetorial real e fontes enterprise/publicas reais continuam nao validados.
+
+
+## 07/11/2026 - reset local autorizado, sem backup, e Atlas ativado
+
+Pedido posterior explicito do proprietario: excluir todos os dados locais,
+deixar Atlas e aplicar no ambiente local, sem necessidade de backup. Essa
+instrucao autoriza a excecao pontual as regras anteriores de preservar os dados.
+Nenhum bypass de backup foi introduzido no runner de migrations.
+
+Precondicoes: branch feature/atlas-business-intelligence limpa; inspecao de
+Compose, mounts, labels e containers comprovou que os unicos volumes a apagar
+eram ia-portal_portal_data (SQLite/backups) e ia-portal_qdrant_data (vetores).
+Owners/usuarios/contas antigas nao foram copiados. Credenciais/env/configuracao,
+codigo e modelos instalados foram preservados. Nao havia data/SQLite nativo no
+caminho padrao inspecionado. Subnet Atlas verificada sem sobreposicao.
+
+Ajustes opt-in: OnlyKnowledge evita organization_base generico quando o seed
+Atlas esta habilitado; PreferOrganization usa a mesma selecao de membership
+ativa no login e nos requests sem header. Org tecnica padrao permanece disponivel
+para configuracao global de IA, sem conhecimento ou dados de negocio. Sem flags,
+o modo generico conserva a selecao anterior. Override Atlas fixa RAG textual,
+pois o ambiente anterior tinha RAG avancado ativo com Qdrant parado.
+
+Executado:
+- dotnet run --project tests/AtlasKnowledge/AtlasKnowledge.csproj --no-restore:
+  PASS casos existentes e novos testes de dez documentos exclusivos, repeticao,
+  preferencia Atlas e fallback sem ultrapassar membership desativada.
+- docker compose -p ia-portal -f docker-compose.yml -f docker-compose.atlas.yml
+  config --quiet e build ai-gateway portal-front: PASS, imagens atuais publicadas
+  somente no Docker local. Backend manteve 11 avisos existentes.
+- docker compose -p ia-portal --profile rag -f docker-compose.yml -f
+  docker-compose.atlas.yml down: removeu somente os servicos/rede do projeto.
+- docker volume rm ia-portal_portal_data ia-portal_qdrant_data: removidos os
+  dados anteriores, incluindo contas, conversas, usage, KB e backups/vetores.
+  Sem backup, conforme instrucao expressa. Nao usado prune global.
+- docker compose -p ia-portal -f docker-compose.yml -f docker-compose.atlas.yml
+  up -d --no-build: PASS, portal/frontend/OCR/ML/Trino ativos em loopback.
+- python scripts/atlas_trino_load.py e verificacao: PASS sete tabelas carregadas,
+  500 clientes/5896 faturas/5561 pagamentos-estornos e quatro SELECTs conferidos.
+- Bootstrap/login real usando valores do .env apenas em memoria, sem exibi-los:
+  PASS Atlas selecionada por padrao; dez docs e conector atlas_local registrado,
+  sete tabelas selecionadas e grant admin. Teste/metadata/aging PASS via API real.
+  Plataforma tecnica padrao sem KB, conexoes ou conversas antigas.
+- Chrome headless no frontend servido por Nginx: login real, fonte Atlas,
+  referencia 2026-11-01 e pergunta hibrida geraram resposta DeepSeek real,
+  modelo efetivo deepseek-flash. Mensagens persistidas (2), citacao da politica,
+  tabela e grafico conferidos; usage real de resposta/titulo: 2 calls, 3610 tokens.
+  Uma espera inicial pelo botao Enviar nao se aplicava ao input vazio; verificacao
+  subsequente confirmou resposta concluida, historico e renderizacao sem nova
+  chamada paga. Captura apenas do main em artifacts/atlas-local/chat-live.png.
+- .env local atualizado apenas para COMPOSE_FILE/COMPOSE_PATH_SEPARATOR; comandos
+  comuns docker compose agora mantem o override Atlas. Segredos preservados.
+- docker compose restart ai-gateway: PASS; API apos restart confirmou mesmos dez
+  documentos, uma conexao e uma conversa Atlas, sem duplicacao; login default Atlas.
+- SQLite lido por helper Docker com volume read-only e rede none: schema_versions
+  [1,2,3,4,5,6], users=1, KB apenas org Atlas (2,10), connectors=1, sessions=1,
+  usage=2; nenhum arquivo de backup. Helper efemero removido automaticamente.
+
+Frontend ativo: http://127.0.0.1:9080. Usuario deve atualizar/reautenticar com
+administrador do .env. Instalacao deixada em execucao para validacao; nao houve
+push, merge, publicacao na internet ou deploy de producao. Trino Memory perde
+os dados em reinicio e requer recarga do gerador local; detalhes em ATLAS_LOCAL.md.

@@ -2,6 +2,43 @@
 
 Todos os documentos e registros Atlas são fictícios. Não conectar dados reais.
 
+## Instalação local ativada em 07/11/2026
+
+Após a entrega inicial, o proprietário autorizou apagar os dados locais e
+dispensou backup. Os volumes `ia-portal_portal_data` e `ia-portal_qdrant_data`
+foram removidos, e a instalação foi recriada com o schema v6 e dados Atlas.
+Não existe cópia dos dados anteriores criada por essa operação.
+
+Estado validado: um administrador recriado pelas credenciais do `.env`, dez
+documentos Atlas, um conector habilitado e sete tabelas Trino com 500 clientes,
+5.896 faturas e 5.561 eventos de pagamento/estorno. A organização padrão continua
+como estrutura técnica de administração global, sem base de conhecimento ou
+conectores de negócio; o login e requests sem header escolhem Atlas por padrão.
+As memberships e as permissões continuam sendo validadas normalmente.
+
+O override Atlas agora usa `Demo:Atlas:OnlyKnowledge=true` para não semear o
+documento genérico, `Demo:Atlas:PreferOrganization=true` para preferir Atlas no
+login, e RAG textual local (`Chat:UseAdvancedRag=false`). Esses flags não apagam
+dados por conta própria e não alteram o comportamento genérico quando ausentes.
+As migrations comuns continuam com seus mecanismos de backup; a limpeza
+autorizada criou uma instalação vazia, sem precisar de backup de upgrade.
+
+Neste ambiente Windows, o `.env` local passou a selecionar os dois arquivos
+Compose por `COMPOSE_FILE` e `COMPOSE_PATH_SEPARATOR`. Assim, `docker compose up
+-d` mantém o modo Atlas. Valores de credenciais foram preservados e não foram
+incluídos em commits ou relatórios. Atualize a página e entre novamente com o
+administrador configurado no `.env`; as sessões de acesso antigas são inválidas.
+
+Abra `http://127.0.0.1:9080`. Para novas perguntas analíticas, selecione **Atlas -
+dados financeiros** e a referência **2026-11-01** no chat. Uma conversa de
+validação real foi mantida: Trino + DeepSeek (`deepseek-flash` efetivo), política
+citada, valores conferidos e gráfico renderizado. As duas chamadas de IA
+(resposta e título) registraram 3.610 tokens. Não são métricas antigas ou simuladas.
+
+O Trino Memory continua descartável. Se reiniciá-lo, recarregue os dados com
+`python scripts/atlas_trino_load.py`, seguido de `--verify`, conforme as instruções
+abaixo. A captura local da validação está em `artifacts/atlas-local/chat-live.png`.
+
 ## Base de conhecimento (Fase A)
 
 No `.env` do Compose, configure `ATLAS_SEED_KNOWLEDGE=true` e inicie o gateway

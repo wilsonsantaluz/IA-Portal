@@ -4,6 +4,13 @@ Branch: `feature/atlas-business-intelligence`. A organização padrão e a separ
 de Atlas foram autorizadas pelo proprietário. Não houve push, merge, deploy,
 reset de banco ou alteração dos volumes da instalação existente.
 
+**Atualização posterior à entrega:** em 07/11/2026, o proprietário solicitou
+explicitamente apagar os dados locais sem backup e ativar Atlas na instalação.
+Essa operação foi executada; o estado atual e os testes com Trino e DeepSeek
+reais estão em [ATLAS_LOCAL.md](ATLAS_LOCAL.md#instalação-local-ativada-em-07112026)
+e no diário. As afirmações acima e as limitações de execução abaixo descrevem a
+entrega inicial, anterior à autorização de limpeza e ativação local.
+
 ## Resultado
 
 - Dez documentos v1 com seed opt-in, idempotente e sem sobrescrever edições.

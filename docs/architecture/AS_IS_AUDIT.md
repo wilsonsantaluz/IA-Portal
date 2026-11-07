@@ -196,3 +196,21 @@ Validado em Trino 484 local com dataset real sintetico e conta reader read-only;
 nao validado com modelos pagos, RAG vetorial real ou fontes empresariais/publicas
 externas. Os planos financeiros sao Atlas, nao um parser SQL analitico generico.
 Veja docs/demo e IMPLEMENTATION_LOG para resultados e limitacoes precisas.
+
+
+## Operacao local posterior autorizada - 07/11/2026
+
+O proprietario autorizou excluir os dados locais sem backup. Os volumes do
+portal e Qdrant foram verificados/removidos e a instalacao foi recriada em schema
+v6 com um administrador, dez documentos exclusivamente Atlas e uma conexao
+Trino com sete tabelas. Organizacao tecnica padrao permanece vazia de negocio.
+Override Atlas ativa OnlyKnowledge, PreferOrganization e RAG textual; .env local
+seleciona o override para docker compose comum. Nenhum segredo foi publicado.
+
+Frontend/API/Trino reais ativos, fonte/grants testados e uma conversa hibrida
+foi validada no Chrome com DeepSeek real (modelo efetivo deepseek-flash), tabela,
+politica citada e grafico. Calls de resposta/titulo totalizaram 3610 tokens reais.
+Restart do gateway preservou docs/conexao/conversa sem duplicar ou criar backup.
+A limitacao anterior de "LLM pago nao executado" descreve a entrega inicial e
+foi superada para esse smoke local; nao representa auditoria ampla do modelo
+ou validacao de fontes empresariais/publicas externas. Diario contem detalhes.

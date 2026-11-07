@@ -34,6 +34,15 @@ public static class PortalAccess
     public static string Version(User user, IConfiguration cfg) => Convert.ToHexString(
         HMACSHA256.HashData(Encoding.UTF8.GetBytes(cfg["Jwt:Key"]!), Encoding.UTF8.GetBytes(user.PasswordHash)));
 
+    public static Task<int> DefaultOrganizationAsync(PortalDbContext db, int userId, IConfiguration config, CancellationToken ct)
+    {
+        var preferAtlas = config.GetValue<bool>("Demo:Atlas:PreferOrganization");
+        return db.OrganizationMemberships.Where(m => m.UserId == userId && m.IsActive)
+            .Join(db.Organizations.Where(o => o.IsActive), m => m.OrganizationId, o => o.Id, (m,o) => o)
+            .OrderBy(o => preferAtlas && o.Slug == "atlas-demo" ? 0 : 1).ThenBy(o => o.Id)
+            .Select(o => o.Id).FirstOrDefaultAsync(ct);
+    }
+
     public static async Task<(string[] Roles, string[] Permissions)> ReadAsync(PortalDbContext db, int userId, CancellationToken ct, int organizationId = 1)
     {
         if (!await db.OrganizationMemberships.AnyAsync(x => x.UserId == userId && x.OrganizationId == organizationId && x.IsActive, ct)) return ([], []);

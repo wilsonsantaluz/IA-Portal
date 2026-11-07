@@ -135,9 +135,7 @@ builder.Services.AddAuthentication("Bearer")
                 var selection = context.Request.Headers["X-Organization-Id"];
                 int organizationId;
                 if (selection.Count == 0) {
-                    organizationId = await db.OrganizationMemberships.Where(x => x.UserId == id && x.IsActive)
-                        .Join(db.Organizations.Where(x => x.IsActive), x => x.OrganizationId, x => x.Id, (m,o) => o.Id)
-                        .OrderBy(x => x).FirstOrDefaultAsync(context.HttpContext.RequestAborted);
+                    organizationId = await PortalAccess.DefaultOrganizationAsync(db,id,builder.Configuration,context.HttpContext.RequestAborted);
                 } else if (selection.Count != 1 || !int.TryParse(selection[0], out organizationId) || organizationId <= 0) {
                     context.Fail("Organizacao invalida."); return;
                 }
