@@ -45,11 +45,25 @@ const text='DEMONSTRAÇÃO — fixture visual sintética.\n\n```atlas-chart\n'+J
    assert.ok((await page.getByTitle('Diagrama Mermaid').getAttribute('srcdoc')).includes("default-src 'none'"));
    assert.equal(await page.getByText('Não foi possível renderizar o diagrama. Código original:',{exact:true}).count(),2);
    assert.equal(await page.evaluate(()=>window.PWNED),undefined);
+   const settings=page.getByLabel('Configurações da conversa',{exact:true});
+   assert.equal(await page.getByRole('combobox',{name:'Modelo da conversa'}).isVisible(),false);
+   assert.equal(await page.getByRole('combobox',{name:'Fonte de dados'}).isVisible(),false);
+   const input=page.getByRole('textbox',{name:'Sua pergunta para a IA'});
+   const compactHeight=(await input.boundingBox()).height;
+   assert.ok(compactHeight<40,'Composer starts with one line');
+   await input.fill('Primeira linha');await input.press('Shift+Enter');await input.press('a');
+   assert.equal(await input.inputValue(),'Primeira linha\na');
+   assert.ok((await input.boundingBox()).height>compactHeight,'Composer grows for multiline text');
+   await input.fill('');
+   await settings.focus();await settings.press('Enter');
+   await page.getByRole('combobox',{name:'Modelo da conversa'}).waitFor();
    await page.getByRole('combobox',{name:'Fonte de dados'}).click();await page.getByRole('option',{name:/Atlas local/}).click();
    assert.equal(await page.getByLabel('Data de referência').inputValue(),'2026-11-01');
    await page.getByText('Perguntas sugeridas Atlas',{exact:true}).click();
    await page.getByRole('button',{name:'Mostre o aging por faixa de atraso.',exact:true}).click();
    assert.equal(await page.getByRole('textbox',{name:'Sua pergunta para a IA'}).inputValue(),'Mostre o aging por faixa de atraso.');
+   await settings.click();
+   assert.equal(await page.getByRole('combobox',{name:'Fonte de dados'}).isVisible(),false);
    checks.push('Mocked API UI: organization header, source picker/reference and suggested question reuse the existing chat.');
    for(const theme of ['dark','light']) {
      if(await page.locator('html').getAttribute('data-theme')!==theme)await page.getByRole('button',{name:theme==='light'?'Ativar tema claro':'Ativar tema escuro'}).click();
@@ -69,7 +83,7 @@ const text='DEMONSTRAÇÃO — fixture visual sintética.\n\n```atlas-chart\n'+J
      assert.ok(await page.locator('main').evaluate(e=>e.scrollWidth<=e.clientWidth),'Main overflow');
    }
    checks.push('Light/dark connector screen, discovery/edit fields and 390/320px layout.');
-   await page.goto(base+'/chat');await page.getByRole('combobox',{name:'Fonte de dados'}).click();await page.getByRole('option',{name:/Atlas local/}).click();
+   await page.goto(base+'/chat');await page.getByLabel('Configurações da conversa',{exact:true}).click();await page.getByRole('combobox',{name:'Fonte de dados'}).click();await page.getByRole('option',{name:/Atlas local/}).click();
    for(const width of [390,320]) {
      await page.setViewportSize({width,height:844});
      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Chat page overflow');

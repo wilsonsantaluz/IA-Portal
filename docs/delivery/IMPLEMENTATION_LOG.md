@@ -553,3 +553,34 @@ Validação efetiva:
 Nenhuma migration, alteração no backend, reset de dados ou reinício do Trino.
 Backend .NET não recompilado pois não houve alteração nele. Para validar na aba
 antiga, usar Ctrl+F5 e reabrir a conversa; não é necessário gerar nova resposta.
+
+## 2026-11-07 — Chat com cabeçalho recolhido e entrada compacta
+
+Pedido: ampliar espaço disponível para mensagens e gráficos. Branch existente
+feature/atlas-business-intelligence, inicialmente limpa. Inspecionados ChatPage,
+ChatInput, ConversationModelPicker e BusinessSourcePicker; reutilizados React,
+MUI e controles existentes, sem alterações de contratos ou autorização.
+
+- ChatPage.tsx: título e expander nativo no topo; modelo, consumo e fonte dentro
+  de details recolhido por padrão, reiniciado ao trocar de conversa. Conteúdo
+  expandido limitado a 40dvh com rolagem para preservar espaço em telas pequenas.
+- ChatInput.tsx: uma linha inicial, crescimento até cinco linhas, anexo e envio
+  ao lado do texto; preservados Enter, Shift+Enter e proteção de composição IME.
+- tests/ui/atlas.cjs: regressão para controles inicialmente ocultos, abertura
+  por teclado, fechamento, altura de uma linha e crescimento com Shift+Enter.
+
+Validação:
+- npm run typecheck --prefix front: PASS.
+- docker compose build portal-front: PASS (typecheck/build; aviso existente de
+  chunks acima de 500 kB).
+- docker compose up -d --no-deps portal-front: PASS, versão local atualizada.
+- node tests/ui/atlas.cjs contra http://127.0.0.1:9080, Playwright/Chrome e
+  axe-core locais: PASS; fixtures de API sintéticas, temas claro/escuro,
+  teclado, gráfico numérico/Mermaid, sandbox, layout 390/320px e organização.
+- node tests/ui/frontend-cache.cjs: PASS.
+- Capturas locais artifacts/atlas-ui/chat-dark.png e chat-light.png atualizadas;
+  captura escura inspecionada visualmente, com cabeçalho e composer compactos.
+
+Sem migrations, mudanças no backend ou operações sobre dados. Testes .NET não
+reexecutados pois o incremento altera somente frontend. Preview: localhost:9080;
+recarregar a aba para receber a versão nova. Não houve push/merge/publicação.
