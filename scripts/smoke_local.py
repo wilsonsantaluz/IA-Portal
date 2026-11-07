@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PROMPTS = []
 SERVICE_CALLS = []
 TITLE_PROMPTS = []
+TRINO_MODE = {"fail": False, "empty": False}
 
 class FakeServices(BaseHTTPRequestHandler):
     def log_message(self, *_):
@@ -63,6 +64,10 @@ class FakeServices(BaseHTTPRequestHandler):
             else:
                 assert '"memory"."atlas"."invoices"' in sql
                 packet = {"columns": [{"name": "faixa", "type": "varchar"}, {"name": "saldo_centavos", "type": "bigint"}], "data": [["31-60", 1234500]]}
+            if TRINO_MODE["fail"]:
+                packet = {"error": {"errorName": "UNAVAILABLE", "message": "untrusted upstream body"}}
+            elif TRINO_MODE["empty"]:
+                packet["data"] = []
             payload = json.dumps(packet).encode()
             content_type = "application/json"
         elif self.path == "/ocr":
@@ -128,10 +133,13 @@ def main():
         dbfile = Path(temp) / "portal.db"
         admin_secret = uuid.uuid4().hex
         atlas_count = 10 if "--atlas" in sys.argv else 0
+        real_trino = "--real-trino" in sys.argv
+        if real_trino and not atlas_count:
+            raise ValueError("--real-trino requires --atlas and the dedicated loopback demo dataset")
         connector_file = Path(temp) / "connectors.json"
         connector_file.write_text(json.dumps({"DataConnectors": {"Sources": [{
             "Id": "atlas_local", "OrganizationSlug": "atlas-demo", "Category": "demo",
-            "Endpoint": f"http://127.0.0.1:{services.server_port}/", "Catalog": "memory", "Schema": "atlas",
+            "Endpoint": "http://127.0.0.1:18081/" if real_trino else f"http://127.0.0.1:{services.server_port}/", "Catalog": "memory", "Schema": "atlas",
             "User": "atlas_reader", "AllowedAddresses": ["127.0.0.1"], "Tables": ["invoices", "payments"], "ReadOnlyAccount": True
         }]}}), encoding="utf-8")
         env = dict(os.environ)
@@ -426,10 +434,12 @@ def main():
                     connection = {"name": "Atlas HTTP fixture", "profileId": "atlas_local", "enabled": True, "tables": ["invoices", "payments"], "groupIds": [atlas_group["id"]], "version": 0}
                     connector = request("/api/data-connectors", connection)["id"]
                     assert request(f"/api/data-connectors/{connector}/test", {})["status"] == "connected"
-                    assert len(request(f"/api/data-connectors/{connector}/metadata")) == 2
+                    discovered = request(f"/api/data-connectors/{connector}/metadata")
+                    assert len(discovered) >= 10 if real_trino else len(discovered) == 2
                     assert request("/api/data/sources")[0]["id"] == connector
                     analysis = request(f"/api/data/{connector}/analytics?kind=aging&reference=2026-11-01")
-                    assert analysis["rows"][0]["saldo_centavos"] == 1234500 and analysis["synthetic"]
+                    expected_cents = 15605108 if real_trino else 1234500
+                    assert analysis["rows"][0]["saldo_centavos"] == expected_cents and analysis["synthetic"]
                     rejected(f"/api/data/{connector}/analytics?kind=delete&reference=2026-11-01", expected=400)
                     rejected("/api/data-connectors", {**connection, "groupIds": [default_role["id"]]}, expected=400)
                     rejected("/api/data-connectors", {**connection, "tables": ["secret_table"]}, expected=400)
@@ -446,9 +456,34 @@ def main():
                     rejected(f"/api/chatBot/sessions/{default_session}")
                     rejected("/api/admin/ai/providers", expected=403)
                     atlas_session = request("/api/chatBot/sessions", {})["id"]
-                    stream = request("/api/ia/ask/stream", {"pergunta": "Explique a pol?tica de cobran?a e negocia??o", "sessionId": atlas_session}, raw=True)
+                    stream = request("/api/ia/ask/stream", {"pergunta": "Explique a política de cobrança e negociação da Atlas", "sessionId": atlas_session}, raw=True)
                     assert "event: error" not in stream and "synthetic-demo" in PROMPTS[-1]
                     assert "TEST-MARKER" not in PROMPTS[-1]
+                    hybrid = {"pergunta": "Mostre o valor vencido e explique quais ações a política de cobrança recomenda.", "sessionId": atlas_session, "sourceId": connector, "referenceDate": "2026-11-01", "requestId": str(uuid.uuid4())}
+                    stream = request("/api/ia/ask/stream", hybrid, raw=True)
+                    assert "event: error" not in stream and str(expected_cents) in stream and "atlas-chart" in stream
+                    assert "synthetic-demo" in PROMPTS[-1] and str(expected_cents) in PROMPTS[-1] and "TEST-MARKER" not in PROMPTS[-1]
+                    persisted = request(f"/api/chatBot/sessions/{atlas_session}/messages")["items"][-1]["content"]
+                    assert "atlas-collections-policy" in persisted and "2026-11-01" in persisted and "Plano de consulta" in persisted
+                    assert any(str(expected_cents) in m["content"] for m in request(f"/api/chatBot/history/{atlas_session}")), "Legacy display history lost structured result"
+                    rejected("/api/ia/ask/stream", {**hybrid, "referenceDate": "2026-10-01"}, expected=409)
+                    request("/api/ia/ask/stream", {"pergunta": "Explique a política de cobrança da Atlas", "sessionId": atlas_session}, raw=True)
+                    assert str(expected_cents) not in PROMPTS[-1] and "portal:structured-data" not in PROMPTS[-1], "Historical SQL data retransmitted without reauthorization"
+                    inferred = len(PROMPTS) + len(TITLE_PROMPTS)
+                    local_session = request("/api/chatBot/sessions", {})["id"]
+                    no_source = request("/api/ia/ask/stream", {"pergunta": "Mostre o aging", "sessionId": local_session}, raw=True)
+                    assert "Selecione uma fonte" in no_source and len(PROMPTS) + len(TITLE_PROMPTS) == inferred
+                    assert request(f"/api/chatBot/sessions/{local_session}")["titleSource"] == "fallback"
+                    assert request(f"/api/usage/summary?sessionId={local_session}")["requests"] == 0
+                    if not real_trino:
+                        TRINO_MODE["fail"] = True
+                        failed_data = request("/api/ia/ask/stream", {**hybrid, "requestId": str(uuid.uuid4())}, raw=True)
+                        TRINO_MODE["fail"] = False
+                        assert "Nenhum indicador" in failed_data and "1234500" not in failed_data and len(PROMPTS) + len(TITLE_PROMPTS) == inferred
+                        TRINO_MODE["empty"] = True
+                        empty_data = request("/api/ia/ask/stream", {**hybrid, "requestId": str(uuid.uuid4())}, raw=True)
+                        TRINO_MODE["empty"] = False
+                        assert "não retornou registros" in empty_data and "1234500" not in empty_data and len(PROMPTS) + len(TITLE_PROMPTS) == inferred
                     # Shared identity cannot be reset by an admin of only this tenant.
                     account = request("/api/users/1")
                     rejected("/api/users/1", {"userName": account["userName"], "userEmail": account["userEmail"], "password": uuid.uuid4().hex,
@@ -465,7 +500,8 @@ def main():
                     organization_id = 1
                     token = admin_token
                     print("PASS: organization membership validation, isolated KB/read/write/RAG/roles/conversations, shared-account reset denied, installation settings protected.")
-                    print("PASS: Data Connectors registration/profile/group/table policies, connectivity/discovery, typed read-only analytics, disabled sources, CAS and cross-organization denial (Trino HTTP double through pinned socket handler).")
+                    print("PASS: Data Connectors registration/profile/group/table policies, connectivity/discovery, typed read-only analytics, disabled sources, CAS and cross-organization denial (" + ("real local Trino" if real_trino else "Trino HTTP double") + " through pinned socket handler).")
+                    print("PASS: hybrid RAG+SQL/SSE grounding, exact persisted table/chart/provenance/document version, source/reference replay protection; missing data does not call LLM. Failure/empty fixtures " + ("skipped in real Trino run; covered by double run." if real_trino else "passed without invented metrics."))
                 print("PASS: SQLite creation, bootstrap/login, KB CRUD, chat streaming/history, ratings, OCR routing and restart persistence.")
                 print("LLM and OCR were HTTP doubles; external inference and real text extraction were not exercised.")
         finally:

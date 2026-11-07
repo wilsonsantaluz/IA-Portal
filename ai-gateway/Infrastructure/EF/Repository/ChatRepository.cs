@@ -112,9 +112,13 @@ public class ChatRepository(PortalDbContext db, IHttpContextAccessor http, AiPro
     }
     // Compatibility methods never create or adopt a caller-supplied UUID.
     public Task<ChatSession> GetOrCreateSessionAsync(Guid id, string? userId, CancellationToken ct) => Session(id, ct);
-    public async Task<List<ChatMessage>> GetLastMessagesAsync(Guid id, int limit, CancellationToken ct) {
+    public async Task<List<ChatMessage>> GetLastMessagesAsync(Guid id, int limit, CancellationToken ct, bool forModel = true) {
         await Session(id, ct);
-        var items = await db.ChatMessages.AsNoTracking().Where(m => m.SessionId == id && m.Session.OwnerUserId == Owner && m.Session.DeletedAt == null && m.Status == "completed").OrderByDescending(m => m.CreatedAt).ThenByDescending(m => m.Id).Take(Math.Clamp(limit, 1, 100)).ToListAsync(ct);
+        // Numeric results must be reauthorized/requeried, not implicitly retransmitted
+        // from history after the source grant or external-processing policy changes.
+        var query = db.ChatMessages.AsNoTracking().Where(m => m.SessionId == id && m.Session.OwnerUserId == Owner && m.Session.DeletedAt == null && m.Status == "completed");
+        if (forModel) query = query.Where(m => m.Role != "assistant" || (m.Provider != "portal" && !m.Content.Contains("<!-- portal:structured-data -->")));
+        var items = await query.OrderByDescending(m => m.CreatedAt).ThenByDescending(m => m.Id).Take(Math.Clamp(limit, 1, 100)).ToListAsync(ct);
         items.Reverse(); return items;
     }
     public async Task AddMessageAsync(ChatMessage message, CancellationToken ct) {

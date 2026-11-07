@@ -19,15 +19,18 @@ public sealed class TrinoRestClient(IConfiguration config, ILogger<TrinoRestClie
     public async Task<TrinoResponseData> ExecuteApprovedAsync(ConnectorProfile profile, ApprovedTrinoQuery query, int organizationId, CancellationToken ct)
     {
         if (organizationId <= 0) throw new ChatException(403,"Organizacao obrigatoria.");
+        var endpoint = new Uri(profile.Endpoint);
         var tenant = TenantQueries.GetOrAdd(organizationId,_ => new SemaphoreSlim(2,2));
         if (!await tenant.WaitAsync(0,ct)) throw new ChatException(429,"Limite de consultas simultaneas atingido.");
-        if (!await GlobalQueries.WaitAsync(0,ct)) { tenant.Release(); throw new ChatException(429,"Limite global de consultas atingido."); }
+        bool granted;
+        try { granted = await GlobalQueries.WaitAsync(0,ct); }
+        catch { tenant.Release(); throw; }
+        if (!granted) { tenant.Release(); throw new ChatException(429,"Limite global de consultas atingido."); }
         var trace = Guid.NewGuid().ToString("N");
         Uri? next = null;
-        using var client = factory.CreateClient("trino-secure");
+        HttpClient? client = null;
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(TimeSpan.FromSeconds(20));
-        var endpoint = new Uri(profile.Endpoint);
         HttpRequestMessage Request(HttpMethod method, Uri uri)
         {
             var request = new HttpRequestMessage(method,uri);
@@ -48,6 +51,7 @@ public sealed class TrinoRestClient(IConfiguration config, ILogger<TrinoRestClie
         }
         try
         {
+            client = factory.CreateClient("trino-secure");
             var result = new TrinoResponseData();
             var uri = new Uri(endpoint,"v1/statement");
             var totalBytes = 0;
@@ -96,12 +100,13 @@ public sealed class TrinoRestClient(IConfiguration config, ILogger<TrinoRestClie
         catch { throw new ChatException(502,"Nao foi possivel consultar a fonte Trino."); }
         finally
         {
-            if (next is not null)
+            if (next is not null && client is not null)
             {
                 try { using var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(2)); using var request = Request(HttpMethod.Delete,next); using var response = await client.SendAsync(request,cancel.Token); }
                 catch { /* The server time limit is a second bound if cancellation fails. */ }
             }
             logger.LogInformation("Trino {TraceId}: org={OrganizationId}, plano={Plan}, encerrada",trace,organizationId,query.Kind);
+            client?.Dispose();
             GlobalQueries.Release(); tenant.Release();
         }
     }

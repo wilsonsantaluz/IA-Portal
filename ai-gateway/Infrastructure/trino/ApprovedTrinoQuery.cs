@@ -22,7 +22,7 @@ public sealed class ApprovedTrinoQuery
     }
     public static ApprovedTrinoQuery Analytics(ConnectorProfile p, string kind, DateOnly reference, IReadOnlyCollection<string> selected)
     {
-        if (kind is not ("aging" or "cashflow" or "top_balances")) throw new ArgumentException("Plano analitico nao suportado.");
+        if (kind is not ("aging" or "aging_trend" or "cashflow" or "top_balances")) throw new ArgumentException("Plano analitico nao suportado.");
         if (reference.Year is < 2000 or > 2100) throw new ArgumentException("Data invalida.");
         ValidateNames(p, selected);
         if (!new[] { "invoices", "payments" }.All(t => selected.Contains(t) && p.Tables.Contains(t)))
@@ -30,6 +30,25 @@ public sealed class ApprovedTrinoQuery
         string Table(string name) => $"\"{p.Catalog}\".\"{p.Schema}\".\"{name}\"";
         var date = reference.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
         var from = new DateOnly(reference.Year, reference.Month, 1).AddMonths(-6).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        if (kind == "aging_trend")
+        {
+            var first = new DateOnly(reference.Year,reference.Month,1);
+            var dates = string.Join(",",Enumerable.Range(1,6).Reverse().Select(i => $"(DATE '{first.AddMonths(1-i).AddDays(-1):yyyy-MM-dd}')"));
+            return new($"""
+                WITH refs(ref) AS (VALUES {dates}), paid AS (
+                  SELECT r.ref,p.invoice_id,sum(CASE WHEN p.status='confirmed' THEN p.amount_cents WHEN p.status='reversed' THEN -p.amount_cents ELSE 0 END) AS cents
+                  FROM refs r JOIN {Table("payments")} p ON CAST(p.paid_on AS DATE)<=r.ref GROUP BY r.ref,p.invoice_id
+                ), balances AS (
+                  SELECT r.ref,greatest(i.net_cents-coalesce(p.cents,0),0) AS balance_cents,CAST(i.due_on AS DATE) AS due
+                  FROM refs r CROSS JOIN {Table("invoices")} i LEFT JOIN paid p ON p.ref=r.ref AND p.invoice_id=i.id
+                  WHERE i.status<>'cancelled' AND CAST(i.issued_on AS DATE)<=r.ref
+                )
+                SELECT CAST(ref AS VARCHAR) AS mes,sum(balance_cents) AS saldo_centavos,
+                  sum(CASE WHEN due<ref THEN balance_cents ELSE 0 END) AS vencido_centavos,
+                  100.0*sum(CASE WHEN due<ref THEN balance_cents ELSE 0 END)/nullif(sum(balance_cents),0) AS taxa_percentual
+                FROM balances GROUP BY ref ORDER BY ref LIMIT 6
+                """,6,kind);
+        }
         var balances = $"""
             WITH paid AS (
               SELECT invoice_id, sum(CASE WHEN status='confirmed' THEN amount_cents WHEN status='reversed' THEN -amount_cents ELSE 0 END) AS cents

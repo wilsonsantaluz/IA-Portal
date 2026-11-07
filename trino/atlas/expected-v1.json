@@ -1,0 +1,70 @@
+{
+  "seed": 42,
+  "reference": "2026-11-01",
+  "currency": "BRL",
+  "unit": "cents",
+  "cashflow": [
+    {
+      "mes": "2026-05-01",
+      "faturado_centavos": 28927390,
+      "caixa_centavos": 23288748
+    },
+    {
+      "mes": "2026-06-01",
+      "faturado_centavos": 28927390,
+      "caixa_centavos": 21674938
+    },
+    {
+      "mes": "2026-07-01",
+      "faturado_centavos": 27741980,
+      "caixa_centavos": 22759548
+    },
+    {
+      "mes": "2026-08-01",
+      "faturado_centavos": 27741980,
+      "caixa_centavos": 22549493
+    },
+    {
+      "mes": "2026-09-01",
+      "faturado_centavos": 27502980,
+      "caixa_centavos": 20042428
+    },
+    {
+      "mes": "2026-10-01",
+      "faturado_centavos": 27741980,
+      "caixa_centavos": 23137098
+    }
+  ],
+  "aging_trend": [
+    {
+      "mes": "2026-05-31",
+      "saldo_centavos": 67038625,
+      "vencido_centavos": 67038625
+    },
+    {
+      "mes": "2026-06-30",
+      "saldo_centavos": 74291077,
+      "vencido_centavos": 74291077
+    },
+    {
+      "mes": "2026-07-31",
+      "saldo_centavos": 79273509,
+      "vencido_centavos": 79273509
+    },
+    {
+      "mes": "2026-08-31",
+      "saldo_centavos": 84465996,
+      "vencido_centavos": 84465996
+    },
+    {
+      "mes": "2026-09-30",
+      "saldo_centavos": 91926548,
+      "vencido_centavos": 91926548
+    },
+    {
+      "mes": "2026-10-31",
+      "saldo_centavos": 96531430,
+      "vencido_centavos": 96531430
+    }
+  ]
+}

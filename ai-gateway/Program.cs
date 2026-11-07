@@ -63,10 +63,10 @@ builder.Services.AddScoped<IMlService, MlService>();
 builder.Services.AddScoped<IOcrService, OcrService>();
 builder.Services.AddScoped<IDataRagService, DataRagService>();
 
-if (builder.Configuration.GetValue<bool>("Chat:UseAdvancedRag"))
-    builder.Services.AddScoped<IAskSmartService, VectorChatContextService>();
-else
-    builder.Services.AddScoped<IAskSmartService, LocalChatContextService>();
+builder.Services.AddScoped<ChatGrounding>();
+builder.Services.AddScoped<LocalChatContextService>();
+builder.Services.AddScoped<VectorChatContextService>();
+builder.Services.AddScoped<IAskSmartService, BusinessChatContextService>();
 builder.Services.AddHttpClient<OllamaPdfService>();
 builder.Services.AddSingleton<IRerankerService, OnnxRerankerService>();
 

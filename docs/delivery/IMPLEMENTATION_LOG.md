@@ -314,3 +314,50 @@ Build inicial teve aviso novo de parametro HttpClient nao utilizado; removido
 com registro scoped do cliente. Build final voltou aos 13 avisos preexistentes. Trino real, browser e chat hibrido ainda
 nao validados. Imagem trinodb/trino:484 obtida para validacao local seguinte;
 nenhuma instancia existente ou banco real foi alterado.
+
+
+## 07/11/2026 - Fase D: chat hibrido no fluxo existente
+
+BusinessChatContextService envolve os contextos existentes. Classificador
+pt-BR deterministico distingue documentos/analytics/hibrido/esclarecimento;
+fonte/data explicitas e quatro planos financeiros fechados, incluindo trend
+mensal. SQL nao vem do modelo. Conector/grants sao revalidados no servidor.
+O modelo recebe somente agregacoes autorizadas e politicas recuperadas, com
+citacoes/versao; tabela, periodo, filtros, SQL e chart payload sao anexados pelo
+servidor. SourceId/referenceDate entram no fingerprint de replay.
+
+AllowExternalLlm e opt-in para envio de resultados nao-demo. Sem permissao de
+egress ou dados ausentes/vazios/indisponiveis, resposta local sem inferencia,
+consumo ficticio ou chamada paga de titulo. Fallback de titulo preserva edicao
+manual. Resultados SQL persistidos continuam no historico de exibicao mas nao
+voltam automaticamente ao prompt de IA/OCR/rotas legadas: nova analise precisa
+reautorizar e consultar, inclusive apos revogacao de fonte/egress.
+
+Validacoes finais executadas:
+- dotnet build ai-gateway/AiGateway.csproj --no-restore: PASS, 13 avisos
+  preexistentes, nenhum erro.
+- dotnet run --project tests/BusinessChat/BusinessChat.csproj --no-restore: PASS
+  classificacao, fonte ausente, gate de egress enterprise, grounding/proveniencia,
+  fonte indisponivel/nao autorizada sem inventar metricas.
+- dotnet run --project tests/Connectors/Connectors.csproj --no-restore -- --real-trino:
+  PASS v5->v6 backup/restore/rollback, SQL adversarial/rede/limites e quatro planos
+  no Trino 484 real. Aging confere cinco totais exatos; cashflow/trend conferem
+  valores em centavos contra agregacoes offline independentes em expected-v1.json.
+  Descoberta real autorizada; reader nao escreve nem acessa system ou manifest.
+- python scripts/smoke_local.py --atlas: PASS suite completa com gateway/SQLite
+  reais e doubles de Trino/LLM/OCR; hybrid SSE, citacoes, tabela/chart/proveniencia
+  persistidos, fonte/ref no replay, historico de exibicao preservado e exclusao
+  dos resultados numericos do contexto subsequente. Ausencia/falha/vazio nao
+  chamam LLM; fallback local sem usage ficticio (requests=0).
+- python scripts/smoke_local.py --atlas --real-trino: PASS a mesma integracao com
+  Trino real local e valores reais do dataset sintetico; apenas LLM/OCR doubles.
+  Casos injetados de falha/vazio sao cobertos na execucao com double.
+- Regressoes .NET reexecutadas com dotnet run --project <projeto> --no-restore:
+  tests/AtlasKnowledge, Organizations, ChatSessions, ChatTitles, Usage, Providers
+  e access/SeedSmoke: todas PASS. Migrations antigas, isolamento, titulos,
+  provedores e contabilizacao preservados.
+- npm run typecheck --prefix front: PASS.
+
+Sem modelos pagos, embeddings/reranker reais ou fonte empresarial/publica real.
+Classifier/plans sao limitados e documentados em docs/demo/ATLAS_CHAT.md; datas
+na linguagem natural nao substituem silenciosamente a referencia do controle.

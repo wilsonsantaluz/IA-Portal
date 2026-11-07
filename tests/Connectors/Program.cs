@@ -24,7 +24,7 @@ foreach (var malicious in new[] { "DROP TABLE invoices", "SELECT 1; DELETE FROM 
 {
     try { ApprovedTrinoQuery.Analytics(profile,malicious,reference,profile.Tables); throw new Exception("Accepted SQL text"); } catch (ArgumentException) { }
 }
-foreach (var kind in new[] { "aging","cashflow","top_balances" })
+foreach (var kind in new[] { "aging","aging_trend","cashflow","top_balances" })
 {
     var plan = ApprovedTrinoQuery.Analytics(profile,kind,reference,profile.Tables);
     Check(plan.Sql.StartsWith("WITH ") && !plan.Sql.Contains(';') && plan.Sql.Contains("\"memory\".\"atlas\".\"invoices\"") && plan.RowLimit <= 10,"Unbounded or unqualified plan");
@@ -62,6 +62,7 @@ config["DataConnectors:Sources:0:Endpoint"]="http://127.0.0.1:18081/";
 config["DataConnectors:Sources:0:AllowedAddresses:0"]="169.254.169.254";
 try { registry.All(); throw new Exception("Metadata IP accepted"); } catch (ChatException) { }
 Console.WriteLine("PASS: server-owned source/organization policy, closed SQL plan compiler, identifier attacks, legacy free SQL blocked, nextUri SSRF blocked, row/byte limits, sanitized upstream errors, cancellation and endpoint/metadata-IP rejection. HTTP doubles only.");
+if (args.Contains("--real-trino")) await RealTrinoChecks.Run();
 
 sealed class FakeFactory : IHttpClientFactory
 {

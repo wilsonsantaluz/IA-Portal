@@ -28,7 +28,7 @@ public class ChatBotContoller(IChatRepository chats, ChatUsageService usage, IKn
     [HttpDelete("sessions/{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct) { await chats.DeleteAsync(id, ct); return NoContent(); }
     [HttpGet("history/{sessionId:guid}")]
-    public async Task<IActionResult> GetHistory(Guid sessionId, CancellationToken ct) => Ok((await chats.GetLastMessagesAsync(sessionId, 100, ct)).Select(m => new { m.Id, m.Role, m.Content, m.CreatedAt, m.Status }));
+    public async Task<IActionResult> GetHistory(Guid sessionId, CancellationToken ct) => Ok((await chats.GetLastMessagesAsync(sessionId, 100, ct, forModel: false)).Select(m => new { m.Id, m.Role, m.Content, m.CreatedAt, m.Status }));
 
     [HttpPost("ask")]
     public async Task<IActionResult> AskSql(AskSqlRequest req, CancellationToken ct) {

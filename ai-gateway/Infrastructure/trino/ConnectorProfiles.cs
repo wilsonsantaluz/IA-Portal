@@ -19,6 +19,7 @@ public sealed class ConnectorProfile
     public string[] AllowedAddresses { get; set; } = [];
     public string[] Tables { get; set; } = [];
     public bool ReadOnlyAccount { get; set; }
+    public bool AllowExternalLlm { get; set; }
     public string? SourceUrl { get; set; }
     public string? License { get; set; }
 }

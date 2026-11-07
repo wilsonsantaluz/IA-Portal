@@ -6,6 +6,8 @@ namespace AiGateway.Dtos
 
         public string? SessionId { get; set; }
         public Guid? RequestId { get; set; }
+        public int? SourceId { get; set; }
+        public DateOnly? ReferenceDate { get; set; }
 
         public string? Model { get; set; }
 

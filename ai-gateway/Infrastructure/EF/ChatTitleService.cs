@@ -24,6 +24,19 @@ public sealed class ChatTitleService(PortalDbContext db, IHttpContextAccessor ht
         catch (Exception ex) { logger.LogWarning("Título não finalizado para {SessionId} ({ErrorType}); resposta do chat preservada.", sessionId, ex.GetType().Name); }
     }
 
+    public async Task TrySetLocalFallbackAsync(Guid sessionId, CancellationToken ct)
+    {
+        try {
+        var owner = PortalAccess.UserId(http.HttpContext!.User);
+        var owned = db.ChatSessions.Where(s => s.Id == sessionId && s.OwnerUserId == owner && s.DeletedAt == null && s.TitleSource == "provisional");
+        var question = await db.ChatMessages.AsNoTracking().Where(m => m.SessionId == sessionId && m.Role == "user" && m.Status == "completed")
+            .OrderBy(m => m.CreatedAt).ThenBy(m => m.Id).Select(m => m.Content).FirstOrDefaultAsync(ct);
+        if (question is null) return;
+        var title = Shorten(question,80);
+        await owned.ExecuteUpdateAsync(u => u.SetProperty(s => s.Title,title).SetProperty(s => s.TitleSource,"fallback").SetProperty(s => s.Version,s => s.Version+1),ct);
+        } catch (Exception ex) { logger.LogWarning("Título local não finalizado para {SessionId} ({ErrorType}).",sessionId,ex.GetType().Name); }
+    }
+
     private async Task GenerateAsync(Guid sessionId, CancellationToken ct)
     {
         var owner = PortalAccess.UserId(http.HttpContext!.User);
