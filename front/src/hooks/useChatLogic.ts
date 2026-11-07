@@ -55,6 +55,8 @@ function fromStored(m: StoredMessage): Message {
   };
 }
 export const useChatLogic = () => {
+  const [dataSourceId,setDataSourceId] = useState<number|null>(null);
+  const [referenceDate,setReferenceDate] = useState("");
   const [sessions, setSessions] = useState<Session[]>([]);
   const [session, setSession] = useState<Session | null>(null);
   const [sessionsCursor, setSessionsCursor] = useState<string | null>(null);
@@ -264,8 +266,9 @@ export const useChatLogic = () => {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          "X-Organization-Id": String(JSON.parse(localStorage.getItem("auth") || "null")?.organizationId || 1),
         },
-        body: JSON.stringify({ pergunta: question, sessionId: id, requestId }),
+        body: JSON.stringify({ pergunta: question, sessionId: id, requestId, sourceId:dataSourceId, referenceDate:referenceDate || undefined }),
       });
       if (!response.ok) {
         const data = await response.json().catch(() => null);
@@ -392,6 +395,7 @@ export const useChatLogic = () => {
     }
   };
   return {
+    dataSourceId,setDataSourceId,referenceDate,setReferenceDate,
     sessions,
     session,
     sessionsCursor,

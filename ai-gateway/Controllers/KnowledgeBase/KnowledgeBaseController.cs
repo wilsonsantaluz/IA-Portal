@@ -75,7 +75,7 @@ public class KnowledgeBaseController : ControllerBase
         if (dto.Id.HasValue && dto.Id.Value > 0)
         {
             entity = await _repo.GetByIdAsync(dto.Id.Value, ct)
-                     ?? new KnowledgeBaseItem();
+                     ?? throw new ChatException(404, "Documento nao encontrado.");
         }
         else
         {
@@ -140,6 +140,7 @@ public class KnowledgeBaseController : ControllerBase
         {
             return BadRequest(new { error = ex.Message });
         }
+        catch (ChatException) { throw; }
         catch (Exception ex)
         {
             return StatusCode(500, new

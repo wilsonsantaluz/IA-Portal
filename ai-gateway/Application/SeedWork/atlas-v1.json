@@ -1,0 +1,72 @@
+[
+  {
+    "KeyName": "atlas-company-profile",
+    "Section": "institucional",
+    "Subsection": "synthetic-demo / v1",
+    "Title": "Atlas Serviços Digitais — visão geral",
+    "Content": "> DEMO: synthetic-demo / v1. Conteudo inteiramente ficticio.\n\nA Atlas Serviços Digitais é uma empresa fictícia brasileira que fornece serviços de suporte, automação e gestão de assinaturas a pequenas e médias empresas. Seu portfólio demonstrativo inclui planos Essencial, Profissional e Enterprise. A organização opera com cerca de 500 clientes simulados. O objetivo desta base é explicar os processos e apoiar análises de faturas, pagamentos, recebíveis e inadimplência gerados artificialmente."
+  },
+  {
+    "KeyName": "atlas-billing-cycle",
+    "Section": "faturamento",
+    "Subsection": "synthetic-demo / v1",
+    "Title": "Emissão, vencimento e conciliação",
+    "Content": "> DEMO: synthetic-demo / v1. Conteudo inteiramente ficticio.\n\nCada contrato ativo gera uma fatura mensal. Uma fatura possui identificador, cliente, contrato, competência, data de emissão, vencimento, valor bruto, descontos e valor líquido. Pagamentos podem ser parciais, pontuais ou posteriores ao vencimento. O saldo em aberto é o valor líquido menos a soma de pagamentos confirmados, limitado inferiormente a zero. Uma fatura só é considerada quitada quando seu saldo em aberto chega a zero. Cancelamentos e estornos são eventos distintos e devem manter trilha de auditoria."
+  },
+  {
+    "KeyName": "atlas-aging-policy",
+    "Section": "cobrança",
+    "Subsection": "synthetic-demo / v1",
+    "Title": "Faixas de envelhecimento dos recebíveis",
+    "Content": "> DEMO: synthetic-demo / v1. Conteudo inteiramente ficticio.\n\nPara a demonstração, uma fatura vencida com saldo positivo é classificada pelo número de dias corridos após o vencimento: 1–15 dias (atraso inicial); 16–30 dias (atenção); 31–60 dias (risco elevado); 61–90 dias (crítico); mais de 90 dias (recuperação especializada). Faturas ainda não vencidas ficam em 'a vencer'. Esta classificação é uma política sintética, não uma exigência legal ou padrão regulatório."
+  },
+  {
+    "KeyName": "atlas-collections-policy",
+    "Section": "cobrança",
+    "Subsection": "synthetic-demo / v1",
+    "Title": "Régua de cobrança demonstrativa",
+    "Content": "> DEMO: synthetic-demo / v1. Conteudo inteiramente ficticio.\n\nAté 5 dias de atraso: lembrete cordial. De 6 a 15 dias: contato de acompanhamento e conferência de pagamento. De 16 a 30 dias: atendimento humano e análise de dificuldade operacional. De 31 a 60 dias: proposta de negociação sujeita a aprovação. Acima de 60 dias: encaminhamento para equipe especializada. Nenhuma ação é executada automaticamente por um modelo de IA; o sistema apenas recomenda ações, com aprovação humana e registro de auditoria. Contatos respeitam consentimento, preferências e legislação aplicável."
+  },
+  {
+    "KeyName": "atlas-negotiation-policy",
+    "Section": "cobrança",
+    "Subsection": "synthetic-demo / v1",
+    "Title": "Regras de negociação simuladas",
+    "Content": "> DEMO: synthetic-demo / v1. Conteudo inteiramente ficticio.\n\nAcordos são propostas, não alterações automáticas de contrato. Para demonstrar o fluxo, um operador pode simular parcelamento em até três parcelas e desconto de até 5% sobre o saldo em aberto, condicionado à autorização de um supervisor. O sistema deve apresentar impacto no fluxo de caixa e registrar aprovador, justificativa e versão da proposta. Não aplicar automaticamente juros, multas ou descontos sem base contratual e revisão jurídica."
+  },
+  {
+    "KeyName": "atlas-kpi-glossary",
+    "Section": "indicadores",
+    "Subsection": "synthetic-demo / v1",
+    "Title": "Glossário de indicadores e fórmulas",
+    "Content": "> DEMO: synthetic-demo / v1. Conteudo inteiramente ficticio.\n\n**Receita faturada:** soma do valor líquido das faturas emitidas no período, excluindo canceladas.\n**Recebimento no período:** soma dos pagamentos confirmados por data de pagamento, independentemente da competência.\n**Saldo a receber:** soma dos saldos positivos de faturas não canceladas.\n**Valor vencido:** soma dos saldos positivos cujo vencimento é anterior à data de referência.\n**Taxa de inadimplência por valor:** valor vencido dividido pelo saldo a receber, quando o denominador for maior que zero.\n**Prazo médio de recebimento demonstrativo:** média ponderada dos dias entre emissão e pagamento, ponderada pelo valor pago, apenas para parcelas recebidas.\nO sistema deve declarar data de referência, moeda BRL, filtros e denominadores; não misturar recebimentos de caixa com faturamento por competência."
+  },
+  {
+    "KeyName": "atlas-data-governance",
+    "Section": "governança",
+    "Subsection": "synthetic-demo / v1",
+    "Title": "Qualidade dos dados e explicabilidade",
+    "Content": "> DEMO: synthetic-demo / v1. Conteudo inteiramente ficticio.\n\nToda resposta analítica deve informar período, origem, filtros e horário da consulta. Valores monetários usam BRL. Não inventar dados ausentes, nem afirmar causalidade com base apenas em correlação. Uma resposta baseada em política deve citar o documento e sua versão; uma resposta numérica deve citar a consulta, fonte e período. Havendo conflito entre documento e banco, explicar a divergência em vez de escolher silenciosamente."
+  },
+  {
+    "KeyName": "atlas-access-policy",
+    "Section": "segurança",
+    "Subsection": "synthetic-demo / v1",
+    "Title": "Acesso mínimo e segregação",
+    "Content": "> DEMO: synthetic-demo / v1. Conteudo inteiramente ficticio.\n\nDados de clientes devem ser fictícios e sem CPF, e-mail ou telefone reais. Conexões analíticas usam contas somente leitura, limites de linhas e tempo, catálogos permitidos e isolamento por organização. Não revelar SQL de outras organizações, credenciais ou dados privados em logs e respostas. A IA não deve executar comandos de escrita nem expor tabelas não autorizadas."
+  },
+  {
+    "KeyName": "atlas-dispute-process",
+    "Section": "atendimento",
+    "Subsection": "synthetic-demo / v1",
+    "Title": "Contestação de faturas",
+    "Content": "> DEMO: synthetic-demo / v1. Conteudo inteiramente ficticio.\n\nQuando um cliente contesta uma cobrança, o operador registra motivo, evidências, data e responsável. A fatura fica sinalizada para revisão, sem baixa automática. O fluxo é: receber contestação → validar contrato e fatura → analisar pagamentos e ajustes → aprovar correção ou manter cobrança com justificativa → notificar cliente → registrar desfecho. O diagrama Mermaid deve refletir essas etapas, sem inventar aprovações."
+  },
+  {
+    "KeyName": "atlas-demo-questions",
+    "Section": "demonstração",
+    "Subsection": "synthetic-demo / v1",
+    "Title": "Exemplos de perguntas para o portal",
+    "Content": "> DEMO: synthetic-demo / v1. Conteudo inteiramente ficticio.\n\n1. Qual é o valor vencido hoje, por faixa de atraso?\n2. Mostre os dez maiores saldos em aberto e o percentual que representam.\n3. Compare faturamento e recebimentos nos últimos seis meses.\n4. Qual política se aplica a uma fatura com 37 dias de atraso?\n5. Gere um fluxograma Mermaid para contestação de faturas.\n6. Quais clientes têm maior concentração de recebíveis, sem expor dados pessoais?\n7. Quais indicadores não podem ser calculados com as tabelas disponíveis?\n8. Explique as diferenças entre receita faturada e caixa recebido.\n9. Qual seria o efeito de receber 20% do saldo vencido em até 30 dias? Identifique como simulação.\n10. Combine as faixas de atraso com a régua de cobrança e proponha um plano de priorização, sujeito a aprovação humana."
+  }
+]

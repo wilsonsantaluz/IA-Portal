@@ -1,3 +1,4 @@
+import DataConnectorsPage from "./pages/DataConnectorsPage";
 import { Routes, Route, Navigate } from "react-router-dom";
 
 import LoginPage from "./pages/LoginPage";
@@ -78,6 +79,7 @@ export default function App() {
             </RequirePermission>
           }
         />
+        <Route path="data-connectors" element={<RequirePermission permission="connectors.manage"><DataConnectorsPage /></RequirePermission>} />
         <Route path="*" element={<Navigate to="/" replace />} />
         <Route path="settings/ai" element={<RequireAnyPermission permissions={["chat.access", "ai.manage"]}><AiSettingsPage /></RequireAnyPermission>} />
         <Route path="usage" element={<RequireAnyPermission permissions={["chat.access", "usage.admin"]}><UsagePage /></RequireAnyPermission>} />

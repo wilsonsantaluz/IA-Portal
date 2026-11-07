@@ -59,4 +59,32 @@ Ollama/OpenAI foram corrigidos e integrados: removidos credencial literal/endpoi
 
 Configurações via `ai.manage` armazenam apenas metadados; chaves continuam no ambiente, com status booleano na interface. Não foi criado mecanismo inseguro para gravar chaves em texto puro. A allowlist de origens só pode ser alterada no servidor; redirecionamentos HTTP ficam desabilitados e userinfo/query/fragmento são rejeitados. O destino validado e sua classificação de cobrança são congelados juntos por chamada, impedindo que mudança administrativa concorrente redirecione uma inferência aceita ou classifique um endpoint remoto como local por uma corrida.
 
+## Atlas — atualização de 07/11/2026
+
+Organização ativa exige membership ativa no banco e JWT válido em cada request.
+Cabeçalho de organização é apenas uma seleção, nunca autoridade. RBAC é relido
+no tenant; KB/RAG, grupos, sessões, avaliações e consumo têm filtros de escopo.
+Contas compartilhadas não aceitam reset de identidade/senha por administrador de
+um tenant. Configuração global de IA permanece restrita à organização padrão.
+
+Conectores exigem `connectors.manage`; consulta exige `data.query` e grant de um
+grupo local. Destinos, IPs, catálogo/schema e referências de credenciais são
+aprovados no servidor. Não há senha/chave no SQLite ou DTO. HTTP só para demo
+isolada sem credenciais; fontes empresariais/públicas exigem HTTPS. Socket com IP
+fixado, sem proxy/redirect, bloqueio de metadados cloud e validação de nextUri.
+
+SQL livre falha fechado, inclusive nas rotas legadas antes de chamar LLM. Só
+planos compilados do servidor podem executar; dados/documentos/modelos não mudam
+grants, perfis ou templates. Limites de concorrência, linhas, bytes, páginas,
+timeout e cancelamento foram testados. Conta Trino local de leitura teve escrita
+e acesso a catálogo/tabela indevidos realmente negados; isso não valida ACLs de
+fontes empresariais ainda não configuradas.
+
+Resultados SQL não-demo só entram no LLM com `AllowExternalLlm=true`. Respostas
+estruturadas persistidas ficam visíveis ao dono, mas não são reenviadas
+automaticamente pelo contexto histórico após revogação de fonte/egress.
+Mermaid usa parsing estrito e saída em iframe sem scripts/same-origin/rede;
+fallback conserva o código original. Markdown não interpreta HTML arbitrário
+nem carrega imagens remotas automaticamente. Testes e limitações no diário.
+
 Rotas de seleção/preferência revalidam dono, disponibilidade e versão. Administração de provedores usa `ai.manage`, sem depender de menus ou do acesso ao dashboard. Testes HTTP e navegador verificam negação para usuário comum, ausência de segredos nas respostas/estrutura SQLite, preferências próprias, modelo/histórico e consumo alheio. Teste de metadados não chama inferência. Isso não equivale a auditoria completa de produção, nem valida modelos/credenciais/fatura reais ou elimina logs legados fora dos adapters alterados.

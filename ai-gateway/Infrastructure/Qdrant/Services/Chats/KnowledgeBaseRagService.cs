@@ -34,7 +34,7 @@ public class KnowledgeBaseRagService : IKnowledgeBaseRagService
         IOllamaService llm,
         IRerankerService reranker
         )
-      
+
     {
         _db = db;
         _embed = embed;
@@ -42,7 +42,7 @@ public class KnowledgeBaseRagService : IKnowledgeBaseRagService
         _config = config;
         _llm = llm;
         _reranker = reranker;
-      
+
     }
 
     public async Task<AskKbRagResponse> AskAsync(AskKbRagRequest req, bool fullResponse, CancellationToken ct = default)
@@ -52,26 +52,30 @@ public class KnowledgeBaseRagService : IKnowledgeBaseRagService
         if (string.IsNullOrWhiteSpace(req.Prompt))
             throw new ArgumentException("Prompt vazio.");
 
-        string pergunta = req.Prompt.Trim();        
+        string pergunta = req.Prompt.Trim();
         Console.WriteLine($"[{DateTime.Now}] Gerando embeding {pergunta}");
         var queryEmbedding = _embed.Generate(pergunta);
         Console.WriteLine($"[{DateTime.Now}] Emdeding gerado {queryEmbedding.Length}");
-    
+
         var collection = _config["Qdrant:Collection"] ?? CollectionName;
         int limit = int.Parse(_config["RAG:CandidateLimit"] ?? "100");
         float minScore = float.Parse(_config["RAG:MinScore"] ?? "0.25",
                                      CultureInfo.InvariantCulture);
 
-        
+
         Console.WriteLine($"[{DateTime.Now}] Consutando banco vetorial");
         await _qdrant.EnsureCollectionAsync(collection, queryEmbedding.Length);
-        var raw = await _qdrant.SearchAsync(collection, queryEmbedding, limit, minScore);
+        var raw = await _qdrant.SearchAsync(collection, queryEmbedding, limit, minScore, _db.OrganizationId);
 
-        var candidates = raw.Result;       
+        var authorizedIds = await _db.KnowledgeBaseItems.Where(x => x.IsActive).Select(x => x.Id).ToListAsync(ct);
+        // Revalidate relational authorization before reranking or exposing any payload.
+        var candidates = raw.Result.Where(x => x.Payload is not null
+            && x.Payload.TryGetValue("organizationId", out var org) && TryGetInt(org) == _db.OrganizationId
+            && x.Payload.TryGetValue("itemId", out var itemId) && authorizedIds.Contains(TryGetInt(itemId) ?? -1)).ToList();
 
         foreach (var (c, i) in candidates.Select((c, i) => (c, i)).Take(10))
             Console.WriteLine($"[PRE] #{i + 1} embScore={c.score:F4} itemId={Payload(c, "itemId")} title={Payload(c, "title")}");
- 
+
         var reranked = new List<(float Score, QdrantPointResult Point)>();
 
         foreach (var c in candidates)
@@ -85,7 +89,7 @@ public class KnowledgeBaseRagService : IKnowledgeBaseRagService
         foreach (var (r, idx) in reranked.Select((x, i) => (x, i)).Take(10))
             Console.WriteLine($"[POST] #{idx + 1} rerankScore={r.Score:F4} itemId={Payload(r.Point, "itemId")} title={Payload(r.Point, "title")}");
 
-  
+
         int maxSections = int.Parse(_config["RAG:MaxSections"] ?? "8");
 
         var topItemIds = reranked
@@ -100,16 +104,16 @@ public class KnowledgeBaseRagService : IKnowledgeBaseRagService
         Console.WriteLine($"[{DateTime.Now}][RAG] consultando itens ranqueados diretamente no banco de dados");
         var itens = _db.KnowledgeBaseItems
             .Where(x => topItemIds.Contains(x.Id) && x.IsActive)
-            .AsEnumerable()                      
+            .AsEnumerable()
             .OrderBy(x => topItemIds.IndexOf(x.Id))
             .ToList();
 
-        
+
         var contexto = BuildContext(itens);
         var sourcesInfo = BuildInfo(itens);
         var prompt = await BuildPrompt(contexto, pergunta);
 
-      
+
         return new AskKbRagResponse
         {
             texto = prompt,
@@ -184,7 +188,7 @@ public class KnowledgeBaseRagService : IKnowledgeBaseRagService
         foreach (var item in itens)
         {
             sb.AppendLine($"[Seção: {item.Section} | Subsec: {item.Subsection} | Título: {item.Title}]");
-          
+
             sb.AppendLine();
         }
 
@@ -193,8 +197,8 @@ public class KnowledgeBaseRagService : IKnowledgeBaseRagService
 
     private async Task<string> BuildPrompt(string contexto, string pergunta)
     {
-        var sb = new StringBuilder();     
-        sb.AppendLine(contexto);       
+        var sb = new StringBuilder();
+        sb.AppendLine(contexto);
         return sb.ToString();
     }
 }

@@ -43,7 +43,9 @@ public class AuthController : ControllerBase
             return Unauthorized("Usuário ou senha inválidos.");
 
         // Roles
-        var access = await PortalAccess.ReadAsync(_db, user.UserId, ct);
+        var organizationId = await PortalAccess.DefaultOrganizationAsync(_db,user.UserId,_cfg,ct);
+        if (organizationId == 0) return Unauthorized("Nenhuma organizacao autorizada.");
+        var access = await PortalAccess.ReadAsync(_db, user.UserId, ct, organizationId);
         var roles = access.Roles;
 
         // Permissions
@@ -51,14 +53,7 @@ public class AuthController : ControllerBase
 
         var token = GenerateToken(user, roles, permissions);
 
-        return Ok(new LoginResponse(
-            user.UserId,
-            user.UserName,
-            user.UserEmail,
-            token,
-            roles,
-            permissions
-        ));
+        return Ok(new { user.UserId, user.UserName, email = user.UserEmail, token, roles, permissions, organizationId });
     }
 
     [Authorize]
@@ -66,7 +61,7 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Me(CancellationToken ct)
     {
         var user = await _db.Users.AsNoTracking().SingleAsync(x => x.UserId == PortalAccess.UserId(User), ct);
-        return Ok(new { user.UserId, user.UserName, email = user.UserEmail,
+        return Ok(new { user.UserId, user.UserName, organizationId = _db.OrganizationId, email = user.UserEmail,
             roles = User.FindAll(ClaimTypes.Role).Select(x => x.Value),
             permissions = User.FindAll("perm").Select(x => x.Value) });
     }

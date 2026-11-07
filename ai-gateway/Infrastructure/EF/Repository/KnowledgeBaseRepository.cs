@@ -48,13 +48,14 @@ public class KnowledgeBaseRepository : IKnowledgeBaseRepository
         }
         else
         {
+            if (!await _ctx.KnowledgeBaseItems.AnyAsync(x => x.Id == item.Id, ct)) throw new ChatException(404, "Documento nao encontrado.");
             _ctx.KnowledgeBaseItems.Update(item);
         }
 
         await _ctx.SaveChangesAsync(ct);
         return item;
 
-    
+
     }
 
     byte[] ToBytes(float[] v) =>
@@ -77,7 +78,7 @@ public class KnowledgeBaseRepository : IKnowledgeBaseRepository
         if (!_advanced) throw new InvalidOperationException("Busca vetorial requer Chat:UseAdvancedRag.");
         var qVec = Embeddings.Generate(query);
 
-        var all = await _ctx.KnowledgeBaseItems.ToListAsync(); 
+        var all = await _ctx.KnowledgeBaseItems.Where(x => x.IsActive).ToListAsync();
 
         return all.OrderBy(x => CosineDistance(FromBytes(x.Embedding), qVec))
                   .Take(5)

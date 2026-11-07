@@ -35,6 +35,7 @@ services:
       Jwt__Key: ${JWT_KEY:?Configure JWT_KEY no .env}
       Bootstrap__AdminEmail: ${ADMIN_EMAIL:?Configure ADMIN_EMAIL no .env}
       Bootstrap__AdminPassword: ${ADMIN_PASSWORD:?Configure ADMIN_PASSWORD no .env}
+      Demo__Atlas__SeedKnowledge: ${ATLAS_SEED_KNOWLEDGE:-false}
       Chat__UseAdvancedRag: ${USE_ADVANCED_RAG:-false}
       SQLITE_BACKUP_DIRECTORY: ${SQLITE_BACKUP_DIRECTORY:-/app/data/backups}
       LLM_PRICES_FILE: ${LLM_PRICES_FILE:-config/model-prices.json}

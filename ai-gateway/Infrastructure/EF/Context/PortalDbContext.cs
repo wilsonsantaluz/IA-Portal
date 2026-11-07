@@ -1,3 +1,4 @@
+using AiGateway.Security;
 
 
 using Microsoft.EntityFrameworkCore;
@@ -7,7 +8,35 @@ namespace Portal.AI.Gateway.Infrastructure;
 
 public class PortalDbContext : DbContext
 {
-    public PortalDbContext(DbContextOptions<PortalDbContext> options) : base(options) { }
+    private readonly OrganizationScope? _scope;
+    public PortalDbContext(DbContextOptions<PortalDbContext> options, OrganizationScope? scope = null) : base(options) { _scope = scope; }
+    // Explicit startup/test maintenance only; HTTP DI always supplies a scope (initially deny).
+    internal bool SystemOperation { get; set; }
+    public bool IsSystem => _scope is null || SystemOperation;
+    public int OrganizationId => _scope?.Id ?? 1;
+    public DbSet<DataConnector> DataConnectors => Set<DataConnector>();
+    public DbSet<ConnectorGrant> ConnectorGrants => Set<ConnectorGrant>();
+    public DbSet<Organization> Organizations => Set<Organization>();
+    public DbSet<OrganizationMembership> OrganizationMemberships => Set<OrganizationMembership>();
+
+    private void EnforceScope()
+    {
+        if (IsSystem) return;
+        if (OrganizationId <= 0) throw new ChatException(403, "Organizacao nao validada.");
+        foreach (var entry in ChangeTracker.Entries().Where(x => x.State is EntityState.Added or EntityState.Modified or EntityState.Deleted))
+        {
+            if (entry.Entity is IOrganizationEntity)
+            {
+                var property = entry.Property(nameof(IOrganizationEntity.OrganizationId));
+                if (entry.State == EntityState.Added) property.CurrentValue = OrganizationId;
+                else if ((int)property.OriginalValue! != OrganizationId || (int)property.CurrentValue! != OrganizationId)
+                    throw new ChatException(403, "Acesso entre organizacoes negado.");
+            }
+        }
+    }
+    public override int SaveChanges(bool acceptAllChangesOnSuccess) { EnforceScope(); return base.SaveChanges(acceptAllChangesOnSuccess); }
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    { EnforceScope(); return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken); }
 
     public DbSet<ChatSession> ChatSessions => Set<ChatSession>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
@@ -32,6 +61,39 @@ public class PortalDbContext : DbContext
         modelBuilder.Entity<AiProviderSetting>(e => { e.ToTable("AiProviderSettings"); e.HasKey(x => x.Id); e.Property(x => x.Version).IsConcurrencyToken(); });
         modelBuilder.Entity<AiUserPreference>(e => { e.ToTable("AiUserPreferences"); e.HasKey(x => x.UserId); e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict); });
         modelBuilder.Entity<AiSystemDefault>(e => { e.ToTable("AiSystemDefault"); e.HasKey(x => x.Id); e.Property(x => x.Version).IsConcurrencyToken(); });
+        modelBuilder.Entity<Organization>(e => { e.ToTable("Organizations"); e.HasKey(x => x.Id); e.HasIndex(x => x.Slug).IsUnique(); });
+        modelBuilder.Entity<OrganizationMembership>(e => {
+            e.ToTable("OrganizationMemberships"); e.HasKey(x => new { x.OrganizationId, x.UserId });
+            e.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<KnowledgeBaseItem>().HasQueryFilter(x => IsSystem || x.OrganizationId == OrganizationId);
+        modelBuilder.Entity<Role>().HasQueryFilter(x => IsSystem || x.OrganizationId == OrganizationId);
+        modelBuilder.Entity<UserRole>().HasQueryFilter(x => IsSystem || x.Role.OrganizationId == OrganizationId);
+        modelBuilder.Entity<RolePermission>().HasQueryFilter(x => IsSystem || x.Role.OrganizationId == OrganizationId);
+        modelBuilder.Entity<ChatSession>().HasQueryFilter(x => IsSystem || x.OrganizationId == OrganizationId);
+        modelBuilder.Entity<ChatMessage>().HasQueryFilter(x => IsSystem || x.Session.OrganizationId == OrganizationId);
+        modelBuilder.Entity<LlmUsage>().HasQueryFilter(x => IsSystem || ChatSessions.Any(s => s.Id == x.SessionId && s.OrganizationId == OrganizationId));
+        modelBuilder.Entity<ChatKbRating>().HasQueryFilter(x => IsSystem || x.OrganizationId == OrganizationId);
+        foreach (var type in new[] { typeof(Role), typeof(KnowledgeBaseItem), typeof(ChatSession), typeof(ChatKbRating) })
+        {
+            modelBuilder.Entity(type).Property<int>("OrganizationId").HasDefaultValue(1);
+            modelBuilder.Entity(type).HasOne(typeof(Organization), null).WithMany().HasForeignKey("OrganizationId").OnDelete(DeleteBehavior.Restrict);
+        }
+        modelBuilder.Entity<KnowledgeBaseItem>().HasIndex(x => new { x.OrganizationId, x.KeyName });
+        modelBuilder.Entity<ChatSession>().HasIndex(x => x.OrganizationId);
+        modelBuilder.Entity<ChatKbRating>().HasIndex(x => x.OrganizationId);
+        modelBuilder.Entity<DataConnector>(e => {
+            e.ToTable("DataConnectors"); e.HasKey(x => x.Id); e.Property(x => x.Version).IsConcurrencyToken();
+            e.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+            e.Property(x => x.OrganizationId).HasDefaultValue(1); e.HasQueryFilter(x => IsSystem || x.OrganizationId == OrganizationId);
+        });
+        modelBuilder.Entity<ConnectorGrant>(e => {
+            e.ToTable("ConnectorGrants"); e.HasKey(x => new { x.ConnectorId, x.RoleId });
+            e.HasOne(x => x.Connector).WithMany().HasForeignKey(x => x.ConnectorId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Role).WithMany().HasForeignKey(x => x.RoleId).OnDelete(DeleteBehavior.Restrict);
+            e.HasQueryFilter(x => IsSystem || (x.Connector.OrganizationId == OrganizationId && x.Role.OrganizationId == OrganizationId));
+        });
         // USERS
         modelBuilder.Entity<User>(e =>
         {
@@ -49,7 +111,7 @@ public class PortalDbContext : DbContext
             e.ToTable("Roles");
             e.HasKey(x => x.RoleId);
             e.Property(x => x.RoleName).HasMaxLength(100).IsRequired();
-            e.HasIndex(x => x.RoleName).IsUnique();
+            e.HasIndex(x => new { x.OrganizationId, x.RoleName }).IsUnique();
         });
 
         // USER ROLES
@@ -146,13 +208,15 @@ public class PortalDbContext : DbContext
         });
     }
 }
-public class Role
+public class Role : IOrganizationEntity
 {
+    public int OrganizationId { get; set; } = 1;
     public int RoleId { get; set; }
     public string RoleName { get; set; } = default!;
 }
-public class ChatSession
+public class ChatSession : IOrganizationEntity
 {
+    public int OrganizationId { get; set; } = 1;
     public Guid Id { get; set; }
     public string? UserId { get; set; }
     public string? Title { get; set; }
@@ -208,8 +272,9 @@ public class ChatMessage
     public ChatSession Session { get; set; } = default!;
 }
 
-public class KnowledgeBaseItem
+public class KnowledgeBaseItem : IOrganizationEntity
 {
+    public int OrganizationId { get; set; } = 1;
     public int Id { get; set; }
 
     /// <summary>Identificador único curto (ex: ref1_vp_calculo).</summary>
@@ -242,8 +307,9 @@ public class KnowledgeBaseItem
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
 }
-public class ChatKbRating
+public class ChatKbRating : IOrganizationEntity
 {
+    public int OrganizationId { get; set; } = 1;
     public int Id { get; set; }
     public string UserId { get; set; } = "";
     public string Question { get; set; } = "";
@@ -303,3 +369,7 @@ public class RolePermission
     public Permission Permission { get; set; } = default!;
 }
 
+
+public interface IOrganizationEntity { int OrganizationId { get; set; } }
+public class Organization { public int Id { get; set; } public string Name { get; set; } = ""; public string Slug { get; set; } = ""; public bool IsActive { get; set; } = true; }
+public class OrganizationMembership { public int OrganizationId { get; set; } public int UserId { get; set; } public bool IsActive { get; set; } = true; }

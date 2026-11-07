@@ -122,7 +122,7 @@ namespace AiGateway.Infrastructure.Qdrant
       string collection,
       float[] vector,
       int limit = 8,
-      float? scoreThreshold = null)
+      float? scoreThreshold = null, int? organizationId = null)
         {
             var body = new Dictionary<string, object>
             {
@@ -133,6 +133,8 @@ namespace AiGateway.Infrastructure.Qdrant
            
             };
 
+            if (!organizationId.HasValue || organizationId <= 0) throw new InvalidOperationException("Organizacao obrigatoria para busca vetorial.");
+            body["filter"] = new { must = new[] { new { key = "organizationId", match = new { value = organizationId.Value } } } };
             if (scoreThreshold.HasValue)
             {
                 body["score_threshold"] = scoreThreshold.Value;

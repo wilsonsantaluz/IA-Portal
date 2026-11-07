@@ -95,3 +95,122 @@ Arquivos previstos: `PortalDbContext.cs`, inicializador e scripts/runner de migr
 Testes bloqueadores: banco vazio/legado, backup restaurável, segunda execução sem efeitos adicionais, A/B em listar/ler/enviar/renomear/excluir/OCR, rejeição antes de serviços externos, persistência após restart, IDs/cursores estáveis e idempotência. Usar serviços de teste; nenhum crédito externo.
 
 **Parada para revisão:** exigida em `docs/delivery/ROADMAP.md` (etapa 0) e `CODEX_START_HERE.md`. O modelo de dados, contratos e comportamento dos legados devem ser revisados antes de criar entidades, rotas ou alterar o esquema.
+
+
+## Atlas BI: auditoria de 06/11/2026
+
+Main sincronizada por fetch + merge --ff-only, sem alteracoes locais. Trabalho em
+`feature/atlas-business-intelligence`; PR #8 ja presente na base remota.
+
+- Backend ASP.NET Core net8, EF SQLite. DatabaseInitializer usa ChatSchemaMigrator
+  com SQL v1-v4, checksum e backup consistente antes de upgrades. Nenhum banco da
+  instalacao foi aberto ou alterado nesta entrega.
+- KnowledgeBaseItem ja oferece KeyName, Section, Subsection, Title, Content e
+  IsActive. Repositorio e /api/kb/all e /api/kb/{id} alimentam a tela existente.
+  Leitura exige kb.view; save/toggle/upsert/reindex exigem kb.manage.
+- KB e RBAC sao globais da instalacao: nao existem Organization, memberships ou
+  escopo de tenant. Sessao de chat tem dono autenticado, mas isso nao isola KB.
+- RAG local pesquisa os 200 documentos ativos mais recentes por palavras em
+  titulo/conteudo, selecionando ate oito; nao constitui busca semantica.
+  Caminho vetorial usa ONNX/Qdrant e reindex autenticado separado.
+- React 18/TypeScript/Vite, MUI, React Router e Axios com JWT; shell e tokens
+  claro/escuro existentes preservados. /kb ja permite editar/ativar documentos.
+- TrinoRestClient, QueryService, MetadataService, SqlPlannerService e DataRagService
+  existem. Remover comentarios/semicolon nao valida SQL. /api/sql/ask executa SQL
+  do LLM; ask-rag apenas testa prefixo SELECT. Schema vem do cliente. Nao ha
+  politica de catalogos por tenant, limite efetivo de linhas ou parser seguro.
+  Timeout HTTP e cinco minutos; nextUri nao tem validacao de origem; SQL e erros
+  brutos entram em logs/excecoes. Nao habilitar conectores novos nesses contratos.
+- Compose tem SQLite persistente, OCR/ML e perfil Qdrant; nao tem servidor Trino.
+  Chat local/vetorial nao integra automaticamente o planner SQL.
+- Mermaid existente usa securityLevel loose, innerHTML e fallback com diagrama
+  de exemplo alheio ao pedido. Precisa sandbox e fallback textual antes da fase E.
+
+### Plano incremental e impacto
+
+A: snapshot incorporado v1 com dez entradas, opt-in Demo:Atlas:SeedKnowledge,
+transacao insert-only por KeyName; categoria em Section e origem/versao em
+Subsection e corpo. Sem alteracao de schema: nenhuma migration/rollback DDL novo.
+Chaves existentes, inclusive inativas/editadas, nunca sao atualizadas. Nao
+reescrever organization_base nem conceder permissoes extras. RAG vetorial requer
+reindex explicito; ausencia de modelos nao bloqueia o seed local.
+
+B: gerador offline deterministico separado do SQLite da aplicacao; tabelas CSV,
+montantes em centavos e verificacao referencial/financeira, sem fontes externas.
+
+C/D: bloqueio arquitetural real: definir organizacoes/memberships e vinculos de
+KB/conectores antes de anunciar isolamento. Implementar enforcement SQL e rede,
+read-only no Trino e limites antes de integrar ao chat. Credenciais por referencia
+no ambiente, sem texto puro no SQLite. Nao expor menu de operacoes sem backend.
+E depende dessas protecoes e de renderizacao Mermaid segura; nao representa
+funcionalidade concluida nesta etapa.
+
+
+## Atlas - organizacoes aprovadas e implementadas em 07/11/2026
+
+A aprovacao do proprietario substitui o bloqueio arquitetural anterior. SQL v5
+adiciona Organizations, OrganizationMemberships e escopo em Roles,
+KnowledgeBaseItem, ChatSession e ChatKbRatings. Dados legados ficam em id 1;
+Atlas opt-in separado, sem migracao heuristica por prefixo dos documentos.
+Mensagens e usage filtram a sessao. PortalDbContext recebe OrganizationScope
+por DI, inicialmente negado, preenchido so apos autenticacao e membership ativa.
+Filtros de leitura e validacao de escrita complementam os checks de dono.
+Rotas KB usam queries filtradas; nao usar FindAsync para isolamento.
+RBAC recalculado no tenant; usuarios e grupos administrativos ficam locais.
+Conta compartilhada nao aceita redefinicao global por admin do tenant.
+Qdrant filtra organizationId e resultados sao revalidados no SQLite antes
+de reranking; pontos legados sem escopo exigem reindex.
+Configuracao de provedores permanece global e apenas no tenant padrao. O seletor
+usa header validado e recarrega o app para impedir mistura de estado local.
+Trino/conectores e Mermaid ainda sao trabalho seguinte, nao testes concluidos.
+
+
+## Atlas - estado apos C/D/E em 07/11/2026
+
+As lacunas do executor Trino/Mermaid registradas nas secoes historicas acima
+foram tratadas neste incremento: SQL livre falha fechado; ApprovedTrinoQuery
+compila apenas planos tipados conhecidos, totalmente qualificados. TrinoRestClient
+reutilizado com IP pinning, allowlist de origem no nextUri, sem proxy/redirect,
+limites/timeout/cancelamento e auditoria sem SQL/segredos. Perfis sao do servidor;
+conexoes/grants locais em SQL v6. Credenciais referenciadas por ambiente, sem
+coluna secreta. Fonte public precisa de origem/licenca revisadas; nenhuma foi
+habilitada ou verificada automaticamente.
+
+BusinessChatContextService envolve os contextos local/vetorial existentes,
+classifica intenções de forma determinística e combina documentos com planos
+aging/aging_trend/cashflow/top_balances. Fonte/data sao explicitas; ausencia de
+dados produz resposta local honesta, sem inferencia nem tokens ficticios. Saida
+financeira conferivel e anexada pelo servidor. AllowExternalLlm controla egress
+de resultados nao-demo; respostas estruturadas nao sao retransmitidas pelo
+historico de contexto, mas continuam visiveis no historico de exibicao. Titulos
+locais usam fallback sem chamada paga. Nenhuma instrucao recuperada muda grants.
+
+Recharts existente renderiza series numericas validadas e tabela alternativa.
+Mermaid passa por parsing estrito e iframe opaco com CSP sem scripts/rede;
+configuracoes/callbacks sao rejeitados, erro conserva codigo original. HTML raw
+continua desabilitado no Markdown e imagens remotas nao carregam automaticamente.
+Frontend preserva shell/temas, tem seletor de organizacao/fonte e remonta o
+workspace em troca de tenant, inclusive sincronizacao entre abas.
+
+Validado em Trino 484 local com dataset real sintetico e conta reader read-only;
+nao validado com modelos pagos, RAG vetorial real ou fontes empresariais/publicas
+externas. Os planos financeiros sao Atlas, nao um parser SQL analitico generico.
+Veja docs/demo e IMPLEMENTATION_LOG para resultados e limitacoes precisas.
+
+
+## Operacao local posterior autorizada - 07/11/2026
+
+O proprietario autorizou excluir os dados locais sem backup. Os volumes do
+portal e Qdrant foram verificados/removidos e a instalacao foi recriada em schema
+v6 com um administrador, dez documentos exclusivamente Atlas e uma conexao
+Trino com sete tabelas. Organizacao tecnica padrao permanece vazia de negocio.
+Override Atlas ativa OnlyKnowledge, PreferOrganization e RAG textual; .env local
+seleciona o override para docker compose comum. Nenhum segredo foi publicado.
+
+Frontend/API/Trino reais ativos, fonte/grants testados e uma conversa hibrida
+foi validada no Chrome com DeepSeek real (modelo efetivo deepseek-flash), tabela,
+politica citada e grafico. Calls de resposta/titulo totalizaram 3610 tokens reais.
+Restart do gateway preservou docs/conexao/conversa sem duplicar ou criar backup.
+A limitacao anterior de "LLM pago nao executado" descreve a entrega inicial e
+foi superada para esse smoke local; nao representa auditoria ampla do modelo
+ou validacao de fontes empresariais/publicas externas. Diario contem detalhes.

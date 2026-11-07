@@ -27,8 +27,8 @@ export default function ChatInput({
     <Box
       sx={{
         px: { xs: 2, md: 4 },
-        pb: 2,
-        pt: 1.5,
+        pb: 1,
+        pt: 1,
         width: "100%",
         maxWidth: 1040,
         mx: "auto",
@@ -37,7 +37,11 @@ export default function ChatInput({
     >
       <Box
         sx={{
-          p: 2,
+          px: 1,
+          py: 0.75,
+          display: "flex",
+          alignItems: "flex-end",
+          gap: 0.5,
           bgcolor: "background.paper",
           border: "1px solid",
           borderColor: "divider",
@@ -51,11 +55,22 @@ export default function ChatInput({
           },
         }}
       >
+        <Tooltip title="Analisar PDF ou imagem">
+          <IconButton component="label" disabled={loading} aria-label="Analisar PDF ou imagem" size="small" sx={{ mb: 0.25 }}>
+            <AttachFileRounded fontSize="small" />
+            <input type="file" hidden accept="application/pdf,image/png,image/jpeg" disabled={loading}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file) onUpload(file);
+              }} />
+          </IconButton>
+        </Tooltip>
         <TextField
           fullWidth
           multiline
           maxRows={5}
-          minRows={2}
+          minRows={1}
           placeholder="Como posso ajudar você hoje?"
           variant="standard"
           InputProps={{ disableUnderline: true }}
@@ -63,7 +78,7 @@ export default function ChatInput({
             "aria-label": "Sua pergunta para a IA",
             "data-chat-input": true,
           }}
-          sx={{ "& textarea": { fontSize: 14, lineHeight: 1.7 } }}
+          sx={{ minWidth: 0, py: 0.5, "& textarea": { fontSize: 14, lineHeight: 1.7 } }}
           value={input}
           disabled={loading}
           onChange={(e) => onInputChange(e.target.value)}
@@ -78,33 +93,6 @@ export default function ChatInput({
             }
           }}
         />
-        <Box
-          display="flex"
-          alignItems="center"
-          justifyContent="space-between"
-          mt={1}
-        >
-          <Tooltip title="Analisar PDF ou imagem">
-            <IconButton
-              component="label"
-              disabled={loading}
-              aria-label="Analisar PDF ou imagem"
-              size="small"
-            >
-              <AttachFileRounded fontSize="small" />
-              <input
-                type="file"
-                hidden
-                accept="application/pdf,image/png,image/jpeg"
-                disabled={loading}
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  event.target.value = "";
-                  if (file) onUpload(file);
-                }}
-              />
-            </IconButton>
-          </Tooltip>
           <IconButton
             aria-label="Enviar pergunta"
             disabled={loading || !input.trim()}
@@ -112,6 +100,7 @@ export default function ChatInput({
             sx={{
               width: 38,
               height: 38,
+              flexShrink: 0,
               color: "primary.contrastText",
               bgcolor: "primary.main",
               boxShadow:
@@ -130,13 +119,12 @@ export default function ChatInput({
               <SendRounded sx={{ fontSize: 19 }} />
             )}
           </IconButton>
-        </Box>
       </Box>
       <Typography
         fontSize={10}
         color="text.secondary"
         textAlign="center"
-        mt={1.2}
+        mt={0.5}
       >
         A IA pode cometer erros. Confira as informações importantes.
       </Typography>

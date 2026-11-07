@@ -17,7 +17,7 @@ public interface IChatRepository
     Task<ChatMessage> CompleteTurnAsync(Guid id, Guid requestId, string content, CancellationToken ct, string? userContent = null, string? model = null, string? provider = null);
     Task FailTurnAsync(Guid id, Guid requestId, string status, CancellationToken ct);
     Task<ChatSession> GetOrCreateSessionAsync(Guid sessionId, string? userId, CancellationToken ct);
-    Task<List<ChatMessage>> GetLastMessagesAsync(Guid sessionId, int limit, CancellationToken ct);
+    Task<List<ChatMessage>> GetLastMessagesAsync(Guid sessionId, int limit, CancellationToken ct, bool forModel = true);
     Task AddMessageAsync(ChatMessage message, CancellationToken ct);
 }
 

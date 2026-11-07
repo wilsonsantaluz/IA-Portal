@@ -19,6 +19,8 @@ db.Users.AddRange(user, administrator);
 db.Permissions.Add(new Permission { PermissionKey = "legacy.permission", Description = "Existente" });
 db.KnowledgeBaseItems.Add(new KnowledgeBaseItem { KeyName = "organization_base", Section = "Sintético", Content = "Conteúdo existente preservado", IsActive = true, CreatedAt = DateTime.UtcNow });
 await db.SaveChangesAsync();
+db.OrganizationMemberships.AddRange(new OrganizationMembership { OrganizationId = 1, UserId = user.UserId }, new OrganizationMembership { OrganizationId = 1, UserId = administrator.UserId });
+await db.SaveChangesAsync();
 var cfg = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Bootstrap:AdminEmail"] = "not-created@example.test", ["Bootstrap:AdminPassword"] = Guid.NewGuid().ToString("N") }).Build();
 await DatabaseInitializer.InitializeAsync(db, cfg);
 await DatabaseInitializer.InitializeAsync(db, cfg);

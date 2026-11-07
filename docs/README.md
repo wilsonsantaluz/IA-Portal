@@ -35,3 +35,10 @@ Contratos detalhados após inspeção: [architecture/API_CONTRACTS.md](architect
 - Toda mudança estrutural exige testes e plano de migração sem perda de dados.
 
 Estado atual de configurações e consumo visual: [AI_SETTINGS.md](features/AI_SETTINGS.md). Resultados efetivos de testes e aplicação local no diário.
+
+
+Atlas BI: [execucao local e migracao](demo/ATLAS_LOCAL.md),
+[Data Connectors e seguranca SQL/rede](demo/DATA_CONNECTORS.md),
+[chat hibrido e visualizacoes](demo/ATLAS_CHAT.md). Implementacao demonstrativa
+com dados inteiramente sinteticos e isolamento por organizacao; consulte o diario
+para distinguir testes de Trino real, doubles de LLM/OCR e fixtures de navegador.

@@ -106,7 +106,7 @@ namespace AiGateway.Infrastructure.Qdrant.Services
             {
                 entity = await _context.KnowledgeBaseItems
                     .FirstOrDefaultAsync(x => x.Id == req.Id.Value, ct)
-                    ?? throw new InvalidOperationException($"KnowledgeBaseItem {req.Id} não encontrado.");
+                    ?? throw new ChatException(404, $"KnowledgeBaseItem {req.Id} não encontrado.");
             }
             else // INSERT
             {
@@ -162,7 +162,8 @@ namespace AiGateway.Infrastructure.Qdrant.Services
 
                 var payload = new
                 {
-                    itemId = item.Id,
+                    organizationId = item.OrganizationId,
+                itemId = item.Id,
                     keyName = item.KeyName,
                     section = item.Section,
                     subsection = item.Subsection,

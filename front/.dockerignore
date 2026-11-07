@@ -18,3 +18,7 @@ models
 data
 **/*.db
 **/*.db-*
+**/*.sqlite
+**/*.sqlite3
+**/backups
+**/*.local.json

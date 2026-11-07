@@ -4,8 +4,10 @@ import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import HeaderBar from "./HeaderBar";
 import { ChatUIProvider } from "../context/ChatUIContext";
+import { useAuth } from "../auth/AuthProvider";
 
 export default function DashboardLayout() {
+  const { user } = useAuth();
   const desktop = useMediaQuery(useTheme().breakpoints.up("md"));
   const [expanded, setExpanded] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -13,7 +15,7 @@ export default function DashboardLayout() {
     if (desktop) setMobileOpen(false);
   }, [desktop]);
   return (
-    <ChatUIProvider>
+    <ChatUIProvider key={`${user?.userId}:${user?.organizationId}`}>
       <Box sx={{ display: "flex", height: "100dvh", overflow: "hidden" }}>
         <a className="skip-link" href="#main-content">
           Ir para o conteúdo

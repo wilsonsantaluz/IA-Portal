@@ -80,3 +80,49 @@ Uso retornado deve incluir números opcionais, fonte (`reported`, `estimated`, `
 - Mais adiante: título manual concorrente, fallback, usage real de cada fixture, preços/ausência de preço, SSRF e ausência de chaves em JSON/bundle/log.
 
 `GET/PUT /api/admin/ai/default` define padrão global com versão; `ai.manage` obrigatória. Telas `/settings/ai` e `/usage`, formatos e restrições em [AI_SETTINGS.md](../features/AI_SETTINGS.md).
+
+
+## Atlas - contratos adicionados em 07/11/2026
+
+X-Organization-Id seleciona membership ativa validada no servidor. Ausente usa a
+primeira membership ativa, para clientes antigos. JWT/usuario/membership/RBAC
+sao revalidados; header invalido/nao autorizado nao e aceito. Login e auth/me
+agora incluem organizationId. GET /api/organizations lista apenas memberships
+ativas do proprio usuario em organizacoes ativas.
+
+- GET /api/data-connectors: administracao da org, connectors.manage.
+- GET /api/data-connectors/profiles e /groups: perfis aprovados/grupos locais;
+  nenhum valor/ref de segredo retornado.
+- POST /api/data-connectors e PUT /api/data-connectors/{id}: Name,ProfileId,
+  Enabled,Tables[],GroupIds[],Version; origem/catalogo/schema vem do perfil
+  aprovado. Tabelas/grupos fora da politica sao rejeitados. PUT usa CAS.
+- POST /api/data-connectors/{id}/test: probe, status/horario sanitizados.
+- GET /api/data-connectors/{id}/metadata: colunas/tabelas autorizadas na origem.
+- GET /api/data/sources: data.query mais grant de grupo e conexao habilitada.
+- GET /api/data/{id}/analytics?kind=aging&reference=2026-11-01: planos aging,
+  aging_trend,cashflow,top_balances; nunca SQL livre. Devolve rows, unidade,
+  moeda, referencia, origem, horario e SQL compilado para o usuario autorizado.
+
+POST /api/ia/ask/stream conserva SSE e adiciona SourceId? e ReferenceDate? no
+request. Quando presentes entram no fingerprint de replay; alterar contexto de
+uma requestId existente e conflito. Fonte/data nao substituem o dono da conversa.
+Respostas locais de esclarecimento ou egress bloqueado usam o mesmo SSE e
+persistencia, provider=portal/model=validated-plan, titulo fallback e nenhum
+usage ficticio. Resposta com LLM usa adapters/usage existentes e anexa tabela,
+proveniencia/citacoes/grafico pelo servidor. O historico de exibicao inclui tudo;
+o contexto enviado ao modelo omite resultados estruturados anteriores.
+
+Rotas /api/sql/ask e ask-rag conservam validacao de sessao mas retornam 409 sem
+LLM/SQL, pois nao possuem fonte/grant. /api/chatBot/ask continua documental e
+pede o fluxo de fonte/data para perguntas analiticas. Sessao alheia continua 404
+antes de qualquer chamada externa. Nao ha endpoint que aceite usuario/tenant
+fornecido por modelo como autoridade de acesso.
+
+
+### Preferencia Atlas no ambiente local (07/11/2026)
+
+Com Demo:Atlas:PreferOrganization=true, login e requests sem X-Organization-Id
+preferem a membership ativa de atlas-demo, quando existente. Sem o flag permanece
+a primeira membership ativa por Id. A preferencia nunca ignora membership ou
+organizacao inativa; header explicito continua validado normalmente. O override
+Atlas ativa essa preferencia e OnlyKnowledge, sem apagar dados automaticamente.

@@ -1,0 +1,18 @@
+{
+  "DataConnectors": {
+    "Sources": [
+      {
+        "Id": "atlas_local",
+        "OrganizationSlug": "atlas-demo",
+        "Category": "demo",
+        "Endpoint": "http://atlas-trino:8080/",
+        "Catalog": "memory",
+        "Schema": "atlas",
+        "User": "atlas_reader",
+        "AllowedAddresses": ["172.29.88.10"],
+        "Tables": ["customers", "plans", "contracts", "invoices", "payments", "disputes", "collection_actions"],
+        "ReadOnlyAccount": true
+      }
+    ]
+  }
+}

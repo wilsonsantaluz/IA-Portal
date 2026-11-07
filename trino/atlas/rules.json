@@ -1,0 +1,16 @@
+{
+  "catalogs": [
+    {"user":"atlas_loader","catalog":"memory","allow":"all"},
+    {"user":"atlas_reader","catalog":"memory","allow":"read-only"},
+    {"catalog":".*","allow":"none"}
+  ],
+  "schemas": [
+    {"user":"atlas_loader","catalog":"memory","schema":"atlas","owner":true},
+    {"catalog":".*","schema":".*","owner":false}
+  ],
+  "tables": [
+    {"user":"atlas_loader","catalog":"memory","schema":"atlas","privileges":["SELECT","INSERT","OWNERSHIP"]},
+    {"user":"atlas_reader","catalog":"memory","schema":"atlas","table":"customers|plans|contracts|invoices|payments|disputes|collection_actions","privileges":["SELECT"]},
+    {"catalog":".*","schema":".*","privileges":[]}
+  ]
+}

@@ -12,7 +12,7 @@ using System.Text.Json;
 namespace AiGateway.Controllers.Chat;
 
 [ApiController, Authorize(Policy = PortalAccess.Chat), Route("api/ia")]
-public class SmartAskController(IAskSmartService service, IChatRepository chats, ChatUsageService usage, ChatTitleService titles, ILogger<SmartAskController> logger) : ControllerBase
+public class SmartAskController(IAskSmartService service, IChatRepository chats, ChatUsageService usage, ChatTitleService titles, ILogger<SmartAskController> logger, ChatGrounding grounding) : ControllerBase
 {
     [HttpPost("ask/stream")]
     public async Task AskStream(AskSmartRequest req, CancellationToken ct)
@@ -20,7 +20,10 @@ public class SmartAskController(IAskSmartService service, IChatRepository chats,
         if (string.IsNullOrWhiteSpace(req.Pergunta) || req.Pergunta.Length > 50000 || (req.DocumentContext?.Length ?? 0) > 12000 || !Guid.TryParse(req.SessionId, out var id))
             throw new ChatException(400, "Informe pergunta, conversa válida e contexto dentro dos limites.");
         var requestId = req.RequestId ?? Guid.NewGuid();
-        var turn = await chats.BeginTurnAsync(id, requestId, req.Pergunta, ChatRequest.Fingerprint("chat", req.Pergunta, req.DocumentContext), ct);
+        var fingerprint = req.SourceId is null && req.ReferenceDate is null
+            ? ChatRequest.Fingerprint("chat",req.Pergunta,req.DocumentContext)
+            : ChatRequest.Fingerprint("chat",req.Pergunta,req.DocumentContext,req.SourceId?.ToString(),req.ReferenceDate?.ToString("yyyy-MM-dd"));
+        var turn = await chats.BeginTurnAsync(id, requestId, req.Pergunta, fingerprint, ct);
         Response.ContentType = "text/event-stream; charset=utf-8";
         Response.Headers["Cache-Control"] = "no-cache, no-transform";
         Response.Headers["X-Accel-Buffering"] = "no";
@@ -34,15 +37,22 @@ public class SmartAskController(IAskSmartService service, IChatRepository chats,
                 await sse.EmitAsync("status", "Consultando o conhecimento e preparando a resposta...");
                 var prompt = await service.AskAsync(req, sse);
                 var result = new StringBuilder();
-                await foreach (var part in usage.GenerateStreamAsync(id, turn.UserMessage.Id, "deepseek-chat", prompt, timeout.Token)) { result.Append(part); await sse.EmitAsync("data", part); }
+                if (grounding.DirectAnswer is string direct) { result.Append(direct); await sse.EmitAsync("data",direct); }
+                else {
+                    await foreach (var part in usage.GenerateStreamAsync(id, turn.UserMessage.Id, "deepseek-chat", prompt, timeout.Token)) { result.Append(part); await sse.EmitAsync("data", part); }
+                    if (grounding.Appendix.Length > 0) { result.Append(grounding.Appendix); await sse.EmitAsync("data",grounding.Appendix); }
+                }
                 if (result.Length == 0) throw new InvalidOperationException("Resposta vazia.");
-                answer = await chats.CompleteTurnAsync(id, requestId, result.ToString(), timeout.Token, model: usage.ActualModel, provider: usage.ActualProvider);
+                answer = await chats.CompleteTurnAsync(id, requestId, result.ToString(), timeout.Token,
+                    model: grounding.DirectAnswer is null ? usage.ActualModel : "validated-plan",
+                    provider: grounding.DirectAnswer is null ? usage.ActualProvider : "portal");
             }
             await sse.EmitAsync("persisted", JsonSerializer.Serialize(new { id = answer.Id, requestId, status = answer.Status }));
-            if (!turn.Replayed) {
+            if (!turn.Replayed && grounding.DirectAnswer is null) {
                 await sse.EmitAsync("status", "Finalizando conversa...");
                 await titles.TryGenerateAsync(id, ct);
             }
+            else if (!turn.Replayed) await titles.TrySetLocalFallbackAsync(id,ct);
             await sse.EmitAsync("done", "[*ENDSTREAN*]");
         }
         catch (Exception ex) {

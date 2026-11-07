@@ -176,3 +176,411 @@ Validações executadas: `npm --prefix front run typecheck`, `npm --prefix front
 
 Executados e aprovados: `npm --prefix front run typecheck`; `docker build -t ia-portal-ai-final-front ./front` (TypeScript e build de produção); `python scripts/test_ai_ui.py --skip-build` (seis grupos, provedores simulados e banco temporário). O helper de envio pausa explicitamente a requisição antes do streaming e verifica aviso visível, texto não vazio, botão desabilitado e remoção do aviso após concluir. Demais verificações de histórico, modelos, autorização, acessibilidade e temas permaneceram aprovadas. Aviso de chunks grandes no build permanece. Frontend aplicado localmente sem recriar backend nem alterar banco; sem merge automático.
 
+
+
+## Atlas - 06/11/2026: auditoria e Fase A
+
+Branch feature/atlas-business-intelligence; main limpa e sincronizada por
+`git fetch origin` e `git merge --ff-only origin/main`. Auditoria registrada em
+AS_IS_AUDIT.md. Nenhuma instalacao, volume ou banco existente foi alterado.
+
+Implementado snapshot incorporado de dez documentos v1 e seed transacional,
+opt-in Demo:Atlas:SeedKnowledge, por IDs estaveis. Reutiliza KnowledgeBaseItem,
+rotas, tela /kb, RBAC e recuperacao local existentes. Categoria em Section,
+origem/versao em Subsection e corpo; nao requer migration. Sem overwrite de
+chaves existentes, edicoes humanas ou estado inativo. Sem indexacao vetorial
+implicita; reindex autenticado documentado. KB continua global, nao multi-tenant.
+
+Validacoes efetivamente executadas:
+- `dotnet run --project tests/AtlasKnowledge/AtlasKnowledge.csproj --no-restore`:
+  PASS opt-in, dez itens/metadados, idempotencia, edicao/inativacao, conteudo
+  legado e candidatos da busca textual. Falha de INSERT injetada via trigger:
+  rollback integral e repeticao bem-sucedida. Testes em SQLite em memoria.
+- `dotnet run --project tests/ChatSessions/ChatSessions.csproj`: PASS migracao
+  legada, backup/restauracao, checksum, rollback DDL, isolamento e repositorio.
+- `dotnet run --project tests/access/SeedSmoke/SeedSmoke.csproj`: PASS seed
+  preexistente preserva usuarios, hashes, grupos, KB e permissoes.
+- `dotnet build ai-gateway/AiGateway.csproj --no-restore`: PASS, zero erros.
+  Compilacao inicial por dotnet run reportou avisos preexistentes; build incremental
+  final reportou zero avisos. Nao foram refatorados trechos fora do escopo.
+- Em front: `npm run typecheck` e `npm run build`: PASS; Vite alerta chunks >500 kB.
+- `dotnet build ocr-service/OcrService.csproj` e
+  `dotnet build ml-service/MlService.csproj`: PASS, zero erros/avisos.
+- `python scripts/smoke_local.py`: PASS gateway HTTP real/SQLite temporario,
+  login, KB, SSE, OCR simulado, ownership A/B, historico/restart, usage e providers.
+  LLM/OCR doubles; nao valida inferencia paga ou extracao Tesseract real.
+- `docker compose config --quiet`: PASS; nao iniciou containers ou alterou volumes.
+- `git diff --check`: PASS.
+
+`python scripts/smoke_local.py --atlas`: PASS suite HTTP completa com seed ativo,
+dez documentos acessiveis por /api/kb/all e /api/kb/{id}, origem no conteudo e
+contagens preservadas apos restart (sem duplicacao).
+Sem smoke de navegador/temas, Qdrant/ONNX ou Trino nesta entrega. O frontend nao
+foi alterado. Runbook: docs/demo/ATLAS_LOCAL.md.
+
+
+## Atlas - 06/11/2026: Fase B offline
+
+Gerador scripts/atlas_dataset.py, apenas biblioteca padrao Python, seed 42 e
+referencia fixa 2026-11-01. Sete CSV e manifest com SHA-256 em diretorio novo;
+recusa sobrescrita e nao acessa SQLite/rede. Testes usam diretorios temporarios.
+500 clientes, 3 planos, 500 contratos, 5896 faturas, 5561 eventos de pagamento,
+587 contestacoes e 2071 propostas de acao. Dinheiro em centavos inteiros;
+parciais, atrasos em todas as cinco faixas, estornos, cancelamentos, sazonalidade,
+concentracao e propostas de negociacao sinteticas. Nenhuma cobranca executada.
+
+- `python -m unittest discover -s tests -p test_atlas_dataset.py -v`: PASS 4 testes
+  (determinismo/seeds, cenarios/aging, corrupcao referencial/financeira rejeitada,
+  arquivos byte a byte e recusa de sobrescrita).
+- `python scripts/atlas_dataset.py --output artifacts/atlas-v1`: PASS; geracao
+  local validada, arquivos ignorados pelo Git. Contagens acima sao observadas.
+- Agregacao offline de aging conferida e registrada no runbook. Queries SELECT
+  de verificacao em trino/examples/atlas-verification.sql; NAO executadas no Trino.
+
+Sem migration. CSV e dicionario preparados para importacao; catalogo/carga e
+conectividade Trino NAO concluidos. Nao ha novo menu, indicadores Atlas ou chat
+hibrido. Nao houve deploy, push, merge ou alteracao de volumes/instalacao local.
+
+Fases C/D/E pendentes: inexiste modelo de organizacao/membership e enforcement
+SQL/rede suficiente. Solicitada decisao arquitetural sobre migracao de dados
+existentes para organizacao padrao versus instalacao demo separada, conforme
+excecao do usuario para decisoes arquiteturais significativas. Nao conceder
+acesso global silenciosamente nem apresentar isolamento nao implementado.
+
+
+## 07/11/2026 - fundacao multi-organizacao aprovada
+
+Migration 005_Organizations.sql, backup consistente/checksum/transacao no runner
+existente. Dados atuais na organizacao padrao; seed Atlas separado e acesso
+inicial so para administradores existentes. Roles locais, KB/sessoes/avaliacoes,
+mensagens/usage por sessao e RAG filtrados. Lista de organizacoes autorizadas e
+seletor no shell. Sem banco real/volumes alterados; sem deploy/push/merge.
+
+Resultados efetivamente executados:
+- dotnet run --project tests/Organizations/Organizations.csproj: PASS v4 real ->
+  v5, preservacao de usuarios/hash/KB/roles/sessoes, membership, idempotencia,
+  backup anterior a mudanca, restauracao+upgrade e rollback DDL/versao/dados.
+- dotnet run --project tests/ChatSessions/ChatSessions.csproj --no-restore: PASS;
+  fixture atualizada para representar schema anterior as organizacoes.
+- dotnet run --project tests/access/SeedSmoke/SeedSmoke.csproj --no-restore: PASS;
+  fixture atual declara memberships explicitamente.
+- dotnet run --project tests/AtlasKnowledge/AtlasKnowledge.csproj --no-restore:
+  PASS; seed/rollback/edicoes preservados na organizacao Atlas.
+- dotnet run --project tests/Usage/Usage.csproj --no-restore: PASS.
+- dotnet run --project tests/ChatTitles/ChatTitles.csproj --no-restore: PASS.
+- dotnet run --project tests/Providers/Providers.csproj --no-restore: PASS.
+- python scripts/smoke_local.py: PASS regressao HTTP/SQLite temporario.
+- python scripts/smoke_local.py --atlas: PASS isolamento KB (ler/save/upsert),
+  grupos, sessao do mesmo dono em outra organizacao, contexto RAG sem trechos
+  alheios, membership recusada a usuario comum, reset de conta compartilhada
+  negado e configuracoes globais protegidas. Execucao inicial encontrou
+  tratamento 500 para documento alheio no upsert: corrigido para 404. Outra
+  assercao dependia de provider deliberadamente desligado pela propria fixture;
+  corrigido o setup antes da execucao final aprovada.
+- dotnet build ai-gateway/AiGateway.csproj --no-restore: PASS, 13 avisos
+  preexistentes; npm run typecheck --prefix front e npm run build em front: PASS;
+  Vite mantem aviso de chunks >500kB.
+
+Sem teste de navegador, modelos ONNX/Qdrant reais ou Trino neste incremento.
+Rollback operacional e politica de migracao/provisionamento em ATLAS_LOCAL.md.
+
+
+## 07/11/2026 - Fase C: conectores e executor fechado
+
+SQL v6 aditiva, DataConnectors e ConnectorGrants por organizacao; RBAC
+connectors.manage/data.query e concessao explicita por grupo. /data-connectors
+reutiliza shell/MUI/temas. Perfis de rede/credenciais aprovados no servidor,
+segredos apenas via ambiente, descoberta de tabelas/colunas e teste/status.
+Reutilizados TrinoRestClient/QueryService/MetadataService; removido executor
+inseguro de SQL livre e logs brutos. Planos fechados de aging/cashflow/top;
+SQL arbitrario gerado por modelo nao e aceito. Limites e protecoes descritos
+em docs/demo/DATA_CONNECTORS.md.
+
+Executado:
+- dotnet build ai-gateway/AiGateway.csproj --no-restore: PASS.
+- dotnet run --project tests/Connectors/Connectors.csproj --no-restore: PASS
+  migracao v5->v6, backup/restauracao/rollback, politicas/SQL adversarial/nextUri,
+  byte/row limits, erros sanitizados e cancelamento.
+- dotnet run --project tests/Organizations/Organizations.csproj --no-restore e
+  dotnet run --project tests/ChatSessions/ChatSessions.csproj --no-restore: PASS
+  (legado agora evolui ate v6).
+- npm run typecheck em front: PASS.
+- python scripts/smoke_local.py --atlas: PASS suite existente + conectores
+  cadastro/perfil/grupo/tabela, teste, descoberta, analytics, CAS, desabilitacao
+  e negacao cross-tenant. Trino/LLM/OCR eram doubles HTTP; o handler de socket
+  aprovado foi exercitado por rede loopback real.
+
+Build inicial teve aviso novo de parametro HttpClient nao utilizado; removido
+com registro scoped do cliente. Build final voltou aos 13 avisos preexistentes. Trino real, browser e chat hibrido ainda
+nao validados. Imagem trinodb/trino:484 obtida para validacao local seguinte;
+nenhuma instancia existente ou banco real foi alterado.
+
+
+## 07/11/2026 - Fase D: chat hibrido no fluxo existente
+
+BusinessChatContextService envolve os contextos existentes. Classificador
+pt-BR deterministico distingue documentos/analytics/hibrido/esclarecimento;
+fonte/data explicitas e quatro planos financeiros fechados, incluindo trend
+mensal. SQL nao vem do modelo. Conector/grants sao revalidados no servidor.
+O modelo recebe somente agregacoes autorizadas e politicas recuperadas, com
+citacoes/versao; tabela, periodo, filtros, SQL e chart payload sao anexados pelo
+servidor. SourceId/referenceDate entram no fingerprint de replay.
+
+AllowExternalLlm e opt-in para envio de resultados nao-demo. Sem permissao de
+egress ou dados ausentes/vazios/indisponiveis, resposta local sem inferencia,
+consumo ficticio ou chamada paga de titulo. Fallback de titulo preserva edicao
+manual. Resultados SQL persistidos continuam no historico de exibicao mas nao
+voltam automaticamente ao prompt de IA/OCR/rotas legadas: nova analise precisa
+reautorizar e consultar, inclusive apos revogacao de fonte/egress.
+
+Validacoes finais executadas:
+- dotnet build ai-gateway/AiGateway.csproj --no-restore: PASS, 13 avisos
+  preexistentes, nenhum erro.
+- dotnet run --project tests/BusinessChat/BusinessChat.csproj --no-restore: PASS
+  classificacao, fonte ausente, gate de egress enterprise, grounding/proveniencia,
+  fonte indisponivel/nao autorizada sem inventar metricas.
+- dotnet run --project tests/Connectors/Connectors.csproj --no-restore -- --real-trino:
+  PASS v5->v6 backup/restore/rollback, SQL adversarial/rede/limites e quatro planos
+  no Trino 484 real. Aging confere cinco totais exatos; cashflow/trend conferem
+  valores em centavos contra agregacoes offline independentes em expected-v1.json.
+  Descoberta real autorizada; reader nao escreve nem acessa system ou manifest.
+- python scripts/smoke_local.py --atlas: PASS suite completa com gateway/SQLite
+  reais e doubles de Trino/LLM/OCR; hybrid SSE, citacoes, tabela/chart/proveniencia
+  persistidos, fonte/ref no replay, historico de exibicao preservado e exclusao
+  dos resultados numericos do contexto subsequente. Ausencia/falha/vazio nao
+  chamam LLM; fallback local sem usage ficticio (requests=0).
+- python scripts/smoke_local.py --atlas --real-trino: PASS a mesma integracao com
+  Trino real local e valores reais do dataset sintetico; apenas LLM/OCR doubles.
+  Casos injetados de falha/vazio sao cobertos na execucao com double.
+- Regressoes .NET reexecutadas com dotnet run --project <projeto> --no-restore:
+  tests/AtlasKnowledge, Organizations, ChatSessions, ChatTitles, Usage, Providers
+  e access/SeedSmoke: todas PASS. Migrations antigas, isolamento, titulos,
+  provedores e contabilizacao preservados.
+- npm run typecheck --prefix front: PASS.
+
+Sem modelos pagos, embeddings/reranker reais ou fonte empresarial/publica real.
+Classifier/plans sao limitados e documentados em docs/demo/ATLAS_CHAT.md; datas
+na linguagem natural nao substituem silenciosamente a referencia do controle.
+
+
+## 07/11/2026 - Fase E: visualizacoes e shell preservado
+
+Recharts existente recebe atlas-chart com schema/tipos/valores finitos/limites
+validados, tabela alternativa e valores em BRL. Sem animacao obrigatoria dos
+valores. Mermaid antigo com securityLevel loose e diagrama substituto foi
+removido: parsing strict, diretivas/callbacks rejeitados e SVG isolado em iframe
+sem scripts/same-origin/rede. Falha mostra codigo original. Markdown sem HTML
+raw e sem carregamento automatico de imagens externas.
+
+Fonte/data e perguntas sugeridas reutilizam chat, hook e SSE existentes. Sugestoes
+sao expansiveis para nao ocupar a conversa. Mudanca de tenant entre abas tambem
+atualiza identidade e remonta o workspace, limpando estado de fontes/historico;
+rotulos acessiveis em pt-BR corrigidos. Design system claro/escuro preservado.
+
+Executado:
+- node tests/ui/atlas-security.cjs: PASS tipos/finite/limites/prototype keys e
+  rejeicao de Mermaid invalido/diretivas/callback/scripts.
+- node tests/ui/atlas.cjs com IA_PLAYWRIGHT_MODULE, IA_CHROME_PATH e IA_AXE_MODULE
+  apontando para as ferramentas existentes em TEMP: PASS Chrome headless,
+  cabecalho de organizacao, seletor de fonte/referencia, sugestao no input,
+  grafico com barra numerica visivel, iframe sandbox+CSP e fallback de diagramas,
+  tela de conectores/descoberta/edicao em ambos os temas, layouts 390/320px sem
+  overflow e troca de tenant entre abas limpando workspace. APIs deste teste
+  sao fixtures de rota, nao credenciais/dados da instalacao.
+- axe-core: PASS WCAG A/AA no main de chat mobile com controles de fonte em ambos
+  os temas. Nao e certificacao de acessibilidade de toda a aplicacao.
+- Capturas inspecionadas em artifacts/atlas-ui/chat-dark.png e demais temas/telas;
+  checks.json registra escopo. Esses artefatos locais sao ignorados pelo Git.
+- npm run typecheck --prefix front e npm run build --prefix front: PASS;
+  Vite mantem aviso de chunks >500kB. Nenhuma dependencia nova.
+
+Durante o teste foram corrigidos rotulos de organizacao com codificacao
+inadequada. Assercoes de drawer fechado/tooltip e initScript em frame sandbox
+foram ajustadas na fixture; execucao final sem pageerrors ou rotas inesperadas.
+
+
+### Fechamento dos caminhos legados - 07/11/2026
+
+/api/sql/ask e ask-rag agora rejeitam SQL livre antes de chamar qualquer modelo,
+conservando 404 de conversa alheia. /api/chatBot/ask permanece documental;
+perguntas classificadas como analiticas recebem esclarecimento local indicando
+fonte/data, sem inferencia nem indicadores inventados. Isso evita que uma rota
+antiga contorne o fluxo de grounding ou gere chamadas pagas sem plano autorizado.
+
+Executado dotnet build ai-gateway/AiGateway.csproj --no-restore: PASS com 11
+avisos preexistentes (dois avisos anteriores desapareceram com a remocao do
+executor legado). python scripts/smoke_local.py --atlas: PASS, incluindo calls
+counters sem LLM para JSON analitico/rotas SQL e todas as regressoes anteriores.
+
+
+## 07/11/2026 - integracao local reproduzivel e fechamento
+
+Adicionados trino/atlas (imagem 484 por digest, Memory, ACLs reader/loader),
+docker-compose.atlas.yml opt-in e perfil com IP fixado. O carregador Python so
+alcanca 127.0.0.1:18081, sem proxy, usa dados gerados localmente e recusa schema
+parcial/divergente. Reexecucao com mesmo manifest/contagens nao escreve. Nenhum
+DROP/TRUNCATE, credencial externa ou mudanca no SQLite da instalacao.
+
+Efetivamente executado:
+- docker pull trinodb/trino:484: PASS; digest
+  sha256:2704eb53935af5e582d63d6033e9bf99d20c325e9b0e30b1016ef59a4773979f.
+- docker compose -f trino/atlas/compose.yml -p ia-atlas-validation up -d: PASS;
+  servidor real isolado, saudavel, publicado so em loopback.
+- python scripts/atlas_trino_load.py: PASS carga de sete tabelas, 500 clientes,
+  5896 faturas e 5561 pagamentos/estornos; segunda execucao PASS sem escrita.
+- python scripts/atlas_trino_load.py --verify: PASS quatro SELECTs do repositorio,
+  contagens, FKs, consistencia de liquido e aging exato. Primeira tentativa do
+  helper nao definia schema para SQL nao qualificado: corrigido o contexto do
+  helper de verificacao, sem alterar tabelas/dados.
+- dotnet run --project tests/Connectors/Connectors.csproj --no-restore -- --real-trino:
+  PASS quatro planos, conciliacao independente de centavos e protecoes reais.
+- docker build -t ia-portal-atlas-api:validation ./ai-gateway (tambem repetido com
+  -q no fechamento): PASS; publish agora aponta explicitamente para o csproj,
+  removendo o aviso de output da solution. Dockerignore exclui backups/SQLite e
+  config local. Exclusoes de material local aplicadas ao contexto de imagem.
+- docker build -t ia-portal-atlas-front:validation ./front: PASS typecheck/build,
+  imagem Nginx, Vite com aviso de chunks grandes.
+- python scripts/smoke_atlas_docker.py: PASS com imagens finais; gateway e frontend
+  descartaveis, SQLite tmpfs, bootstrap/login/org/KB seed, metadados autorizados
+  e aging exato no Trino real via rede de containers/IP pinning. Nginx serviu UI.
+  Nao chama LLM, nao monta portal_data e remove seus containers no finally.
+- docker compose -f docker-compose.yml -f docker-compose.atlas.yml config --quiet:
+  PASS. O override completo nao foi iniciado nos volumes existentes.
+- git diff --check: PASS.
+
+Cleanup executado: docker compose -f trino/atlas/compose.yml -p
+ia-atlas-validation down, removendo apenas servidor/rede de teste; helpers Vite
+proprios encerrados quando presentes. Nenhum container ia-atlas ficou ativo.
+Imagens de validacao e artefatos locais sinteticos podem ser reutilizados.
+
+Relatorio final, inventario de arquivos, migrations, comandos, limitacoes e
+instrucoes: docs/demo/ATLAS_DELIVERY_REPORT.md e ATLAS_LOCAL.md. Sem push, merge,
+deploy publico/producao ou alteracao de dados da instalacao. Modelos pagos,
+RAG vetorial real e fontes enterprise/publicas reais continuam nao validados.
+
+
+## 07/11/2026 - reset local autorizado, sem backup, e Atlas ativado
+
+Pedido posterior explicito do proprietario: excluir todos os dados locais,
+deixar Atlas e aplicar no ambiente local, sem necessidade de backup. Essa
+instrucao autoriza a excecao pontual as regras anteriores de preservar os dados.
+Nenhum bypass de backup foi introduzido no runner de migrations.
+
+Precondicoes: branch feature/atlas-business-intelligence limpa; inspecao de
+Compose, mounts, labels e containers comprovou que os unicos volumes a apagar
+eram ia-portal_portal_data (SQLite/backups) e ia-portal_qdrant_data (vetores).
+Owners/usuarios/contas antigas nao foram copiados. Credenciais/env/configuracao,
+codigo e modelos instalados foram preservados. Nao havia data/SQLite nativo no
+caminho padrao inspecionado. Subnet Atlas verificada sem sobreposicao.
+
+Ajustes opt-in: OnlyKnowledge evita organization_base generico quando o seed
+Atlas esta habilitado; PreferOrganization usa a mesma selecao de membership
+ativa no login e nos requests sem header. Org tecnica padrao permanece disponivel
+para configuracao global de IA, sem conhecimento ou dados de negocio. Sem flags,
+o modo generico conserva a selecao anterior. Override Atlas fixa RAG textual,
+pois o ambiente anterior tinha RAG avancado ativo com Qdrant parado.
+
+Executado:
+- dotnet run --project tests/AtlasKnowledge/AtlasKnowledge.csproj --no-restore:
+  PASS casos existentes e novos testes de dez documentos exclusivos, repeticao,
+  preferencia Atlas e fallback sem ultrapassar membership desativada.
+- docker compose -p ia-portal -f docker-compose.yml -f docker-compose.atlas.yml
+  config --quiet e build ai-gateway portal-front: PASS, imagens atuais publicadas
+  somente no Docker local. Backend manteve 11 avisos existentes.
+- docker compose -p ia-portal --profile rag -f docker-compose.yml -f
+  docker-compose.atlas.yml down: removeu somente os servicos/rede do projeto.
+- docker volume rm ia-portal_portal_data ia-portal_qdrant_data: removidos os
+  dados anteriores, incluindo contas, conversas, usage, KB e backups/vetores.
+  Sem backup, conforme instrucao expressa. Nao usado prune global.
+- docker compose -p ia-portal -f docker-compose.yml -f docker-compose.atlas.yml
+  up -d --no-build: PASS, portal/frontend/OCR/ML/Trino ativos em loopback.
+- python scripts/atlas_trino_load.py e verificacao: PASS sete tabelas carregadas,
+  500 clientes/5896 faturas/5561 pagamentos-estornos e quatro SELECTs conferidos.
+- Bootstrap/login real usando valores do .env apenas em memoria, sem exibi-los:
+  PASS Atlas selecionada por padrao; dez docs e conector atlas_local registrado,
+  sete tabelas selecionadas e grant admin. Teste/metadata/aging PASS via API real.
+  Plataforma tecnica padrao sem KB, conexoes ou conversas antigas.
+- Chrome headless no frontend servido por Nginx: login real, fonte Atlas,
+  referencia 2026-11-01 e pergunta hibrida geraram resposta DeepSeek real,
+  modelo efetivo deepseek-flash. Mensagens persistidas (2), citacao da politica,
+  tabela e grafico conferidos; usage real de resposta/titulo: 2 calls, 3610 tokens.
+  Uma espera inicial pelo botao Enviar nao se aplicava ao input vazio; verificacao
+  subsequente confirmou resposta concluida, historico e renderizacao sem nova
+  chamada paga. Captura apenas do main em artifacts/atlas-local/chat-live.png.
+- .env local atualizado apenas para COMPOSE_FILE/COMPOSE_PATH_SEPARATOR; comandos
+  comuns docker compose agora mantem o override Atlas. Segredos preservados.
+- docker compose restart ai-gateway: PASS; API apos restart confirmou mesmos dez
+  documentos, uma conexao e uma conversa Atlas, sem duplicacao; login default Atlas.
+- SQLite lido por helper Docker com volume read-only e rede none: schema_versions
+  [1,2,3,4,5,6], users=1, KB apenas org Atlas (2,10), connectors=1, sessions=1,
+  usage=2; nenhum arquivo de backup. Helper efemero removido automaticamente.
+
+Frontend ativo: http://127.0.0.1:9080. Usuario deve atualizar/reautenticar com
+administrador do .env. Instalacao deixada em execucao para validacao; nao houve
+push, merge, publicacao na internet ou deploy de producao. Trino Memory perde
+os dados em reinicio e requer recarga do gerador local; detalhes em ATLAS_LOCAL.md.
+
+## 2026-11-07 — Verificação dos gráficos no chat e cache do frontend
+
+Relato: JSON de atlas-chart visível como código na captura. Repositório limpo
+na branch feature/atlas-business-intelligence antes da alteração. A resposta
+persistida contém fences atlas-chart/SQL válidos. Login local em navegador novo,
+com a conversa existente, confirmou um gráfico numérico renderizado e apenas
+o plano SQL como pre. Não foi reproduzida a falha da captura; frontend antigo
+na aba/cache é hipótese, não causa comprovada. Não foi necessária chamada LLM.
+
+Alterações: front/nginx.conf exige revalidação do HTML da SPA (inclusive /chat)
+e mantém cache immutable para bundles com hash, retornando 404 para bundles
+inexistentes. Isso favorece atualização após recarregar; abas abertas ainda
+precisam ser recarregadas. tests/ui/atlas.cjs agora verifica também SVG Mermaid
+com altura positiva dentro do iframe. Novo tests/ui/frontend-cache.cjs cobre
+os cabeçalhos HTTP e ausência de fallback HTML para bundle inexistente.
+
+Validação efetiva:
+- node tests/ui/atlas-security.cjs: PASS.
+- docker compose build portal-front: PASS (yarn typecheck e yarn build;
+  aviso já existente de bundle maior que 500 kB).
+- docker compose up -d --no-deps portal-front: PASS; somente frontend recriado.
+- docker compose exec -T portal-front nginx -t: PASS.
+- node tests/ui/frontend-cache.cjs: PASS contra localhost:9080.
+- node tests/ui/atlas.cjs com IA_UI_BASE_URL=http://127.0.0.1:9080,
+  Playwright/Chrome locais: PASS; APIs sintéticas interceptadas para os testes
+  visuais, gráfico numérico e SVG Mermaid, sandbox/CSP, fallback inválido,
+  temas claro/escuro, larguras 390/320 e troca de organização.
+- Conversa real existente verificada separadamente no navegador: gráfico visível.
+  Evidência local ignorada: artifacts/atlas-local/chart-before.png.
+
+Nenhuma migration, alteração no backend, reset de dados ou reinício do Trino.
+Backend .NET não recompilado pois não houve alteração nele. Para validar na aba
+antiga, usar Ctrl+F5 e reabrir a conversa; não é necessário gerar nova resposta.
+
+## 2026-11-07 — Chat com cabeçalho recolhido e entrada compacta
+
+Pedido: ampliar espaço disponível para mensagens e gráficos. Branch existente
+feature/atlas-business-intelligence, inicialmente limpa. Inspecionados ChatPage,
+ChatInput, ConversationModelPicker e BusinessSourcePicker; reutilizados React,
+MUI e controles existentes, sem alterações de contratos ou autorização.
+
+- ChatPage.tsx: título e expander nativo no topo; modelo, consumo e fonte dentro
+  de details recolhido por padrão, reiniciado ao trocar de conversa. Conteúdo
+  expandido limitado a 40dvh com rolagem para preservar espaço em telas pequenas.
+- ChatInput.tsx: uma linha inicial, crescimento até cinco linhas, anexo e envio
+  ao lado do texto; preservados Enter, Shift+Enter e proteção de composição IME.
+- tests/ui/atlas.cjs: regressão para controles inicialmente ocultos, abertura
+  por teclado, fechamento, altura de uma linha e crescimento com Shift+Enter.
+
+Validação:
+- npm run typecheck --prefix front: PASS.
+- docker compose build portal-front: PASS (typecheck/build; aviso existente de
+  chunks acima de 500 kB).
+- docker compose up -d --no-deps portal-front: PASS, versão local atualizada.
+- node tests/ui/atlas.cjs contra http://127.0.0.1:9080, Playwright/Chrome e
+  axe-core locais: PASS; fixtures de API sintéticas, temas claro/escuro,
+  teclado, gráfico numérico/Mermaid, sandbox, layout 390/320px e organização.
+- node tests/ui/frontend-cache.cjs: PASS.
+- Capturas locais artifacts/atlas-ui/chat-dark.png e chat-light.png atualizadas;
+  captura escura inspecionada visualmente, com cabeçalho e composer compactos.
+
+Sem migrations, mudanças no backend ou operações sobre dados. Testes .NET não
+reexecutados pois o incremento altera somente frontend. Preview: localhost:9080;
+recarregar a aba para receber a versão nova. Não houve push/merge/publicação.

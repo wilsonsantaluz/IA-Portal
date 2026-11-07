@@ -110,3 +110,32 @@ Cache é subconjunto da entrada conforme o provedor, não parcela a somar ao tot
 O identificador de provider em mensagens/usage/preferências é um snapshot lógico, não uma FK obrigatória para configuração: provedores podem funcionar só pelo ambiente, sem linha em `AiProviderSettings`, e histórico não deve depender de a configuração permanecer habilitada. Seleção runtime é validada pelo catálogo. As FKs de usuário, sessão e mensagem continuam reais; não há tabela paralela de conversas.
 
 `AiProviderSettings` guarda Id do provedor, enabled, endpoint permitido, lista de modelos JSON, modelo padrão e versão de concorrência. `AiUserPreferences` vincula UserId ao provider/model pessoal; `AiSystemDefault` guarda provider/model/versão globais. Sem colunas de API key, segredo ou JWT. `LlmUsage.ApiBilling` separa external/local/unknown. Perguntas conservam provider/model solicitado; respostas/usage conservam efetivo; a seleção da conversa não é sobrescrita pelo alias retornado. Endpoint e classificação de cobrança são congelados juntos ao aceitar a chamada, evitando redirecionamento de uma chamada local já iniciada por edição administrativa concorrente. SQL v4/backup/checksum preservam todas as estruturas anteriores. Preços continuam em arquivo versionável, não em uma tabela adicional.
+
+
+## Atlas - schema implementado v5/v6 (07/11/2026)
+
+Organizations(Id,Name,Slug unico,IsActive) e OrganizationMemberships(OrganizationId,
+UserId,IsActive), PK composta e FKs reais. Roles passa a ter OrganizationId e
+unicidade por (OrganizationId,RoleName). UserRoles/RolePermissions reutilizados;
+RBAC e membership validados no tenant ativo.
+
+KnowledgeBaseItem, ChatSession e ChatKbRatings recebem OrganizationId. Mensagens
+e LlmUsage conservam as FKs existentes e herdam o escopo da sessao. Usuario e
+credencial continuam globais (identidade compartilhavel), mas administracao
+filtra memberships e nao permite reset global de conta compartilhada por tenant.
+AiProviderSettings/default continuam globais, com administracao so na org padrao.
+Preferencia pessoal e da conta. Nao existe segunda tabela de conversas.
+
+DataConnectors: Id,OrganizationId,Name,ProfileId,Category,Endpoint,Catalog,Schema,
+Enabled,TablesJson,Status,TestedAt,Version (concorrencia). ConnectorGrants tem PK
+(ConnectorId,RoleId), FKs e trigger impedindo grant entre organizacoes. Nao ha
+coluna de segredo, senha ou API key. Referencias de ambiente existem somente
+nos perfis aprovados no servidor, fora do DTO/SQLite.
+
+Migration v5 atribui todo legado a id=1, sem inferir tenant por prefixo ou texto.
+Atlas opt-in separado recebe novos documentos com mesmo KeyName logico por org;
+edicoes antigas permanecem intocadas em id=1. Em SQLite legado as colunas FK
+adicionadas sem NOT NULL sao preenchidas e protegidas por triggers contra NULL,
+evitando reconstruir tabelas. Banco novo usa NOT NULL no modelo. v6 cria apenas
+tabelas novas e seus indexes/triggers. Runner conserva SQL/checksum e backup
+consistente; v4/v5 reais, rollback DDL, restore+upgrade e idempotencia testados.

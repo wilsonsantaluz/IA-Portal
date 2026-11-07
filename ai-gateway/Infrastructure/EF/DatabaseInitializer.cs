@@ -8,10 +8,14 @@ public static class DatabaseInitializer
 {
     public static async Task InitializeAsync(PortalDbContext db, IConfiguration config)
     {
+        db.SystemOperation = true;
+        try {
         // Local prototype: creates a new schema, never deletes existing data.
         // Schema evolution must be handled explicitly before changing this model.
         await ChatSchemaMigrator.InitializeAsync(db, config);
-        if (!await db.KnowledgeBaseItems.AnyAsync(x => x.KeyName == "organization_base"))
+
+        var atlasOnlyKnowledge = config.GetValue<bool>("Demo:Atlas:SeedKnowledge") && config.GetValue<bool>("Demo:Atlas:OnlyKnowledge");
+        if (!atlasOnlyKnowledge && !await db.KnowledgeBaseItems.AnyAsync(x => x.OrganizationId == 1 && x.KeyName == "organization_base"))
         {
             db.KnowledgeBaseItems.Add(new KnowledgeBaseItem
             {
@@ -23,7 +27,7 @@ public static class DatabaseInitializer
         }
 
         // Idempotent catalog: reuse the existing RBAC schema without deleting data.
-        var role = await db.Roles.FirstOrDefaultAsync(x => x.RoleName == "admin");
+        var role = await db.Roles.FirstOrDefaultAsync(x => x.OrganizationId == 1 && x.RoleName == "admin");
         if (role is null) { role = new Role { RoleName = "admin" }; db.Roles.Add(role); }
         foreach (var entry in PortalAccess.Catalog)
             if (!await db.Permissions.AnyAsync(x => x.PermissionKey == entry.Key))
@@ -36,7 +40,7 @@ public static class DatabaseInitializer
         await db.SaveChangesAsync();
 
         // Only bootstrap an empty installation; never reset an existing password.
-        if (await db.Users.AnyAsync()) return;
+        if (await db.Users.AnyAsync()) { await AtlasKnowledgeSeed.InitializeAsync(db, config); return; }
         var email = config["Bootstrap:AdminEmail"]?.Trim();
         var password = config["Bootstrap:AdminPassword"];
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password)) return;
@@ -52,5 +56,9 @@ public static class DatabaseInitializer
         user.Roles.Add(new UserRole { User = user, Role = role });
         db.Users.Add(user);
         await db.SaveChangesAsync();
+        db.OrganizationMemberships.Add(new OrganizationMembership { OrganizationId = 1, UserId = user.UserId });
+        await db.SaveChangesAsync();
+        await AtlasKnowledgeSeed.InitializeAsync(db, config);
+        } finally { db.SystemOperation = false; }
     }
 }

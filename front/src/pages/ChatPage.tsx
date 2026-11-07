@@ -15,6 +15,7 @@ import { useChatScroll } from "../hooks/useChatScroll";
 import ChatWelcome from "../components/ChatWelcome";
 import ConversationPanel from "../components/ConversationPanel";
 import ConversationModelPicker from "../components/ConversationModelPicker";
+import BusinessSourcePicker from "../components/BusinessSourcePicker";
 import { ChatStatus } from "../components/ChatPage/ChatStatus";
 import { Link } from "react-router-dom";
 
@@ -124,19 +125,28 @@ export default function ChatPage() {
         <Box
           sx={{
             px: { xs: 7, lg: 4 },
-            py: 1.5,
+            py: 0.75,
+            flexShrink: 0,
             borderBottom: "1px solid",
             borderColor: "divider",
           }}
         >
-          <Typography fontSize={13} fontWeight={600} noWrap>
+          <Box component="details" key={chat.session?.id || "new-conversation"}>
+          <Box component="summary" aria-label="Configurações da conversa" sx={{ cursor: "pointer", py: 0.5, "&:focus-visible": { outline: "2px solid", outlineColor: "primary.main", outlineOffset: 2 }, "& > span": { display: "inline" } }}>
+          <Typography component="span" fontSize={13} fontWeight={600} sx={{ overflowWrap: "anywhere" }}>
             {chat.session?.title || "Nova conversa"}
           </Typography>
+          <Typography component="span" fontSize={11} color="text.secondary" sx={{ ml: 1 }}>Configurações da conversa</Typography>
+          </Box>
+          <Box sx={{ maxHeight: "40dvh", overflowY: "auto", py: 1 }}>
           <Typography fontSize={10} color="text.secondary">
             {chat.session ? `${chat.session.provider} · ${chat.session.model}` : "Seu modelo padrão será usado ao enviar."}
           </Typography>
           {chat.session && <ConversationModelPicker session={chat.session} disabled={loading || chat.historyLoading} refresh={chat.reloadCurrent} />}
           {chat.session && <Button component={Link} to={`/usage?sessionId=${chat.session.id}`} size="small" sx={{ mt: 0.5 }}>Consumo desta conversa</Button>}
+          <BusinessSourcePicker sourceId={chat.dataSourceId} referenceDate={chat.referenceDate} onSource={chat.setDataSourceId} onDate={chat.setReferenceDate} onChoose={setInput} disabled={loading || chat.historyLoading}/>
+          </Box>
+          </Box>
         </Box>
         {chat.historyLoading && (
           <LinearProgress aria-label="Carregando histórico" />

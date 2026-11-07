@@ -10,7 +10,7 @@ namespace AiGateway.Infrastructure.Qdrant.Services.Chats;
 
 public sealed class LocalChatContextService(
     PortalDbContext db, IChatRepository chats, IWebHostEnvironment environment,
-    IHttpContextAccessor httpContext) : IAskSmartService
+    IHttpContextAccessor httpContext, ChatGrounding grounding) : IAskSmartService
 {
     public async Task<string> AskAsync(AskSmartRequest req, HttpSseEventEmitter sse)
     {
@@ -34,6 +34,7 @@ public sealed class LocalChatContextService(
         foreach (var result in selected)
         {
             var item = result.Item;
+            grounding.DocumentSources.Add($"{item.KeyName} — {item.Title} ({item.Subsection})");
             prompt.AppendLine($"Fonte [{item.Id}]: {item.Title}\n{item.Content[..Math.Min(item.Content.Length, 4000)]}");
         }
         prompt.AppendLine("HISTÓRICO:");
