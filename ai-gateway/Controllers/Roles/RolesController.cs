@@ -26,7 +26,7 @@ public class RolesController(PortalDbContext db) : ControllerBase
         if (name.Length < 2 || name.Equals("admin", StringComparison.OrdinalIgnoreCase) || req.Permissions is null || req.Permissions.Except(PortalAccess.Catalog.Select(x => x.Key)).Any())
             return BadRequest(new { error = "Nome reservado ou permissões inválidas." });
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
-        var role = id.HasValue ? await db.Roles.FindAsync(new object[] { id.Value }, ct) : new Role();
+        var role = id.HasValue ? await db.Roles.FirstOrDefaultAsync(x => x.RoleId == id.Value, ct) : new Role();
         if (role is null) return NotFound();
         if (role.RoleName == "admin") return Conflict(new { error = "O grupo admin é protegido." });
         if (await db.Roles.AnyAsync(x => x.RoleId != (id ?? 0) && x.RoleName.ToLower() == name.ToLower(), ct)) return Conflict(new { error = "Já existe um grupo com esse nome." });
@@ -48,7 +48,7 @@ public class RolesController(PortalDbContext db) : ControllerBase
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
-        var role = await db.Roles.FindAsync(new object[] { id }, ct);
+        var role = await db.Roles.FirstOrDefaultAsync(x => x.RoleId == id, ct);
         if (role is null) return NotFound();
         if (role.RoleName == "admin" || await db.UserRoles.AnyAsync(x => x.RoleId == id, ct))
             return Conflict(new { error = "Remova os usuários do grupo antes de excluí-lo. O grupo admin é protegido." });

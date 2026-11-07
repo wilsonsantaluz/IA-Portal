@@ -144,3 +144,22 @@ read-only no Trino e limites antes de integrar ao chat. Credenciais por referenc
 no ambiente, sem texto puro no SQLite. Nao expor menu de operacoes sem backend.
 E depende dessas protecoes e de renderizacao Mermaid segura; nao representa
 funcionalidade concluida nesta etapa.
+
+
+## Atlas - organizacoes aprovadas e implementadas em 07/11/2026
+
+A aprovacao do proprietario substitui o bloqueio arquitetural anterior. SQL v5
+adiciona Organizations, OrganizationMemberships e escopo em Roles,
+KnowledgeBaseItem, ChatSession e ChatKbRatings. Dados legados ficam em id 1;
+Atlas opt-in separado, sem migracao heuristica por prefixo dos documentos.
+Mensagens e usage filtram a sessao. PortalDbContext recebe OrganizationScope
+por DI, inicialmente negado, preenchido so apos autenticacao e membership ativa.
+Filtros de leitura e validacao de escrita complementam os checks de dono.
+Rotas KB usam queries filtradas; nao usar FindAsync para isolamento.
+RBAC recalculado no tenant; usuarios e grupos administrativos ficam locais.
+Conta compartilhada nao aceita redefinicao global por admin do tenant.
+Qdrant filtra organizationId e resultados sao revalidados no SQLite antes
+de reranking; pontos legados sem escopo exigem reindex.
+Configuracao de provedores permanece global e apenas no tenant padrao. O seletor
+usa header validado e recarrega o app para impedir mistura de estado local.
+Trino/conectores e Mermaid ainda sao trabalho seguinte, nao testes concluidos.

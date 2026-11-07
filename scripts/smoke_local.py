@@ -145,10 +145,11 @@ def main():
             "TRINO_URL": "http://127.0.0.1:1",
             "LLM_PRICES_FILE": str(ROOT / "ai-gateway/config/model-prices.json"),
         })
+        organization_id = 1
         token = ""
         def request(path, data=None, raw=False, content_type="application/json", method=None):
             body = data if isinstance(data, bytes) else (json.dumps(data).encode() if data is not None else None)
-            headers = {"Content-Type": content_type}
+            headers = {"Content-Type": content_type, "X-Organization-Id": str(organization_id)}
             if token:
                 headers["Authorization"] = f"Bearer {token}"
             req = urllib.request.Request(base + path, data=body, headers=headers, method=method)
@@ -183,11 +184,15 @@ def main():
                 login = request("/api/auth/login", {"email": "admin@example.test", "password": admin_secret})
                 token = login["token"]
                 assert "admin" in login["roles"]
-                assert len(request("/api/kb/all")) == 1 + atlas_count
+                assert len(request("/api/kb/all")) == 1
                 if atlas_count:
+                    assert len(request("/api/organizations")) == 2
+                    organization_id = next(o["id"] for o in request("/api/organizations") if o["slug"] == "atlas-demo")
                     atlas_docs = [d for d in request("/api/kb/all") if d["keyName"].startswith("atlas-")]
                     assert len(atlas_docs) == 10
                     assert all("synthetic-demo" in request(f"/api/kb/{d['id']}")["content"] for d in atlas_docs)
+                    atlas_organization = organization_id
+                    organization_id = 1
                 item = request("/api/kb/upsert", {
                     "keyName": "test_receivables", "section": "Auditoria", "title": "Recebiveis teste",
                     "content": "Protocolo TEST-MARKER para conciliacao de recebiveis.", "isActive": True
@@ -231,7 +236,7 @@ def main():
                 start(log)
                 request("/api/auth/login", {"email": "admin@example.test", "password": admin_secret})
                 assert len(request(f"/api/chatBot/history/{session}")) == 6
-                assert len(request("/api/kb/all")) == 2 + atlas_count
+                assert len(request("/api/kb/all")) == 2
                 with closing(sqlite3.connect(dbfile)) as db:
                     assert db.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
                     assert db.execute("SELECT COUNT(*) FROM Users").fetchone()[0] == 1
@@ -385,6 +390,41 @@ def main():
                 assert request("/api/admin/ai/providers/openai/test", {})["status"] == "not_configured"
                 assert "openai" not in {p["id"] for p in request("/api/ai/providers")}
                 print("PASS: administrative settings/default CAS, server endpoint allowlist, environment-only secrets, metadata-only connectivity, disabled provider rejection and settings restart persistence.")
+                if atlas_count:
+                    # Earlier provider tests deliberately disabled DeepSeek and selected Ollama.
+                    current_provider = next(p for p in request("/api/admin/ai/providers") if p["id"] == "deepseek")
+                    request("/api/admin/ai/providers/deepseek", {**update, "enabled": True, "version": current_provider["version"]}, method="PUT")
+                    request("/api/me/ai-preference", {"provider": "deepseek", "model": "deepseek-fixture"}, method="PUT")
+                    default_kb = request("/api/kb/all")[0]
+                    default_role = request("/api/roles")[0]
+                    default_session = request("/api/chatBot/sessions", {})["id"]
+                    organization_id = atlas_organization
+                    assert request("/api/auth/me")["organizationId"] == atlas_organization
+                    assert len(request("/api/kb/all")) == 10
+                    rejected(f"/api/kb/{default_kb['id']}")
+                    rejected("/api/kb/save", {"id": default_kb["id"], "keyName": "intrusion", "section": "test", "content": "intrusion"})
+                    rejected("/api/kb/upsert", {"id": default_kb["id"], "keyName": "intrusion", "section": "test", "content": "intrusion", "isActive": True})
+                    rejected(f"/api/roles/{default_role['id']}", method="DELETE")
+                    rejected(f"/api/chatBot/sessions/{default_session}")
+                    rejected("/api/admin/ai/providers", expected=403)
+                    atlas_session = request("/api/chatBot/sessions", {})["id"]
+                    stream = request("/api/ia/ask/stream", {"pergunta": "Explique a pol?tica de cobran?a e negocia??o", "sessionId": atlas_session}, raw=True)
+                    assert "event: error" not in stream and "synthetic-demo" in PROMPTS[-1]
+                    assert "TEST-MARKER" not in PROMPTS[-1]
+                    # Shared identity cannot be reset by an admin of only this tenant.
+                    account = request("/api/users/1")
+                    rejected("/api/users/1", {"userName": account["userName"], "userEmail": account["userEmail"], "password": uuid.uuid4().hex,
+                        "isActive": True, "groupIds": [g["id"] for g in account["groups"]]}, method="PUT", expected=409)
+                    organization_id = 1
+                    rejected(f"/api/chatBot/sessions/{atlas_session}")
+                    assert all(not d["keyName"].startswith("atlas-") for d in request("/api/kb/all"))
+                    # Default-only user cannot select Atlas, even with a valid JWT.
+                    token = request("/api/auth/login", {"email": "b@example.test", "password": admin_secret})["token"]
+                    organization_id = atlas_organization
+                    rejected("/api/kb/all", expected=401)
+                    organization_id = 1
+                    token = admin_token
+                    print("PASS: organization membership validation, isolated KB/read/write/RAG/roles/conversations, shared-account reset denied, installation settings protected.")
                 print("PASS: SQLite creation, bootstrap/login, KB CRUD, chat streaming/history, ratings, OCR routing and restart persistence.")
                 print("LLM and OCR were HTTP doubles; external inference and real text extraction were not exercised.")
         finally:

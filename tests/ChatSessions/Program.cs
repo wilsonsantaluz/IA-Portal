@@ -12,7 +12,8 @@ PortalDbContext Context(string path) => new(new DbContextOptionsBuilder<PortalDb
 void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
 async Task Fails(Func<Task> action, int status) { try { await action(); throw new Exception("Expected failure"); } catch (ChatException ex) { Check(ex.Status == status, $"Wrong HTTP status {ex.Status}"); } }
 async Task Legacy(string path, bool conflict = false) {
-    await using var db = Context(path); await db.Database.EnsureCreatedAsync();
+    await using var db = new PreOrganizationContext(new DbContextOptionsBuilder<PortalDbContext>().UseSqlite($"Data Source={path};Foreign Keys=True").Options);
+    await db.Database.EnsureCreatedAsync();
     await db.Database.ExecuteSqlRawAsync("DROP TABLE AiUserPreferences; DROP TABLE AiSystemDefault; DROP TABLE AiProviderSettings; DROP TABLE LlmUsage; DROP TABLE ChatMessage; DROP TABLE ChatSession; CREATE TABLE ChatSession (Id TEXT PRIMARY KEY NOT NULL, UserId TEXT NULL, Title TEXT NULL, CreatedAt TEXT NOT NULL); CREATE TABLE ChatMessage (Id INTEGER PRIMARY KEY AUTOINCREMENT, SessionId TEXT NOT NULL REFERENCES ChatSession(Id) ON DELETE CASCADE, Role TEXT NOT NULL, Content TEXT NOT NULL, CreatedAt TEXT NOT NULL);");
     db.Users.AddRange(new User { UserName = "Synthetic A", UserEmail = "a@example.test", PasswordHash = "synthetic-not-a-password", IsActive = true }, new User { UserName = "Synthetic B", UserEmail = "b@example.test", PasswordHash = "synthetic-not-a-password", IsActive = true }); await db.SaveChangesAsync();
     var id = Guid.NewGuid(); var date = DateTime.UtcNow;

@@ -30,12 +30,15 @@ public static class PortalAccess
     public static string Version(User user, IConfiguration cfg) => Convert.ToHexString(
         HMACSHA256.HashData(Encoding.UTF8.GetBytes(cfg["Jwt:Key"]!), Encoding.UTF8.GetBytes(user.PasswordHash)));
 
-    public static async Task<(string[] Roles, string[] Permissions)> ReadAsync(PortalDbContext db, int userId, CancellationToken ct)
+    public static async Task<(string[] Roles, string[] Permissions)> ReadAsync(PortalDbContext db, int userId, CancellationToken ct, int organizationId = 1)
     {
-        var roleIds = db.UserRoles.Where(x => x.UserId == userId).Select(x => x.RoleId);
-        var roles = await db.Roles.Where(x => roleIds.Contains(x.RoleId)).Select(x => x.RoleName).ToArrayAsync(ct);
+        if (!await db.OrganizationMemberships.AnyAsync(x => x.UserId == userId && x.OrganizationId == organizationId && x.IsActive, ct)) return ([], []);
+        var roleIds = db.UserRoles.IgnoreQueryFilters().Where(x => x.UserId == userId && x.Role.OrganizationId == organizationId).Select(x => x.RoleId);
+        var roles = await db.Roles.IgnoreQueryFilters().Where(x => x.OrganizationId == organizationId && roleIds.Contains(x.RoleId)).Select(x => x.RoleName).ToArrayAsync(ct);
         var permissions = roles.Contains("admin") ? Catalog.Select(x => x.Key).ToArray() :
-            await db.RolePermissions.Where(x => roleIds.Contains(x.RoleId)).Select(x => x.Permission.PermissionKey).Distinct().ToArrayAsync(ct);
+            await db.RolePermissions.IgnoreQueryFilters().Where(x => x.Role.OrganizationId == organizationId && roleIds.Contains(x.RoleId)).Select(x => x.Permission.PermissionKey).Distinct().ToArrayAsync(ct);
+        // Provider configuration belongs to the installation, not individual tenants.
+        if (organizationId != 1) permissions = permissions.Except([AiAdministration]).ToArray();
         if (permissions.Contains(EditKnowledge) && !permissions.Contains(Knowledge)) permissions = [.. permissions, Knowledge];
         return (roles, permissions);
     }

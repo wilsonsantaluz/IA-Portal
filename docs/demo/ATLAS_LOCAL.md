@@ -17,7 +17,7 @@ no corpo acompanha a recuperação textual. A consulta exige `kb.view`, a manute
 Reiniciar não duplica nem atualiza documentos existentes, mesmo editados ou
 inativos. Desligar o seed não remove registros. Para retirar a demonstração,
 desative os dez documentos na tela existente e mantenha o seed desligado.
-Não há migration nova nem rollback de esquema. A transação evita seed parcial.
+A migration v5 adiciona organizações sem recriar as tabelas existentes. A transação evita seed parcial.
 O snapshot v1 é imutável; versões futuras exigem política explícita, sem atualizar
 conteúdo humano automaticamente. Não renomeie IDs se precisar preservar a
 identidade do documento no seed.
@@ -25,8 +25,9 @@ identidade do documento no seed.
 O RAG local encontra documentos ativos usando o mecanismo textual existente.
 Com RAG avançado, configure ONNX/Qdrant e execute `POST /api/kb/reindex-all` com
 JWT autorizado. Confira `falhas=0`; o seed não promete índices vetoriais prontos.
-Sem modelos, o modo local continua disponível. A KB é global desta instalação,
-não há segregação por organização; use instalação demonstrativa dedicada.
+Sem modelos, o modo local continua disponível. Selecione Atlas no controle
+Organização ativa no topo. O servidor valida a membership e o RBAC em cada
+request, inclusive SSE, e filtra a KB e as conversas por organização.
 
 ## Dataset offline (Fase B)
 
@@ -84,10 +85,45 @@ executadas em Trino). Resultado esperado de aging calculado pelo gerador seed 42
 
 ## Limite das próximas fases
 
-Data Connectors e chat híbrido não foram habilitados. O portal não tem entidades
-de organização/membership. É necessária uma decisão de migração de usuários,
-grupos e KB existentes para organizações, antes de garantir isolamento.
+Data Connectors e chat híbrido não foram habilitados. A decisão sobre organizações
+foi aprovada em 07/11/2026 e a fundação multi-organização foi implementada.
 O cliente Trino atual também precisa de validação SQL estrutural, allowlists,
 limites, cancelamento e validação de destinos de rede. Não conectar fontes reais
 pelas rotas SQL legadas. Mermaid precisa de renderização isolada e fallback
 textual; o renderizador existente ainda não atende à Fase E.
+
+## Migração v5: organizações e acesso
+
+A inicialização faz backup consistente pre-chat-v5 antes de atualizar um banco
+v4, usa transação e checksum. As tabelas existentes recebem OrganizationId, com
+FK e proteção contra NULL; não são apagadas ou recriadas. Usuários atuais ganham
+membership na organização padrão (id 1); KB, grupos, sessões e avaliações atuais
+continuam nela. Mensagens e consumo herdam o escopo da sessão. IDs, senhas,
+conteúdo e propriedade de conversas são preservados.
+
+Atlas é outra organização, criada apenas com o seed opt-in. Administradores
+existentes da organização padrão recebem membership/grupo admin de Atlas no
+primeiro provisionamento. Usuários comuns não recebem acesso automático. Novas
+contas criadas na tela de usuários pertencem à organização ativa; grupos e suas
+permissões são locais. Memberships desativadas e grupos removidos não são
+restaurados pelo seed. Contas compartilhadas permitem alterar grupos locais,
+mas não senha, e-mail, nome ou estado global por um administrador de tenant.
+Este incremento não tem UI de criação de organizações ou associação de contas
+existentes a outros tenants.
+
+O login escolhe a primeira membership ativa; o seletor envia X-Organization-Id,
+validado no banco, e recarrega a interface para limpar o estado anterior. Header
+ausente seleciona a primeira membership ativa; inválido/não autorizado é rejeitado.
+Configurações globais de IA ficam restritas à organização padrão. Preferências
+pessoais de modelo continuam sendo da conta e não expõem dados de outra org.
+
+Registros Atlas v1 anteriores à v5 permanecem na organização padrão, como todos
+os dados legados, sem mover conteúdo humano. Atlas recebe seed independente.
+Desative cópias legadas na KB padrão se não quiser usá-las ali. Reindexe a KB
+vetorial explicitamente: pontos antigos sem organizationId ficam fora da busca;
+os IDs ativos também são revalidados no SQLite antes do reranking.
+
+Rollback operacional: pare o gateway e restaure o backup completo pre-v5 para
+um caminho novo, com a versão anterior da aplicação. Não execute downgrade de
+colunas no banco em uso; mudanças posteriores ao backup exigem reconciliação.
+Testes cobrem restauração e novo upgrade, além de rollback de DDL em falha.

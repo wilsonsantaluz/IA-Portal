@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import api from "../services/api";
 import {
   Box,
   Toolbar,
@@ -6,6 +8,9 @@ import {
   Tooltip,
   Avatar,
   Divider,
+  Select,
+  MenuItem,
+  Alert,
 } from "@mui/material";
 import MenuOutlined from "@mui/icons-material/MenuOutlined";
 import LogoutOutlined from "@mui/icons-material/LogoutOutlined";
@@ -30,6 +35,16 @@ export default function HeaderBar({
   const { hasAnyCollapsed, toggleExpandAll } = useChatUI();
   const { user, logout } = useAuth();
   const { pathname } = useLocation();
+  const [organizations, setOrganizations] = useState<{ id: number; name: string }[]>([]);
+  const [organizationError, setOrganizationError] = useState(false);
+  useEffect(() => { let active = true; api.get("/api/organizations").then(({ data }) => { if (active) setOrganizations(data); }).catch(() => { if (active) setOrganizationError(true); }); return () => { active = false; }; }, []);
+  async function switchOrganization(id: number) {
+    if (!user) return;
+    const { data } = await api.get("/api/auth/me", { headers: { "X-Organization-Id": String(id) } });
+    localStorage.setItem("auth", JSON.stringify({ ...data, token: user.token }));
+    // Reload clears in-flight view state/history; requests retain their original scoped header.
+    window.location.assign("/");
+  }
   const title =
     (
       {
@@ -107,6 +122,12 @@ export default function HeaderBar({
             </IconButton>
           </Tooltip>
         )}
+        {organizationError && <Alert severity="error">Erro ao carregar organiza??es</Alert>}
+        {organizations.length > 0 && <Select size="small" value={user?.organizationId || organizations[0].id}
+          inputProps={{ "aria-label": "Organiza??o ativa" }} sx={{ maxWidth: { xs: 130, md: 250 } }}
+          onChange={e => { void switchOrganization(Number(e.target.value)).catch(() => setOrganizationError(true)); }}>
+          {organizations.map(o => <MenuItem key={o.id} value={o.id}>{o.name}</MenuItem>)}
+        </Select>}
         <ThemeToggle />
         <Divider
           orientation="vertical"

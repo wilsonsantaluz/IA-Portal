@@ -10,6 +10,7 @@ import { login as loginApi } from "./authService";
 import api from "../services/api";
 
 type AuthUser = {
+  organizationId: number;
   userId: number;
   userName: string;
   email: string;

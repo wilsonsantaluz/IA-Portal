@@ -28,6 +28,7 @@ builder.Services.AddCors(options =>
          .AllowAnyHeader());
 });
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<OrganizationScope>();
 builder.Services.AddControllers();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();
@@ -131,7 +132,22 @@ builder.Services.AddAuthentication("Bearer")
                 var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(x => x.UserId == id && x.IsActive, context.HttpContext.RequestAborted);
                 if (user is null || principal.FindFirstValue("ver") != PortalAccess.Version(user, context.HttpContext.RequestServices.GetRequiredService<IConfiguration>()))
                 { context.Fail("Sessão expirada. Entre novamente."); return; }
-                var access = await PortalAccess.ReadAsync(db, id, context.HttpContext.RequestAborted);
+                var selection = context.Request.Headers["X-Organization-Id"];
+                int organizationId;
+                if (selection.Count == 0) {
+                    organizationId = await db.OrganizationMemberships.Where(x => x.UserId == id && x.IsActive)
+                        .Join(db.Organizations.Where(x => x.IsActive), x => x.OrganizationId, x => x.Id, (m,o) => o.Id)
+                        .OrderBy(x => x).FirstOrDefaultAsync(context.HttpContext.RequestAborted);
+                } else if (selection.Count != 1 || !int.TryParse(selection[0], out organizationId) || organizationId <= 0) {
+                    context.Fail("Organizacao invalida."); return;
+                }
+                if (!await db.OrganizationMemberships.AnyAsync(x => x.UserId == id && x.OrganizationId == organizationId && x.IsActive, context.HttpContext.RequestAborted)
+                    || !await db.Organizations.AnyAsync(x => x.Id == organizationId && x.IsActive, context.HttpContext.RequestAborted)) {
+                    context.Fail("Organizacao nao autorizada."); return;
+                }
+                var scope = context.HttpContext.RequestServices.GetRequiredService<OrganizationScope>();
+                scope.Id = organizationId; scope.UserId = id;
+                var access = await PortalAccess.ReadAsync(db, id, context.HttpContext.RequestAborted, organizationId);
                 var identity = (ClaimsIdentity)principal.Identity!;
                 foreach (var claim in identity.Claims.Where(x => x.Type == "perm" || x.Type == ClaimTypes.Role).ToArray()) identity.RemoveClaim(claim);
                 identity.AddClaims(access.Permissions.Select(x => new Claim("perm", x)));

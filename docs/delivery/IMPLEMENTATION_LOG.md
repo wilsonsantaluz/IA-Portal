@@ -246,3 +246,40 @@ SQL/rede suficiente. Solicitada decisao arquitetural sobre migracao de dados
 existentes para organizacao padrao versus instalacao demo separada, conforme
 excecao do usuario para decisoes arquiteturais significativas. Nao conceder
 acesso global silenciosamente nem apresentar isolamento nao implementado.
+
+
+## 07/11/2026 - fundacao multi-organizacao aprovada
+
+Migration 005_Organizations.sql, backup consistente/checksum/transacao no runner
+existente. Dados atuais na organizacao padrao; seed Atlas separado e acesso
+inicial so para administradores existentes. Roles locais, KB/sessoes/avaliacoes,
+mensagens/usage por sessao e RAG filtrados. Lista de organizacoes autorizadas e
+seletor no shell. Sem banco real/volumes alterados; sem deploy/push/merge.
+
+Resultados efetivamente executados:
+- dotnet run --project tests/Organizations/Organizations.csproj: PASS v4 real ->
+  v5, preservacao de usuarios/hash/KB/roles/sessoes, membership, idempotencia,
+  backup anterior a mudanca, restauracao+upgrade e rollback DDL/versao/dados.
+- dotnet run --project tests/ChatSessions/ChatSessions.csproj --no-restore: PASS;
+  fixture atualizada para representar schema anterior as organizacoes.
+- dotnet run --project tests/access/SeedSmoke/SeedSmoke.csproj --no-restore: PASS;
+  fixture atual declara memberships explicitamente.
+- dotnet run --project tests/AtlasKnowledge/AtlasKnowledge.csproj --no-restore:
+  PASS; seed/rollback/edicoes preservados na organizacao Atlas.
+- dotnet run --project tests/Usage/Usage.csproj --no-restore: PASS.
+- dotnet run --project tests/ChatTitles/ChatTitles.csproj --no-restore: PASS.
+- dotnet run --project tests/Providers/Providers.csproj --no-restore: PASS.
+- python scripts/smoke_local.py: PASS regressao HTTP/SQLite temporario.
+- python scripts/smoke_local.py --atlas: PASS isolamento KB (ler/save/upsert),
+  grupos, sessao do mesmo dono em outra organizacao, contexto RAG sem trechos
+  alheios, membership recusada a usuario comum, reset de conta compartilhada
+  negado e configuracoes globais protegidas. Execucao inicial encontrou
+  tratamento 500 para documento alheio no upsert: corrigido para 404. Outra
+  assercao dependia de provider deliberadamente desligado pela propria fixture;
+  corrigido o setup antes da execucao final aprovada.
+- dotnet build ai-gateway/AiGateway.csproj --no-restore: PASS, 13 avisos
+  preexistentes; npm run typecheck --prefix front e npm run build em front: PASS;
+  Vite mantem aviso de chunks >500kB.
+
+Sem teste de navegador, modelos ONNX/Qdrant reais ou Trino neste incremento.
+Rollback operacional e politica de migracao/provisionamento em ATLAS_LOCAL.md.

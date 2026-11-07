@@ -264,6 +264,7 @@ export const useChatLogic = () => {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          "X-Organization-Id": String(JSON.parse(localStorage.getItem("auth") || "null")?.organizationId || 1),
         },
         body: JSON.stringify({ pergunta: question, sessionId: id, requestId }),
       });

@@ -10,7 +10,8 @@ namespace AiGateway.Controllers.Users;
 [ApiController, Route("api/users"), Authorize(Policy = PortalAccess.Administration)]
 public class UsersController(PortalDbContext db) : ControllerBase
 {
-    private IQueryable<object> Users => db.Users.AsNoTracking().OrderBy(x => x.UserName).Select(x => new {
+    private IQueryable<User> Members => db.Users.Where(x => db.OrganizationMemberships.Any(m => m.UserId == x.UserId && m.OrganizationId == db.OrganizationId && m.IsActive));
+    private IQueryable<object> Users => Members.AsNoTracking().OrderBy(x => x.UserName).Select(x => new {
         x.UserId, x.UserName, x.UserEmail, x.IsActive, x.CreatedAt,
         groups = x.Roles.Select(r => new { id = r.RoleId, name = r.Role.RoleName })
     });
@@ -22,7 +23,7 @@ public class UsersController(PortalDbContext db) : ControllerBase
     public async Task<IActionResult> GetById(int id, CancellationToken ct)
     {
         // Projection is explicit: password hashes and navigation entities never leave the API.
-        var user = await db.Users.AsNoTracking().Where(x => x.UserId == id).Select(x => new {
+        var user = await Members.AsNoTracking().Where(x => x.UserId == id).Select(x => new {
             x.UserId, x.UserName, x.UserEmail, x.IsActive, x.CreatedAt,
             groups = x.Roles.Select(r => new { id = r.RoleId, name = r.Role.RoleName })
         }).FirstOrDefaultAsync(ct);
@@ -44,6 +45,8 @@ public class UsersController(PortalDbContext db) : ControllerBase
         foreach (var id in ids) user.Roles.Add(new UserRole { RoleId = id });
         db.Users.Add(user);
         await db.SaveChangesAsync(ct);
+        db.OrganizationMemberships.Add(new OrganizationMembership { UserId = user.UserId, OrganizationId = db.OrganizationId });
+        await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
         return CreatedAtAction(nameof(GetById), new { id = user.UserId }, new { user.UserId });
     }
@@ -55,8 +58,12 @@ public class UsersController(PortalDbContext db) : ControllerBase
             return BadRequest(new { error = "Dados de usuário inválidos." });
         // SQLite serializable write transaction prevents concurrent removal of the final admin.
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
-        var user = await db.Users.Include(x => x.Roles).ThenInclude(x => x.Role).FirstOrDefaultAsync(x => x.UserId == id, ct);
+        var user = await Members.Include(x => x.Roles).ThenInclude(x => x.Role).FirstOrDefaultAsync(x => x.UserId == id, ct);
         if (user is null) return NotFound();
+        // A tenant admin must never reset a shared identity and acquire its other memberships.
+        var shared = await db.OrganizationMemberships.AnyAsync(x => x.UserId == id && x.OrganizationId != db.OrganizationId, ct);
+        if (shared && (req.Password is not null || req.IsActive != user.IsActive || req.UserEmail.Trim().ToLowerInvariant() != user.UserEmail.ToLowerInvariant() || req.UserName.Trim() != user.UserName))
+            return Conflict(new { error = "Conta compartilhada: altere apenas os grupos desta organiza??o." });
         var ids = req.GroupIds.Distinct().ToArray();
         if (await db.Roles.CountAsync(x => ids.Contains(x.RoleId), ct) != ids.Length) return BadRequest(new { error = "Grupo inválido." });
         var email = req.UserEmail.Trim().ToLowerInvariant();
@@ -64,7 +71,7 @@ public class UsersController(PortalDbContext db) : ControllerBase
         var adminId = await db.Roles.Where(x => x.RoleName == "admin").Select(x => x.RoleId).SingleAsync(ct);
         if ((!req.IsActive || !ids.Contains(adminId)) && user.IsActive && user.Roles.Any(x => x.RoleId == adminId))
         {
-            if (!await db.Users.AnyAsync(x => x.UserId != id && x.IsActive && x.Roles.Any(r => r.RoleId == adminId), ct))
+            if (!await Members.AnyAsync(x => x.UserId != id && x.IsActive && x.Roles.Any(r => r.RoleId == adminId), ct))
                 return Conflict(new { error = "Mantenha pelo menos um administrador ativo no grupo admin." });
         }
         if (id == PortalAccess.UserId(User) && (!req.IsActive || (user.Roles.Any(x => x.RoleId == adminId) && !ids.Contains(adminId))))
