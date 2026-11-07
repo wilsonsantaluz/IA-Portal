@@ -1,5 +1,6 @@
 using AiGateway.Dtos;
 using AiGateway.Infrastructure.Qdrant.Services.LLMs;
+using AiGateway.Infrastructure.Qdrant.Services.Chats;
 using AiGateway.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -37,6 +38,12 @@ public class ChatBotContoller(IChatRepository chats, ChatUsageService usage, IKn
         var turn = await chats.BeginTurnAsync(id, requestId, req.Question, ChatRequest.Fingerprint("plain", req.Question, req.DocumentContext), ct);
         if (turn.Replayed) return Ok(new { sessionId = id, texto = turn.Answer!.Content, messageId = turn.Answer.Id });
         try {
+            if (BusinessIntentClassifier.Classify(req.Question).Intent != BusinessIntent.Documents) {
+                const string clarification = "Para análises financeiras, use o chat com uma fonte autorizada e uma data de referência, ou a API de planos em /api/data. Este endpoint documental não calcula indicadores sem dados.";
+                var local = await chats.CompleteTurnAsync(id,requestId,clarification,ct,model:"validated-plan",provider:"portal");
+                await titles.TrySetLocalFallbackAsync(id,ct);
+                return Ok(new { sessionId=id,texto=clarification,messageId=local.Id });
+            }
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct); timeout.CancelAfter(TimeSpan.FromMinutes(2));
             var history = await chats.GetLastMessagesAsync(id, 20, ct);
             var context = await knowledge.GetOrganizationBaseAsync(ct);

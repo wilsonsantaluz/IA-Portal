@@ -397,3 +397,17 @@ Executado:
 Durante o teste foram corrigidos rotulos de organizacao com codificacao
 inadequada. Assercoes de drawer fechado/tooltip e initScript em frame sandbox
 foram ajustadas na fixture; execucao final sem pageerrors ou rotas inesperadas.
+
+
+### Fechamento dos caminhos legados - 07/11/2026
+
+/api/sql/ask e ask-rag agora rejeitam SQL livre antes de chamar qualquer modelo,
+conservando 404 de conversa alheia. /api/chatBot/ask permanece documental;
+perguntas classificadas como analiticas recebem esclarecimento local indicando
+fonte/data, sem inferencia nem indicadores inventados. Isso evita que uma rota
+antiga contorne o fluxo de grounding ou gere chamadas pagas sem plano autorizado.
+
+Executado dotnet build ai-gateway/AiGateway.csproj --no-restore: PASS com 11
+avisos preexistentes (dois avisos anteriores desapareceram com a remocao do
+executor legado). python scripts/smoke_local.py --atlas: PASS, incluindo calls
+counters sem LLM para JSON analitico/rotas SQL e todas as regressoes anteriores.

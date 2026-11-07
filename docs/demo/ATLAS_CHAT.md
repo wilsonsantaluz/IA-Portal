@@ -30,6 +30,9 @@ permitidos são `aging`, `aging_trend`, `cashflow` e `top_balances`; a autoriza�
 e compilação acontecem no servidor, antes da interpretação pelo modelo.
 Simulações, projeções e análises fora desses planos pedem esclarecimento.
 O executor não aceita SQL livre, mesmo quando o texto começa com SELECT/WITH.
+As rotas antigas `/api/sql/ask` e `/api/sql/ask-rag` rejeitam a operação antes
+de chamar qualquer modelo; a rota JSON documental `/api/chatBot/ask` pede uso do
+fluxo de fonte/data para perguntas analíticas, sem inventar indicadores.
 
 O período numérico vem dos controles explícitos de fonte/data. O classificador
 não interpreta livremente qualquer expressão de data do texto. A resposta sempre

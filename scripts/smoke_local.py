@@ -475,6 +475,11 @@ def main():
                     assert "Selecione uma fonte" in no_source and len(PROMPTS) + len(TITLE_PROMPTS) == inferred
                     assert request(f"/api/chatBot/sessions/{local_session}")["titleSource"] == "fallback"
                     assert request(f"/api/usage/summary?sessionId={local_session}")["requests"] == 0
+                    plain_local = request("/api/chatBot/ask", {"question": "Mostre o aging", "sessionId": local_session})
+                    assert "não calcula indicadores" in plain_local["texto"] and len(PROMPTS) + len(TITLE_PROMPTS) == inferred
+                    for legacy_route in ["/api/sql/ask", "/api/sql/ask-rag"]:
+                        rejected(legacy_route, {"question": "Mostre o aging", "sessionId": local_session}, expected=409)
+                    assert len(PROMPTS) + len(TITLE_PROMPTS) == inferred
                     if not real_trino:
                         TRINO_MODE["fail"] = True
                         failed_data = request("/api/ia/ask/stream", {**hybrid, "requestId": str(uuid.uuid4())}, raw=True)
