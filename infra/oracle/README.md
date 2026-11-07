@@ -26,12 +26,12 @@ e nenhuma quota customizada encontrados. O relatório mensal de uso retornou
 | Segurança VCN 2 | SSH 22 de `0.0.0.0/0`; HTTP/HTTPS ausentes; egress stateful permitido; sem NSGs existentes |
 | SSH | Um candidato adequado em `Downloads/ssh-key-2026-11-07.key.pub`; RSA 2048 validada com `ssh-keygen -l`. Nenhuma chave privada lida/copiada |
 
-O dry-run real terminou **Blocked**, com quatro motivos: SSH amplo, ausência de
+O dry-run inicial terminou **Blocked**, com quatro motivos: SSH amplo, ausência de
 SSH para o /32 do administrador, ausência de 80 e ausência de 443. Não houve
 tentativa real de criação; disponibilidade física continua desconhecida. Uma
 consulta de limites bem-sucedida não demonstra capacidade do host.
 
-### Alteração de rede proposta — aguarda autorização
+### Alteração de rede proposta — autorizada e aplicada posteriormente
 
 Somente na security list da segunda subnet:
 
@@ -68,6 +68,54 @@ nem modifica egress. Uma alteração de rede autorizada não é, por si só,
 autorização para criar VM. O código de provisionamento nunca faz essa alteração.
 
 ## Operação no Windows
+
+### Atualização após autorização em 07/11/2026
+
+O proprietário autorizou a alteração de ingress proposta e o início do
+provisionamento. A security list da VCN 2 foi atualizada com ETag/If-Match:
+SSH somente do /32 aprovado, 80/443 públicos, ICMP e egress preservados. Subnet,
+rota e IGW foram relidos antes da mudança. O novo dry-run retornou `Ready`,
+sem bloqueios. Não houve alteração da VCN 1, conta, `.env` ou aplicação.
+
+O processo de provisionamento foi iniciado em PowerShell oculto no Windows,
+com imagem fixada ao ID do dry-run aprovado. Isso não instala a aplicação e
+não implica que a VM tenha sido criada: conferir resultado no journal/log.
+Não foi criada tarefa agendada nem serviço; o computador deve permanecer ligado.
+
+A primeira tentativa real retornou falta de capacidade explícita. O journal
+registrou `Capacity`, o runner permaneceu ativo na espera de 30 minutos, e uma
+nova leitura confirmou zero instâncias/boot/block volumes após essa tentativa.
+Isso valida o ramo real de capacity/retry, não a criação bem-sucedida de VM.
+O estado atual deve sempre ser consultado nos arquivos locais abaixo.
+
+Estado do runner e acompanhamento (sem ler credenciais):
+
+```powershell
+$state = Join-Path $env:LOCALAPPDATA 'IA-Portal/oci-always-free'
+$runner = Get-Content (Join-Path $state 'runner.json') -Raw | ConvertFrom-Json
+Get-Process -Id $runner.ProcessId -ErrorAction SilentlyContinue
+Get-Content (Join-Path $state 'operations.log') -Tail 15
+Get-Content (Join-Path $state 'journal.json') -Raw | ConvertFrom-Json |
+  Select-Object Outcome, At, InstanceId
+```
+
+Para interromper o runner oculto, primeiro validar PID e início para evitar
+atingir um processo diferente caso o PID tenha sido reutilizado:
+
+```powershell
+$process = Get-Process -Id $runner.ProcessId -ErrorAction Stop
+if ($process.ProcessName -ne 'powershell' -or
+    $process.StartTime.ToUniversalTime() -ne [DateTime]::Parse($runner.StartedUtc).ToUniversalTime()) {
+  throw 'Identidade do processo mudou; não interromper por este PID.'
+}
+Stop-Process -Id $process.Id
+```
+
+Interrupção durante POST pode deixar criação em andamento e `Pending` no journal;
+sempre reconciliar antes da retomada. No uso em primeiro plano, Ctrl+C continua
+disponível. Não iniciar outro runner enquanto este existir. Após encerrar, a
+retomada é feita pelo comando `-Mode Provision -ProvisionApproved` abaixo,
+preservando o mesmo diretório de estado e a imagem aprovada.
 
 Requer Windows PowerShell 5.1+, OCI CLI no PATH, configuração
 `%USERPROFILE%\.oci\config` e permissão de leitura de inventário/limites/usage
@@ -221,10 +269,12 @@ essas portas e encaminhar ao frontend, que já encaminha `/api` ao gateway.
 Revisar firewall do host e regras Docker em conjunto, sem publicar APIs internas.
 Não instalar proxy/certificados nem criar DNS nesta etapa.
 
-### Próximos passos após autorização
+### Sequência de execução
 
-1. Corrigir apenas a security list revisada e repetir o dry-run até `Ready`.
-2. Confirmar custos/eligibilidade e autorizar o loop real de provisionamento.
+1. Corrigir apenas a security list revisada e repetir o dry-run até `Ready`
+   (concluído após autorização; ver atualização operacional acima).
+2. Confirmar custos/eligibilidade e autorizar o loop real de provisionamento
+   (autorizado e iniciado; sucesso depende da capacidade OCI e do journal).
 3. Após RUNNING, revisar hardening/SSH/patches e armazenamento, sem copiar chaves
    privadas para a VM; usar autenticação pela chave pública já cadastrada.
 4. Resolver dependências ARM64, testar build e smoke completo na arquitetura,

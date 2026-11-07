@@ -653,3 +653,43 @@ local ignorado pode conter tags pessoais e não deve ser publicado. A próxima
 etapa depende da confirmação explícita para a mudança concreta de rede e/ou
 início do provisionamento. Gratuidade continua condicionada aos termos OCI e
 uso agregado; limite/estimativa de preço não equivale a garantia de fatura zero.
+
+## 2026-11-07 — Rede OCI autorizada e loop real iniciado
+
+O proprietário respondeu "sim autorizo" ao resumo que propôs restringir SSH ao
+/32 administrativo, liberar 80/443 na VCN 2 e, após dry-run aprovado, iniciar o
+provisionamento A1 2 OCPUs/12 GB/boot padrão. Autorização não inclui deploy.
+Branch feature/oci-always-free inicialmente limpa; AGENTS relido.
+
+Executado sequencialmente:
+- IP público de saída relido por HTTPS e confirmado igual ao /32 aprovado.
+- Subnet/route table/IGW da VCN 2 relidos: públicos/rota default/IGW habilitado
+  da mesma VCN. Security list relida e ingress/egress comparados ao diagnóstico
+  anterior antes de qualquer update. Nenhuma mudança concorrente encontrada.
+- OCI network security-list update usando payload local previamente revisado e
+  --if-match com ETag recém-lido: PASS. Somente ingress alterado. Nova leitura
+  confirmou TCP 22 restrito, 80/443 públicos stateful, ICMP e egress preservados.
+  VCN 1, rotas, IGWs, conta e outros recursos não foram alterados.
+- powershell -NoProfile -ExecutionPolicy Bypass -File
+  infra/oracle/provision-always-free.ps1 -Mode DryRun -AdminCidr <aprovado>:
+  PASS, Ready/blockers=0. Inventário/limites/imagem/armazenamento/rede aprovados.
+- Runner PowerShell iniciado com Start-Process -WindowStyle Hidden, imagem
+  fixada ao ID aprovado, -Mode Provision -ProvisionApproved e o mesmo /32.
+  Estado/PID/início e stdout/stderr somente no LOCALAPPDATA, fora do Git.
+- Preflight do modo real: Ready. Primeiro launch em 07/11/2026 às 18:41:24
+  America/Sao_Paulo; resposta capacity explícita às 18:41:27. Journal=Capacity;
+  processo vivo, aguardando intervalo de 1.800 segundos; stderr vazio.
+- Verificação somente leitura após o launch: zero instâncias não terminadas,
+  zero boot volumes e zero block volumes. Identidade do processo (PID/início)
+  conferida. Nenhuma VM criada nesta primeira tentativa.
+
+README atualizado com estado histórico/operacional, acompanhamento e interrupção
+segura do runner oculto. Ele não é tarefa agendada nem serviço persistente após
+reinício; requer PC ligado e sem suspensão. Script aguarda capacity e se encerra
+em sucesso ou em erro definitivo, conforme as travas implementadas. Não iniciar
+outro processo em paralelo. Monitorar logs/journal para o resultado futuro.
+
+Nenhuma chave privada lida/copiadada, nenhum .env/banco/app alterado, sem deploy,
+SSH remoto ou inferência. Estado bruto/revisão de rede ficam em artifacts/oci-audit
+(ignorado), sem dados pessoais no commit. Alterações deste incremento no repo
+são apenas documentação operacional; não houve novo build de backend/frontend.
