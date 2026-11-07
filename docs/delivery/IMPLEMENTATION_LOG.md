@@ -584,3 +584,72 @@ Validação:
 Sem migrations, mudanças no backend ou operações sobre dados. Testes .NET não
 reexecutados pois o incremento altera somente frontend. Preview: localhost:9080;
 recarregar a aba para receber a versão nova. Não houve push/merge/publicação.
+
+## 2026-11-07 — OCI: diagnóstico e provisionamento somente dry-run
+
+Pedido autoriza consultas remotas e arquivos locais; exige confirmação antes
+de qualquer mudança de rede, criação de VM/recurso ou deploy. Nenhuma ação de
+escrita remota foi executada. Branch feature/oci-always-free, criada de main
+limpa. AGENTS, docs/README e ROADMAP lidos antes da implementação.
+
+Entregues:
+- infra/oracle/provision-always-free.ps1: PowerShell 5.1/OCI CLI, DryRun padrão,
+  perfil/config local, Home Region fixa, A1 2 OCPUs/12 GB, imagem oficial Ubuntu
+  24.04 aarch64, boot default com 10 VPU/GB, IPv4 público, chave apenas .pub.
+  Sem fallback de região/shape, recursos adicionais ou edição de .env.
+- Preflight faz inventário da tenancy/subcompartments, quotas/disponibilidade,
+  uso A1 mensal reportado, armazenamento e política completa de ingress da
+  subnet. Falha de leitura/IAM bloqueia; não presume recurso ausente por erro.
+- Retry exclusivamente para capacity OCI explícita, intervalo 1.800 segundos,
+  sem retries automáticos da CLI; lock local, journal antes do POST e reconciliação
+  somente leitura em resposta ambígua. Erros definitivos encerram imediatamente.
+- infra/oracle/provision-always-free.tests.ps1: testes offline sem Pester/OCI,
+  com fixtures sintéticas do preflight e da máquina de estados.
+- infra/oracle/README.md: operação, proposta de rede, recuperação, custos,
+  limites da garantia de gratuidade e diagnóstico Compose/ARM64.
+- docs/architecture/AS_IS_AUDIT.md: achados reais desta inspeção.
+
+Consultas efetivamente realizadas (OCI CLI 3.96.0): region-subscription,
+availability-domain, compartments subtree/ANY, instance list, shapes, imagens e
+image-shape compatibility; limits value/resource-availability compute/storage,
+quotas, boot/block volumes, duas VCNs/subnets/route tables, Internet Gateway e
+security lists; NSGs da VCN 2; usage-api mês atual. Comandos de list --all vazios
+retornam stdout vazio e exit 0; tratado explicitamente. Primeira consulta de uso
+rejeitou precisão de hora; corrigida para limites de dia UTC e retornou items [].
+Nenhuma inferência/modelo externo foi chamado.
+
+Resultados: autenticação PASS; nenhuma VM/volume encontrados. A1 elegível como
+LIMITED_FREE; teto local imposto de 2 OCPUs/12 GB, apesar dos maiores limites de
+Trial. 200 GB free storage livres. Imagem Canonical Ubuntu 24.04 aarch64 publicada
+em 30/10/2026, tamanho 47.694 MiB, compatível. Chave pública SSH localizada em
+Downloads e validada com ssh-keygen -l (RSA 2048); nenhuma chave privada lida ou
+copiada. IP administrativo detectado por HTTPS, guardado apenas no estado local.
+
+VCN 1: route-rules vazia. VCN 2: route default/IGW/public IPv4 PASS; SSH mundial,
+80/443 ausentes. Proposta local de ingress/ETag em artifacts/oci-audit (ignorado
+pelo Git), sem update OCI. Alteração proposta preserva ICMP e egress, restringe
+22 ao /32 administrativo e abre somente web 80/443.
+
+Verificações executadas:
+- powershell -NoProfile -ExecutionPolicy Bypass -File
+  infra/oracle/provision-always-free.tests.ps1: PASS, 74 assertions offline;
+  sem API OCI, sem VM e sem espera real. Inclui portas internas bloqueadas,
+  quota/histórico A1/VM parada, dry-run, aprovação, lock, journal, erro fatal,
+  timeout, reconciliação e capacity -> sucesso simulado.
+- powershell -NoProfile -ExecutionPolicy Bypass -File
+  infra/oracle/provision-always-free.ps1 -Mode DryRun: execução real somente
+  leitura contra OCI, repetida; resultado Blocked com quatro motivos esperados
+  da security list. Exit 2 confirmado por subprocess Python, sem launch.
+- docker buildx imagetools inspect --raw: PASS manifests linux/arm64 de
+  dotnet aspnet/sdk 8.0, node22-alpine, nginx1.25-alpine, qdrant1.20.0 e digest
+  Trino484 fixado. Não foi feito build/runtime ARM64; NuGet MKL só x64 é ressalva.
+- git diff --check: PASS.
+
+Não executados: provisionamento real, alteração de rede, scheduler, deploy,
+login SSH remoto, build da aplicação (fontes de backend/frontend inalteradas),
+inferência ARM64 ou benchmark. Sem migrations, reset de banco, upgrade da conta,
+push ou merge. Logs/estado em LOCALAPPDATA, sem credenciais; inventário bruto
+local ignorado pode conter tags pessoais e não deve ser publicado. A próxima
+etapa depende da confirmação explícita para a mudança concreta de rede e/ou
+início do provisionamento. Gratuidade continua condicionada aos termos OCI e
+uso agregado; limite/estimativa de preço não equivale a garantia de fatura zero.
