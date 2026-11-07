@@ -123,9 +123,9 @@ export default function HeaderBar({
             </IconButton>
           </Tooltip>
         )}
-        {organizationError && <Alert severity="error">Erro ao carregar organiza??es</Alert>}
+        {organizationError && <Alert severity="error">Erro ao carregar organizações</Alert>}
         {organizations.length > 0 && <Select size="small" value={user?.organizationId || organizations[0].id}
-          inputProps={{ "aria-label": "Organiza??o ativa" }} sx={{ maxWidth: { xs: 130, md: 250 } }}
+          inputProps={{ "aria-label": "Organização ativa" }} sx={{ maxWidth: { xs: 130, md: 250 } }}
           onChange={e => { void switchOrganization(Number(e.target.value)).catch(() => setOrganizationError(true)); }}>
           {organizations.map(o => <MenuItem key={o.id} value={o.id}>{o.name}</MenuItem>)}
         </Select>}

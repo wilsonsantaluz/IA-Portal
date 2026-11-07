@@ -40,7 +40,7 @@ export default function DataConnectorsPage() {
   }
   return <Box sx={{p:{xs:2,md:3},maxWidth:1200,mx:"auto"}}>
     <Stack spacing={2}>
-      <Typography variant="h5">Data Connectors</Typography>
+      <Typography component="h2" variant="h5">Data Connectors</Typography>
       <Typography color="text.secondary">Fontes da organização ativa. Catálogos, schemas e destinos precisam estar aprovados no servidor; credenciais permanecem no ambiente.</Typography>
       {error && <Alert severity="error">{error}</Alert>}
       {busy && <CircularProgress size={24} aria-label="Processando conectores" />}

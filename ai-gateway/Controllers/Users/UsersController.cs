@@ -63,7 +63,7 @@ public class UsersController(PortalDbContext db) : ControllerBase
         // A tenant admin must never reset a shared identity and acquire its other memberships.
         var shared = await db.OrganizationMemberships.AnyAsync(x => x.UserId == id && x.OrganizationId != db.OrganizationId, ct);
         if (shared && (req.Password is not null || req.IsActive != user.IsActive || req.UserEmail.Trim().ToLowerInvariant() != user.UserEmail.ToLowerInvariant() || req.UserName.Trim() != user.UserName))
-            return Conflict(new { error = "Conta compartilhada: altere apenas os grupos desta organiza??o." });
+            return Conflict(new { error = "Conta compartilhada: altere apenas os grupos desta organização." });
         var ids = req.GroupIds.Distinct().ToArray();
         if (await db.Roles.CountAsync(x => ids.Contains(x.RoleId), ct) != ids.Length) return BadRequest(new { error = "Grupo inválido." });
         var email = req.UserEmail.Trim().ToLowerInvariant();

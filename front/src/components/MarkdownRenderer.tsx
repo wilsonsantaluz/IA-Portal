@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 
 // ⚠️ Se você não usa MermaidRenderer neste path, ajuste o import:
 import MermaidRenderer from "./MermaidRenderer";
+import FinancialChart from "./FinancialChart";
 
 // Se você tiver CSS tipo `.markdown-body`, mantemos essa classe
 // e também deixamos um wrapper por "variant".
@@ -53,6 +54,7 @@ export default function MarkdownRenderer({
         // Mantém o texto como está (não transforma quebras em <br/> automaticamente)
         // GFM já dá suporte a tabela, lista, etc.
         components={{
+          img({alt}) { return <span>[Imagem: {alt || "conteúdo externo"}]</span>; },
           /**
            * Intercepta blocos ```mermaid
            * e renderiza com MermaidRenderer.
@@ -65,6 +67,7 @@ export default function MarkdownRenderer({
             const inline = !className && !String(children).endsWith("\n");
             const lang = (className || "").replace("language-", "").trim().toLowerCase();
             const isMermaid = !inline && (lang === "mermaid");
+            if (!inline && lang === "atlas-chart") return <FinancialChart code={extractCode(children)}/>;
 
             if (isMermaid) {
               const mermaidCode = extractCode(children);

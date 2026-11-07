@@ -361,3 +361,39 @@ Validacoes finais executadas:
 Sem modelos pagos, embeddings/reranker reais ou fonte empresarial/publica real.
 Classifier/plans sao limitados e documentados em docs/demo/ATLAS_CHAT.md; datas
 na linguagem natural nao substituem silenciosamente a referencia do controle.
+
+
+## 07/11/2026 - Fase E: visualizacoes e shell preservado
+
+Recharts existente recebe atlas-chart com schema/tipos/valores finitos/limites
+validados, tabela alternativa e valores em BRL. Sem animacao obrigatoria dos
+valores. Mermaid antigo com securityLevel loose e diagrama substituto foi
+removido: parsing strict, diretivas/callbacks rejeitados e SVG isolado em iframe
+sem scripts/same-origin/rede. Falha mostra codigo original. Markdown sem HTML
+raw e sem carregamento automatico de imagens externas.
+
+Fonte/data e perguntas sugeridas reutilizam chat, hook e SSE existentes. Sugestoes
+sao expansiveis para nao ocupar a conversa. Mudanca de tenant entre abas tambem
+atualiza identidade e remonta o workspace, limpando estado de fontes/historico;
+rotulos acessiveis em pt-BR corrigidos. Design system claro/escuro preservado.
+
+Executado:
+- node tests/ui/atlas-security.cjs: PASS tipos/finite/limites/prototype keys e
+  rejeicao de Mermaid invalido/diretivas/callback/scripts.
+- node tests/ui/atlas.cjs com IA_PLAYWRIGHT_MODULE, IA_CHROME_PATH e IA_AXE_MODULE
+  apontando para as ferramentas existentes em TEMP: PASS Chrome headless,
+  cabecalho de organizacao, seletor de fonte/referencia, sugestao no input,
+  grafico com barra numerica visivel, iframe sandbox+CSP e fallback de diagramas,
+  tela de conectores/descoberta/edicao em ambos os temas, layouts 390/320px sem
+  overflow e troca de tenant entre abas limpando workspace. APIs deste teste
+  sao fixtures de rota, nao credenciais/dados da instalacao.
+- axe-core: PASS WCAG A/AA no main de chat mobile com controles de fonte em ambos
+  os temas. Nao e certificacao de acessibilidade de toda a aplicacao.
+- Capturas inspecionadas em artifacts/atlas-ui/chat-dark.png e demais temas/telas;
+  checks.json registra escopo. Esses artefatos locais sao ignorados pelo Git.
+- npm run typecheck --prefix front e npm run build --prefix front: PASS;
+  Vite mantem aviso de chunks >500kB. Nenhuma dependencia nova.
+
+Durante o teste foram corrigidos rotulos de organizacao com codificacao
+inadequada. Assercoes de drawer fechado/tooltip e initScript em frame sandbox
+foram ajustadas na fixture; execucao final sem pageerrors ou rotas inesperadas.

@@ -32,8 +32,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const refresh = useCallback(async () => {
     let stored: AuthUser | null = null;
+    const snapshot = localStorage.getItem("auth");
     try {
-      stored = JSON.parse(localStorage.getItem("auth") || "null");
+      stored = JSON.parse(snapshot || "null");
     } catch {
       localStorage.removeItem("auth");
     }
@@ -44,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     try {
       const { data } = await api.get<Omit<AuthUser, "token">>("api/auth/me");
+      if (localStorage.getItem("auth") !== snapshot) return;
       const current = { ...data, token: stored.token };
       setUser(current);
       localStorage.setItem("auth", JSON.stringify(current));
@@ -59,9 +61,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (document.visibilityState === "visible") void refresh();
     };
     window.addEventListener("focus", update);
+    const synchronize = (event: StorageEvent) => { if (event.key === "auth" || event.key === null) void refresh(); };
+    window.addEventListener("storage", synchronize);
     const timer = window.setInterval(update, 30000);
     return () => {
       window.removeEventListener("focus", update);
+      window.removeEventListener("storage", synchronize);
       clearInterval(timer);
     };
   }, [refresh]);
