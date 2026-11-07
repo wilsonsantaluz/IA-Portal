@@ -3,6 +3,8 @@ using System.Text;
 
 public class TrinoMetadataService : ITrinoMetadataService
 {
+    public Task<List<Dictionary<string, object>>> GetAuthorizedMetadataAsync(Portal.AI.Gateway.Infrastructure.Trino.ConnectorProfile profile, int organizationId, CancellationToken ct = default)
+        => _trino.QueryApprovedAsync(profile, Portal.AI.Gateway.Infrastructure.Trino.ApprovedTrinoQuery.Metadata(profile), organizationId, ct);
     private readonly ITrinoQueryService _trino;
 
     public TrinoMetadataService(ITrinoQueryService trino)

@@ -19,6 +19,8 @@ using System.Security.Claims;
 
 
 var builder = WebApplication.CreateBuilder(args);
+var connectorFile = builder.Configuration["TRINO_CONNECTORS_FILE"];
+if (!string.IsNullOrWhiteSpace(connectorFile)) builder.Configuration.AddJsonFile(Path.GetFullPath(connectorFile,builder.Environment.ContentRootPath),optional:false,reloadOnChange:false);
 
 builder.Services.AddCors(options =>
 {
@@ -29,16 +31,14 @@ builder.Services.AddCors(options =>
 });
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<OrganizationScope>();
+builder.Services.AddSingleton<ConnectorProfiles>();
+builder.Services.AddScoped<DataConnectorService>();
+builder.Services.AddHttpClient("trino-secure", c => c.Timeout = TimeSpan.FromSeconds(20)).ConfigurePrimaryHttpMessageHandler(ConnectorProfiles.Handler);
 builder.Services.AddControllers();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<IKnowledgeBaseService, KnowledgeBaseService>();
-builder.Services.AddHttpClient<TrinoRestClient>();
-
-builder.Services.AddHttpClient<TrinoRestClient>(client =>
-{
-    client.Timeout = TimeSpan.FromMinutes(50);
-});
+builder.Services.AddScoped<TrinoRestClient>();
 
 builder.Services.AddHttpClient("ai-provider", client => client.Timeout = TimeSpan.FromMinutes(3)).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
 builder.Services.AddScoped<ITrinoQueryService, TrinoQueryService>();

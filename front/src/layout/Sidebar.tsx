@@ -1,3 +1,4 @@
+import StorageOutlined from "@mui/icons-material/StorageOutlined";
 import {
   Box,
   Divider,
@@ -40,6 +41,7 @@ const destinations: { to: string; label: string; icon: ReactNode; permission: st
     icon: <LibraryBooksOutlined />,
     permission: "kb.view",
   },
+  { to: "/data-connectors", label: "Data Connectors", icon: <StorageOutlined />, permission: "connectors.manage" },
   { to: "/usage", label: "Consumo de IA", icon: <DataUsageOutlined />, permission: "chat.access", alternatePermission: "usage.admin" },
   {
     to: "/users",

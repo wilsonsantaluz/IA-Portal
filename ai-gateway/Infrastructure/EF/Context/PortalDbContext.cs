@@ -14,6 +14,8 @@ public class PortalDbContext : DbContext
     internal bool SystemOperation { get; set; }
     public bool IsSystem => _scope is null || SystemOperation;
     public int OrganizationId => _scope?.Id ?? 1;
+    public DbSet<DataConnector> DataConnectors => Set<DataConnector>();
+    public DbSet<ConnectorGrant> ConnectorGrants => Set<ConnectorGrant>();
     public DbSet<Organization> Organizations => Set<Organization>();
     public DbSet<OrganizationMembership> OrganizationMemberships => Set<OrganizationMembership>();
 
@@ -81,6 +83,17 @@ public class PortalDbContext : DbContext
         modelBuilder.Entity<KnowledgeBaseItem>().HasIndex(x => new { x.OrganizationId, x.KeyName });
         modelBuilder.Entity<ChatSession>().HasIndex(x => x.OrganizationId);
         modelBuilder.Entity<ChatKbRating>().HasIndex(x => x.OrganizationId);
+        modelBuilder.Entity<DataConnector>(e => {
+            e.ToTable("DataConnectors"); e.HasKey(x => x.Id); e.Property(x => x.Version).IsConcurrencyToken();
+            e.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+            e.Property(x => x.OrganizationId).HasDefaultValue(1); e.HasQueryFilter(x => IsSystem || x.OrganizationId == OrganizationId);
+        });
+        modelBuilder.Entity<ConnectorGrant>(e => {
+            e.ToTable("ConnectorGrants"); e.HasKey(x => new { x.ConnectorId, x.RoleId });
+            e.HasOne(x => x.Connector).WithMany().HasForeignKey(x => x.ConnectorId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Role).WithMany().HasForeignKey(x => x.RoleId).OnDelete(DeleteBehavior.Restrict);
+            e.HasQueryFilter(x => IsSystem || (x.Connector.OrganizationId == OrganizationId && x.Role.OrganizationId == OrganizationId));
+        });
         // USERS
         modelBuilder.Entity<User>(e =>
         {

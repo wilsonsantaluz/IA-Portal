@@ -283,3 +283,34 @@ Resultados efetivamente executados:
 
 Sem teste de navegador, modelos ONNX/Qdrant reais ou Trino neste incremento.
 Rollback operacional e politica de migracao/provisionamento em ATLAS_LOCAL.md.
+
+
+## 07/11/2026 - Fase C: conectores e executor fechado
+
+SQL v6 aditiva, DataConnectors e ConnectorGrants por organizacao; RBAC
+connectors.manage/data.query e concessao explicita por grupo. /data-connectors
+reutiliza shell/MUI/temas. Perfis de rede/credenciais aprovados no servidor,
+segredos apenas via ambiente, descoberta de tabelas/colunas e teste/status.
+Reutilizados TrinoRestClient/QueryService/MetadataService; removido executor
+inseguro de SQL livre e logs brutos. Planos fechados de aging/cashflow/top;
+SQL arbitrario gerado por modelo nao e aceito. Limites e protecoes descritos
+em docs/demo/DATA_CONNECTORS.md.
+
+Executado:
+- dotnet build ai-gateway/AiGateway.csproj --no-restore: PASS.
+- dotnet run --project tests/Connectors/Connectors.csproj --no-restore: PASS
+  migracao v5->v6, backup/restauracao/rollback, politicas/SQL adversarial/nextUri,
+  byte/row limits, erros sanitizados e cancelamento.
+- dotnet run --project tests/Organizations/Organizations.csproj --no-restore e
+  dotnet run --project tests/ChatSessions/ChatSessions.csproj --no-restore: PASS
+  (legado agora evolui ate v6).
+- npm run typecheck em front: PASS.
+- python scripts/smoke_local.py --atlas: PASS suite existente + conectores
+  cadastro/perfil/grupo/tabela, teste, descoberta, analytics, CAS, desabilitacao
+  e negacao cross-tenant. Trino/LLM/OCR eram doubles HTTP; o handler de socket
+  aprovado foi exercitado por rede loopback real.
+
+Build inicial teve aviso novo de parametro HttpClient nao utilizado; removido
+com registro scoped do cliente. Build final voltou aos 13 avisos preexistentes. Trino real, browser e chat hibrido ainda
+nao validados. Imagem trinodb/trino:484 obtida para validacao local seguinte;
+nenhuma instancia existente ou banco real foi alterado.

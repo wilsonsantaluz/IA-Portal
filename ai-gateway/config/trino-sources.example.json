@@ -1,0 +1,18 @@
+{
+  "DataConnectors": {
+    "Sources": [
+      {
+        "Id": "atlas_local",
+        "OrganizationSlug": "atlas-demo",
+        "Category": "demo",
+        "Endpoint": "http://127.0.0.1:18081/",
+        "Catalog": "memory",
+        "Schema": "atlas",
+        "User": "atlas_reader",
+        "AllowedAddresses": ["127.0.0.1"],
+        "Tables": ["customers", "plans", "contracts", "invoices", "payments", "disputes", "collection_actions"],
+        "ReadOnlyAccount": true
+      }
+    ]
+  }
+}

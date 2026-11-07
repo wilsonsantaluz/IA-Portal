@@ -15,12 +15,12 @@ public class TrinoQueryService : ITrinoQueryService
 
     public async Task<List<Dictionary<string, object>>> QueryAsync(string sql, string schema = "financeiro", CancellationToken ct = default)
     {
-        _logger.LogInformation("Executando SQL no Trino: {Sql}", sql);
-        Console.WriteLine($"[{DateTime.Now}] Executando SQL no Trino: {sql}");
 
         var result = await _client.ExecuteQueryAsync(sql, schema, ct);
 
         Console.WriteLine($"[{DateTime.Now}] Linhas retornadas: {result.Rows.Count}");
         return result.Rows;
     }
+    public async Task<List<Dictionary<string, object>>> QueryApprovedAsync(ConnectorProfile profile, ApprovedTrinoQuery query, int organizationId, CancellationToken ct = default)
+        => (await _client.ExecuteApprovedAsync(profile, query, organizationId, ct)).Rows;
 }

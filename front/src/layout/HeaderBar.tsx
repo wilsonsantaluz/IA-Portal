@@ -54,6 +54,7 @@ export default function HeaderBar({
         "/users": "Usuários",
         "/groups": "Grupos e permissões",
         "/settings/ai": "Configurações · Inteligência Artificial",
+        "/data-connectors": "Data Connectors",
         "/usage": "Consumo de Inteligência Artificial",
       } as Record<string, string>
     )[pathname] || "IA-Portal";

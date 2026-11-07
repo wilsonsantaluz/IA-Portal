@@ -52,7 +52,20 @@ class FakeServices(BaseHTTPRequestHandler):
             body = b"".join(chunks)
         else:
             body = self.rfile.read(int(self.headers.get("Content-Length", 0)))
-        if self.path == "/ocr":
+        if self.path == "/v1/statement":
+            sql = body.decode()
+            assert sql.startswith(("SELECT ", "WITH ")), sql
+            assert ";" not in sql
+            if sql.startswith("SELECT 1"):
+                packet = {"columns": [{"name": "connected", "type": "integer"}], "data": [[1]]}
+            elif "information_schema.columns" in sql:
+                packet = {"columns": [{"name": n, "type": "varchar"} for n in ["table_name", "column_name", "data_type"]], "data": [["invoices", "id", "bigint"], ["payments", "invoice_id", "bigint"]]}
+            else:
+                assert '"memory"."atlas"."invoices"' in sql
+                packet = {"columns": [{"name": "faixa", "type": "varchar"}, {"name": "saldo_centavos", "type": "bigint"}], "data": [["31-60", 1234500]]}
+            payload = json.dumps(packet).encode()
+            content_type = "application/json"
+        elif self.path == "/ocr":
             assert b"fixture.pdf" in body
             payload = json.dumps({"texto": "Documento sintetico: recebivel de 125 reais."}).encode()
             content_type = "application/json"
@@ -115,6 +128,12 @@ def main():
         dbfile = Path(temp) / "portal.db"
         admin_secret = uuid.uuid4().hex
         atlas_count = 10 if "--atlas" in sys.argv else 0
+        connector_file = Path(temp) / "connectors.json"
+        connector_file.write_text(json.dumps({"DataConnectors": {"Sources": [{
+            "Id": "atlas_local", "OrganizationSlug": "atlas-demo", "Category": "demo",
+            "Endpoint": f"http://127.0.0.1:{services.server_port}/", "Catalog": "memory", "Schema": "atlas",
+            "User": "atlas_reader", "AllowedAddresses": ["127.0.0.1"], "Tables": ["invoices", "payments"], "ReadOnlyAccount": True
+        }]}}), encoding="utf-8")
         env = dict(os.environ)
         env.update({
             "ASPNETCORE_URLS": base,
@@ -124,6 +143,7 @@ def main():
             "Jwt__Key": uuid.uuid4().hex + uuid.uuid4().hex,
             "Chat__UseAdvancedRag": "false",
             "Demo__Atlas__SeedKnowledge": "true" if atlas_count else "false",
+            "TRINO_CONNECTORS_FILE": str(connector_file),
             "DEEPSEEK_BASE_URL": f"http://127.0.0.1:{services.server_port}",
             "DEEPSEEK_API_KEY": "test-only",
             "DEEPSEEK_ENABLED": "true",
@@ -400,6 +420,24 @@ def main():
                     default_session = request("/api/chatBot/sessions", {})["id"]
                     organization_id = atlas_organization
                     assert request("/api/auth/me")["organizationId"] == atlas_organization
+                    source_profiles = request("/api/data-connectors/profiles")
+                    assert len(source_profiles) == 1 and "password" not in json.dumps(source_profiles).lower()
+                    atlas_group = next(g for g in request("/api/data-connectors/groups") if g["name"] == "admin")
+                    connection = {"name": "Atlas HTTP fixture", "profileId": "atlas_local", "enabled": True, "tables": ["invoices", "payments"], "groupIds": [atlas_group["id"]], "version": 0}
+                    connector = request("/api/data-connectors", connection)["id"]
+                    assert request(f"/api/data-connectors/{connector}/test", {})["status"] == "connected"
+                    assert len(request(f"/api/data-connectors/{connector}/metadata")) == 2
+                    assert request("/api/data/sources")[0]["id"] == connector
+                    analysis = request(f"/api/data/{connector}/analytics?kind=aging&reference=2026-11-01")
+                    assert analysis["rows"][0]["saldo_centavos"] == 1234500 and analysis["synthetic"]
+                    rejected(f"/api/data/{connector}/analytics?kind=delete&reference=2026-11-01", expected=400)
+                    rejected("/api/data-connectors", {**connection, "groupIds": [default_role["id"]]}, expected=400)
+                    rejected("/api/data-connectors", {**connection, "tables": ["secret_table"]}, expected=400)
+                    rejected("/api/data-connectors", {**connection, "profileId": "arbitrary_destination"}, expected=409)
+                    request(f"/api/data-connectors/{connector}", {**connection, "enabled": False, "version": 1}, method="PUT")
+                    rejected(f"/api/data/{connector}/analytics?kind=aging&reference=2026-11-01")
+                    rejected(f"/api/data-connectors/{connector}", {**connection, "version": 1}, method="PUT", expected=409)
+                    request(f"/api/data-connectors/{connector}", {**connection, "version": 2}, method="PUT")
                     assert len(request("/api/kb/all")) == 10
                     rejected(f"/api/kb/{default_kb['id']}")
                     rejected("/api/kb/save", {"id": default_kb["id"], "keyName": "intrusion", "section": "test", "content": "intrusion"})
@@ -417,6 +455,8 @@ def main():
                         "isActive": True, "groupIds": [g["id"] for g in account["groups"]]}, method="PUT", expected=409)
                     organization_id = 1
                     rejected(f"/api/chatBot/sessions/{atlas_session}")
+                    rejected(f"/api/data-connectors/{connector}/metadata")
+                    rejected(f"/api/data/{connector}/analytics?kind=aging&reference=2026-11-01")
                     assert all(not d["keyName"].startswith("atlas-") for d in request("/api/kb/all"))
                     # Default-only user cannot select Atlas, even with a valid JWT.
                     token = request("/api/auth/login", {"email": "b@example.test", "password": admin_secret})["token"]
@@ -425,6 +465,7 @@ def main():
                     organization_id = 1
                     token = admin_token
                     print("PASS: organization membership validation, isolated KB/read/write/RAG/roles/conversations, shared-account reset denied, installation settings protected.")
+                    print("PASS: Data Connectors registration/profile/group/table policies, connectivity/discovery, typed read-only analytics, disabled sources, CAS and cross-organization denial (Trino HTTP double through pinned socket handler).")
                 print("PASS: SQLite creation, bootstrap/login, KB CRUD, chat streaming/history, ratings, OCR routing and restart persistence.")
                 print("LLM and OCR were HTTP doubles; external inference and real text extraction were not exercised.")
         finally:

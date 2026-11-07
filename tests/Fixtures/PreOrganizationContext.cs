@@ -6,6 +6,7 @@ sealed class PreOrganizationContext(DbContextOptions<PortalDbContext> options) :
     protected override void OnModelCreating(ModelBuilder model)
     {
         base.OnModelCreating(model);
+        model.Ignore<ConnectorGrant>(); model.Ignore<DataConnector>();
         model.Ignore<OrganizationMembership>(); model.Ignore<Organization>();
         foreach (var type in new[] { typeof(Role), typeof(KnowledgeBaseItem), typeof(ChatSession), typeof(ChatKbRating) })
             model.Entity(type).Ignore("OrganizationId");

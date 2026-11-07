@@ -116,6 +116,25 @@ public static class ChatSchemaMigrator
             using (var reader = await check.ExecuteReaderAsync()) if (await reader.ReadAsync()) throw new InvalidOperationException("Integridade invalida nas organizacoes.");
             await tx.CommitAsync();
         }
+        async Task UpgradeConnectors(bool fresh, bool alreadyBackedUp) {
+            using var resource6 = typeof(ChatSchemaMigrator).Assembly.GetManifestResourceStream("AiGateway.Infrastructure.EF.Migrations.006_DataConnectors.sql")!;
+            var script = (await new StreamReader(resource6).ReadToEndAsync()).Replace("\r\n", "\n");
+            var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(script)));
+            using var command = connection.CreateCommand(); command.CommandText = "SELECT Checksum FROM SchemaVersions WHERE Version=6";
+            var recorded = await command.ExecuteScalarAsync();
+            var complete = (await Columns("DataConnectors")).IsSupersetOf(new[] { "Id", "OrganizationId", "ProfileId", "TablesJson", "Version" })
+                && (await Columns("ConnectorGrants")).IsSupersetOf(new[] { "ConnectorId", "RoleId" });
+            if (recorded is not null) {
+                if (!Equals(recorded,hash) || !complete) throw new InvalidOperationException("Esquema/checksum de conectores incompativel.");
+                return;
+            }
+            if (!fresh && !alreadyBackedUp) await Backup(6);
+            await using var tx = await db.Database.BeginTransactionAsync();
+            if (!complete) await db.Database.ExecuteSqlRawAsync(script);
+            else await db.Database.ExecuteSqlRawAsync(script[script.IndexOf("CREATE TRIGGER",StringComparison.Ordinal)..].Replace("CREATE TRIGGER ","CREATE TRIGGER IF NOT EXISTS "));
+            await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO SchemaVersions VALUES (6,{hash},{DateTime.UtcNow})");
+            await tx.CommitAsync();
+        }
         var isEmpty = await Count("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'") == 0;
         if (isEmpty) await db.Database.EnsureCreatedAsync();
         var expected = new Dictionary<string, string[]> {
@@ -142,11 +161,12 @@ public static class ChatSchemaMigrator
         if (ledger) {
             using var c = connection.CreateCommand(); c.CommandText = "SELECT Checksum FROM SchemaVersions WHERE Version=1";
             var recorded = await c.ExecuteScalarAsync();
-            if (recorded is not string value || value != checksum || !current || await Count("SELECT COUNT(*) FROM SchemaVersions WHERE Version>5") != 0)
+            if (recorded is not string value || value != checksum || !current || await Count("SELECT COUNT(*) FROM SchemaVersions WHERE Version>6") != 0)
                 throw new InvalidOperationException("Versão/checksum de esquema incompatível. Inicialização interrompida.");
             var hadV2 = await Count("SELECT COUNT(*) FROM SchemaVersions WHERE Version=2") != 0;
             var hadV3 = await Count("SELECT COUNT(*) FROM SchemaVersions WHERE Version=3") != 0;
-            await UpgradeTitles(false, false); await UpgradeUsage(false, !hadV2); await UpgradeProviders(false, !hadV3); await UpgradeOrganizations(false, !hadV2 || !hadV3); return;
+            var hadV5 = await Count("SELECT COUNT(*) FROM SchemaVersions WHERE Version=5") != 0;
+            await UpgradeTitles(false, false); await UpgradeUsage(false, !hadV2); await UpgradeProviders(false, !hadV3); await UpgradeOrganizations(false, !hadV2 || !hadV3); await UpgradeConnectors(false, !hadV2 || !hadV3 || !hadV5); return;
         }
         if (partial && !current) throw new InvalidOperationException("Migração parcial desconhecida. Restaure um backup validado.");
         if (!current) await Backup(1);
@@ -166,5 +186,6 @@ public static class ChatSchemaMigrator
         await UpgradeUsage(isEmpty, true);
         await UpgradeProviders(isEmpty, true);
         await UpgradeOrganizations(isEmpty, !current);
+        await UpgradeConnectors(isEmpty, true);
     }
 }
