@@ -71,6 +71,17 @@ catálogo ou carga foi criado/testado nesta entrega. Não há indicadores no cha
 O manifest contém contagens e hashes; os testes verificam todas as FKs,
 conciliação, datas, cinco faixas de atraso e reprodutibilidade byte a byte.
 
+Consultas de conferência: `trino/examples/atlas-verification.sql` (ainda não
+executadas em Trino). Resultado esperado de aging calculado pelo gerador seed 42:
+
+| Faixa | Faturas com saldo | Saldo em centavos BRL |
+| --- | ---: | ---: |
+| 01–15 | 281 | 15605108 |
+| 16–30 | 32 | 1140108 |
+| 31–60 | 214 | 11006177 |
+| 61–90 | 188 | 9354212 |
+| >90 | 1356 | 60303330 |
+
 ## Limite das próximas fases
 
 Data Connectors e chat híbrido não foram habilitados. O portal não tem entidades

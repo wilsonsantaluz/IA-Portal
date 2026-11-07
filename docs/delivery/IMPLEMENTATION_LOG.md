@@ -217,3 +217,32 @@ dez documentos acessiveis por /api/kb/all e /api/kb/{id}, origem no conteudo e
 contagens preservadas apos restart (sem duplicacao).
 Sem smoke de navegador/temas, Qdrant/ONNX ou Trino nesta entrega. O frontend nao
 foi alterado. Runbook: docs/demo/ATLAS_LOCAL.md.
+
+
+## Atlas - 06/11/2026: Fase B offline
+
+Gerador scripts/atlas_dataset.py, apenas biblioteca padrao Python, seed 42 e
+referencia fixa 2026-11-01. Sete CSV e manifest com SHA-256 em diretorio novo;
+recusa sobrescrita e nao acessa SQLite/rede. Testes usam diretorios temporarios.
+500 clientes, 3 planos, 500 contratos, 5896 faturas, 5561 eventos de pagamento,
+587 contestacoes e 2071 propostas de acao. Dinheiro em centavos inteiros;
+parciais, atrasos em todas as cinco faixas, estornos, cancelamentos, sazonalidade,
+concentracao e propostas de negociacao sinteticas. Nenhuma cobranca executada.
+
+- `python -m unittest discover -s tests -p test_atlas_dataset.py -v`: PASS 4 testes
+  (determinismo/seeds, cenarios/aging, corrupcao referencial/financeira rejeitada,
+  arquivos byte a byte e recusa de sobrescrita).
+- `python scripts/atlas_dataset.py --output artifacts/atlas-v1`: PASS; geracao
+  local validada, arquivos ignorados pelo Git. Contagens acima sao observadas.
+- Agregacao offline de aging conferida e registrada no runbook. Queries SELECT
+  de verificacao em trino/examples/atlas-verification.sql; NAO executadas no Trino.
+
+Sem migration. CSV e dicionario preparados para importacao; catalogo/carga e
+conectividade Trino NAO concluidos. Nao ha novo menu, indicadores Atlas ou chat
+hibrido. Nao houve deploy, push, merge ou alteracao de volumes/instalacao local.
+
+Fases C/D/E pendentes: inexiste modelo de organizacao/membership e enforcement
+SQL/rede suficiente. Solicitada decisao arquitetural sobre migracao de dados
+existentes para organizacao padrao versus instalacao demo separada, conforme
+excecao do usuario para decisoes arquiteturais significativas. Nao conceder
+acesso global silenciosamente nem apresentar isolamento nao implementado.
