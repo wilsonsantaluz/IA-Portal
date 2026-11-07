@@ -519,3 +519,37 @@ Frontend ativo: http://127.0.0.1:9080. Usuario deve atualizar/reautenticar com
 administrador do .env. Instalacao deixada em execucao para validacao; nao houve
 push, merge, publicacao na internet ou deploy de producao. Trino Memory perde
 os dados em reinicio e requer recarga do gerador local; detalhes em ATLAS_LOCAL.md.
+
+## 2026-11-07 — Verificação dos gráficos no chat e cache do frontend
+
+Relato: JSON de atlas-chart visível como código na captura. Repositório limpo
+na branch feature/atlas-business-intelligence antes da alteração. A resposta
+persistida contém fences atlas-chart/SQL válidos. Login local em navegador novo,
+com a conversa existente, confirmou um gráfico numérico renderizado e apenas
+o plano SQL como pre. Não foi reproduzida a falha da captura; frontend antigo
+na aba/cache é hipótese, não causa comprovada. Não foi necessária chamada LLM.
+
+Alterações: front/nginx.conf exige revalidação do HTML da SPA (inclusive /chat)
+e mantém cache immutable para bundles com hash, retornando 404 para bundles
+inexistentes. Isso favorece atualização após recarregar; abas abertas ainda
+precisam ser recarregadas. tests/ui/atlas.cjs agora verifica também SVG Mermaid
+com altura positiva dentro do iframe. Novo tests/ui/frontend-cache.cjs cobre
+os cabeçalhos HTTP e ausência de fallback HTML para bundle inexistente.
+
+Validação efetiva:
+- node tests/ui/atlas-security.cjs: PASS.
+- docker compose build portal-front: PASS (yarn typecheck e yarn build;
+  aviso já existente de bundle maior que 500 kB).
+- docker compose up -d --no-deps portal-front: PASS; somente frontend recriado.
+- docker compose exec -T portal-front nginx -t: PASS.
+- node tests/ui/frontend-cache.cjs: PASS contra localhost:9080.
+- node tests/ui/atlas.cjs com IA_UI_BASE_URL=http://127.0.0.1:9080,
+  Playwright/Chrome locais: PASS; APIs sintéticas interceptadas para os testes
+  visuais, gráfico numérico e SVG Mermaid, sandbox/CSP, fallback inválido,
+  temas claro/escuro, larguras 390/320 e troca de organização.
+- Conversa real existente verificada separadamente no navegador: gráfico visível.
+  Evidência local ignorada: artifacts/atlas-local/chart-before.png.
+
+Nenhuma migration, alteração no backend, reset de dados ou reinício do Trino.
+Backend .NET não recompilado pois não houve alteração nele. Para validar na aba
+antiga, usar Ctrl+F5 e reabrir a conversa; não é necessário gerar nova resposta.

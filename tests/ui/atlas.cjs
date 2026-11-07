@@ -39,6 +39,8 @@ const text='DEMONSTRAÇÃO — fixture visual sintética.\n\n```atlas-chart\n'+J
    await page.locator('.recharts-bar-rectangle path').first().waitFor();
    assert.ok((await page.locator('.recharts-bar-rectangle path').first().boundingBox()).height>0);
    await page.getByTitle('Diagrama Mermaid').waitFor();
+   await page.frameLocator('iframe[title="Diagrama Mermaid"]').locator('svg').waitFor();
+   assert.ok((await page.frameLocator('iframe[title="Diagrama Mermaid"]').locator('svg').boundingBox()).height>0);
    assert.equal(await page.getByTitle('Diagrama Mermaid').getAttribute('sandbox'),'');
    assert.ok((await page.getByTitle('Diagrama Mermaid').getAttribute('srcdoc')).includes("default-src 'none'"));
    assert.equal(await page.getByText('Não foi possível renderizar o diagrama. Código original:',{exact:true}).count(),2);
