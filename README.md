@@ -14,7 +14,7 @@ Interface em português, com tema escuro por padrão e opção de tema claro.
 
 ## What works in local mode
 
-The chat now supports separate conversations per authenticated user: create, search, rename, remove from history, reopen, and progressively load earlier messages. Conversations are recovered from the server across browsers. Existing sessions with unverified ownership are preserved but not automatically reassigned. See [conversation behavior and SQLite migration](docs/features/CHAT_SESSIONS.md). Automatic titles, token accounting, and provider selection remain subsequent increments.
+The chat supports separate conversations per authenticated user and organization: create, search, rename, remove from history, reopen, and progressively load earlier messages. Conversations are recovered from the server across browsers. Existing sessions with unverified ownership are preserved but not automatically reassigned. See [conversation behavior and SQLite migration](docs/features/CHAT_SESSIONS.md). Automatic titles, token accounting, and provider selection are available; configuration details appear below.
 
 - Automatic creation of a local SQLite database on first run.
 - Initial administrator bootstrap through environment variables; no hardcoded default password.
@@ -121,7 +121,7 @@ To run only the OCR service in Docker:
 docker compose run --rm -p 127.0.0.1:9082:8080 ocr-service
 ```
 
-**Database limitation:** initialization uses EF Core `EnsureCreatedAsync`, not migrations. It does not upgrade existing SQLite schemas or import data from earlier SQL Server implementations.
+**Schema evolution:** initialization uses versioned SQL migrations with checksums and consistent backups before upgrading existing SQLite schemas. `EnsureCreatedAsync` is used only for an empty installation. Migrations v5/v6 add organizations and connectors without recreating the existing database. Earlier SQL Server installations are not imported automatically.
 
 ## Optional advanced RAG
 
@@ -168,9 +168,9 @@ User and group administration is available at `/users` and `/groups` to accounts
 
 - Rotating any credentials previously exposed in earlier local materials.
 - Continuing security review beyond the implemented screen permissions, administrative authorization, and per-user conversation ownership checks.
-- Hardening AI-generated SQL with restricted read-only database permissions, validation, and limits.
+- Validating enterprise Trino ACLs/TLS and extending the reviewed analytics plans beyond the Atlas schema. Arbitrary AI-generated SQL is disabled.
 - Reviewing untrusted Markdown/HTML, OCR resource limits, temporary-file cleanup, CORS, HTTPS, and data retention.
-- Implementing schema migrations and a production backup/recovery strategy.
+- Validating operational backup, retention, and recovery procedures beyond the implemented local SQLite migrations.
 
 The local working directory may contain **private, unredacted originals** under `.private-originals/`. This directory is Git-ignored, but **a manual ZIP of the entire working folder can still include it**. Do not upload or distribute those materials.
 
@@ -196,4 +196,10 @@ AI settings and consumption: [configuration, permissions and limits](docs/featur
 
 ## Atlas demonstrativo
 
-Seed opt-in de dez documentos e gerador offline de dados financeiros sinteticos: [instrucoes, dicionario e limites](docs/demo/ATLAS_LOCAL.md). Data Connectors e chat hibrido ainda nao estao habilitados; isolamento por organizacao e seguranca SQL sao dependencias pendentes.
+A demonstracao sintetica inclui dez documentos opt-in, dataset deterministico,
+organizacoes, Data Connectors e chat documental/analitico/hibrido, com planos SQL
+fechados, tabela, proveniencia e graficos. [Executar localmente com Compose](docs/demo/ATLAS_LOCAL.md),
+[politicas de conectores](docs/demo/DATA_CONNECTORS.md) e [escopo do chat Atlas](docs/demo/ATLAS_CHAT.md).
+As migrations v5/v6 preservam o SQLite existente com backup; Atlas fica separado
+da organizacao padrao. Trino Memory e opcional e perde o dataset ao reiniciar.
+Nao existe SQL livre gerado por IA nem cadastro irrestrito de destinos de rede.

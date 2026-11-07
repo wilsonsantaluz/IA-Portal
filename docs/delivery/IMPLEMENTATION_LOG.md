@@ -411,3 +411,49 @@ Executado dotnet build ai-gateway/AiGateway.csproj --no-restore: PASS com 11
 avisos preexistentes (dois avisos anteriores desapareceram com a remocao do
 executor legado). python scripts/smoke_local.py --atlas: PASS, incluindo calls
 counters sem LLM para JSON analitico/rotas SQL e todas as regressoes anteriores.
+
+
+## 07/11/2026 - integracao local reproduzivel e fechamento
+
+Adicionados trino/atlas (imagem 484 por digest, Memory, ACLs reader/loader),
+docker-compose.atlas.yml opt-in e perfil com IP fixado. O carregador Python so
+alcanca 127.0.0.1:18081, sem proxy, usa dados gerados localmente e recusa schema
+parcial/divergente. Reexecucao com mesmo manifest/contagens nao escreve. Nenhum
+DROP/TRUNCATE, credencial externa ou mudanca no SQLite da instalacao.
+
+Efetivamente executado:
+- docker pull trinodb/trino:484: PASS; digest
+  sha256:2704eb53935af5e582d63d6033e9bf99d20c325e9b0e30b1016ef59a4773979f.
+- docker compose -f trino/atlas/compose.yml -p ia-atlas-validation up -d: PASS;
+  servidor real isolado, saudavel, publicado so em loopback.
+- python scripts/atlas_trino_load.py: PASS carga de sete tabelas, 500 clientes,
+  5896 faturas e 5561 pagamentos/estornos; segunda execucao PASS sem escrita.
+- python scripts/atlas_trino_load.py --verify: PASS quatro SELECTs do repositorio,
+  contagens, FKs, consistencia de liquido e aging exato. Primeira tentativa do
+  helper nao definia schema para SQL nao qualificado: corrigido o contexto do
+  helper de verificacao, sem alterar tabelas/dados.
+- dotnet run --project tests/Connectors/Connectors.csproj --no-restore -- --real-trino:
+  PASS quatro planos, conciliacao independente de centavos e protecoes reais.
+- docker build -t ia-portal-atlas-api:validation ./ai-gateway (tambem repetido com
+  -q no fechamento): PASS; publish agora aponta explicitamente para o csproj,
+  removendo o aviso de output da solution. Dockerignore exclui backups/SQLite e
+  config local. Exclusoes de material local aplicadas ao contexto de imagem.
+- docker build -t ia-portal-atlas-front:validation ./front: PASS typecheck/build,
+  imagem Nginx, Vite com aviso de chunks grandes.
+- python scripts/smoke_atlas_docker.py: PASS com imagens finais; gateway e frontend
+  descartaveis, SQLite tmpfs, bootstrap/login/org/KB seed, metadados autorizados
+  e aging exato no Trino real via rede de containers/IP pinning. Nginx serviu UI.
+  Nao chama LLM, nao monta portal_data e remove seus containers no finally.
+- docker compose -f docker-compose.yml -f docker-compose.atlas.yml config --quiet:
+  PASS. O override completo nao foi iniciado nos volumes existentes.
+- git diff --check: PASS.
+
+Cleanup executado: docker compose -f trino/atlas/compose.yml -p
+ia-atlas-validation down, removendo apenas servidor/rede de teste; helpers Vite
+proprios encerrados quando presentes. Nenhum container ia-atlas ficou ativo.
+Imagens de validacao e artefatos locais sinteticos podem ser reutilizados.
+
+Relatorio final, inventario de arquivos, migrations, comandos, limitacoes e
+instrucoes: docs/demo/ATLAS_DELIVERY_REPORT.md e ATLAS_LOCAL.md. Sem push, merge,
+deploy publico/producao ou alteracao de dados da instalacao. Modelos pagos,
+RAG vetorial real e fontes enterprise/publicas reais continuam nao validados.

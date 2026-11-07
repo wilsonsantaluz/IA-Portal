@@ -105,3 +105,4 @@ node_modules/
 *.sqlite3
 __pycache__/
 *.pyc
+**/trino-sources.local.json

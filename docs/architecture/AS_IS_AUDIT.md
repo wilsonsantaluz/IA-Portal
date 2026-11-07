@@ -163,3 +163,36 @@ de reranking; pontos legados sem escopo exigem reindex.
 Configuracao de provedores permanece global e apenas no tenant padrao. O seletor
 usa header validado e recarrega o app para impedir mistura de estado local.
 Trino/conectores e Mermaid ainda sao trabalho seguinte, nao testes concluidos.
+
+
+## Atlas - estado apos C/D/E em 07/11/2026
+
+As lacunas do executor Trino/Mermaid registradas nas secoes historicas acima
+foram tratadas neste incremento: SQL livre falha fechado; ApprovedTrinoQuery
+compila apenas planos tipados conhecidos, totalmente qualificados. TrinoRestClient
+reutilizado com IP pinning, allowlist de origem no nextUri, sem proxy/redirect,
+limites/timeout/cancelamento e auditoria sem SQL/segredos. Perfis sao do servidor;
+conexoes/grants locais em SQL v6. Credenciais referenciadas por ambiente, sem
+coluna secreta. Fonte public precisa de origem/licenca revisadas; nenhuma foi
+habilitada ou verificada automaticamente.
+
+BusinessChatContextService envolve os contextos local/vetorial existentes,
+classifica intenções de forma determinística e combina documentos com planos
+aging/aging_trend/cashflow/top_balances. Fonte/data sao explicitas; ausencia de
+dados produz resposta local honesta, sem inferencia nem tokens ficticios. Saida
+financeira conferivel e anexada pelo servidor. AllowExternalLlm controla egress
+de resultados nao-demo; respostas estruturadas nao sao retransmitidas pelo
+historico de contexto, mas continuam visiveis no historico de exibicao. Titulos
+locais usam fallback sem chamada paga. Nenhuma instrucao recuperada muda grants.
+
+Recharts existente renderiza series numericas validadas e tabela alternativa.
+Mermaid passa por parsing estrito e iframe opaco com CSP sem scripts/rede;
+configuracoes/callbacks sao rejeitados, erro conserva codigo original. HTML raw
+continua desabilitado no Markdown e imagens remotas nao carregam automaticamente.
+Frontend preserva shell/temas, tem seletor de organizacao/fonte e remonta o
+workspace em troca de tenant, inclusive sincronizacao entre abas.
+
+Validado em Trino 484 local com dataset real sintetico e conta reader read-only;
+nao validado com modelos pagos, RAG vetorial real ou fontes empresariais/publicas
+externas. Os planos financeiros sao Atlas, nao um parser SQL analitico generico.
+Veja docs/demo e IMPLEMENTATION_LOG para resultados e limitacoes precisas.

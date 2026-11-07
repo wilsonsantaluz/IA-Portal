@@ -56,7 +56,7 @@ operacional restaura backup completo com a versao anterior, em caminho novo.
 ## SQL permitido e limites
 
 Nao existe campo de SQL livre. O compilador fechado ApprovedTrinoQuery aceita
-somente probe, metadados e tres planos: aging, cashflow, top_balances. Os planos
+somente probe, metadados e quatro planos: aging, aging_trend, cashflow, top_balances. Os planos
 financeiros exigem invoices/payments selecionadas, montantes em centavos BRL e
 colunas do dicionario Atlas. Outras tabelas podem ser descobertas/selecionadas,
 mas nao ganham interpretacao financeira generica automaticamente. SQL arbitrario,
@@ -72,7 +72,7 @@ indicadores com outras semanticas/colunas sem um novo plano revisado e testado.
 
 Limites: 2 consultas simultaneas por tenant, 8 globais, 20s no cliente/15s no
 servidor, 100 paginas, 2MiB por pagina/8MiB total. Maximo 1000 linhas para
-metadados; 6/7/10 nos planos financeiros. nextUri deve manter origem e prefixo
+metadados; 6/6/7/10 nos planos financeiros. nextUri deve manter origem e prefixo
 /v1/statement/, sem redirects. Cancelamento envia DELETE ao ultimo nextUri
 validado; query_max_run_time limita mesmo se o cancelamento falhar. Logs usam
 traceId, tenant, plano, estado e contagem, sem SQL/payload/credenciais.
@@ -88,4 +88,10 @@ Incluem migracao v5->v6 com backup/restauracao/rollback, planos/identificadores
 adversariais, nextUri malicioso, limites de linhas/bytes, cancelamento e politicas
 de perfis. Smoke usa Trino HTTP double com socket real e IP fixado: cadastro,
 grants/tabelas/perfis, descoberta/teste, consulta, CAS, desabilitacao e isolamento.
-Isso nao representa ainda uma consulta validada contra um servidor Trino real.
+Validacao posterior tambem executou os quatro planos contra Trino 484 real,
+com o dataset sintetico local. Aging, cashflow e aging_trend foram conciliados
+com agregacoes offline; reader teve escrita, system e tabela fora da allowlist
+negados. O smoke --real-trino combina API/SQLite reais com Trino real e LLM/OCR
+doubles. Isso nao valida credenciais, TLS ou bancos empresariais de terceiros.
+AllowExternalLlm no perfil controla envio dos resultados SQL ao modelo; confira
+ATLAS_CHAT.md para a politica de historico e as limitacoes do classificador.

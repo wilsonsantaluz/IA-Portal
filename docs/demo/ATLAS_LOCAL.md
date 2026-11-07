@@ -65,15 +65,15 @@ competência. Converta centavos para DECIMAL/100, nunca use ponto flutuante para
 conciliação. A data de referência não é o dia atual.
 
 Os CSV UTF-8 com cabeçalho, IDs inteiros e datas ISO são a camada de intercâmbio
-para um catálogo Trino local (por exemplo, importação em tabelas Hive/Iceberg).
+para outros catálogos. O carregador local descrito abaixo usa Trino Memory.
 Defina montantes como BIGINT, datas como DATE, demais campos como VARCHAR e
-trate cancelled_on vazio como NULL. CSV não é um catálogo Trino: nenhum servidor,
-catálogo ou carga foi criado/testado nesta entrega. Não há indicadores no chat.
+trate cancelled_on vazio como NULL. CSV não é um catálogo Trino. O carregador
+reproduz o mesmo gerador em tabelas tipadas, separadas do SQLite do portal.
 O manifest contém contagens e hashes; os testes verificam todas as FKs,
 conciliação, datas, cinco faixas de atraso e reprodutibilidade byte a byte.
 
-Consultas de conferência: `trino/examples/atlas-verification.sql` (ainda não
-executadas em Trino). Resultado esperado de aging calculado pelo gerador seed 42:
+Consultas de conferência: `trino/examples/atlas-verification.sql`. Resultado
+esperado de aging calculado pelo gerador seed 42:
 
 | Faixa | Faturas com saldo | Saldo em centavos BRL |
 | --- | ---: | ---: |
@@ -83,14 +83,13 @@ executadas em Trino). Resultado esperado de aging calculado pelo gerador seed 42
 | 61–90 | 188 | 9354212 |
 | >90 | 1356 | 60303330 |
 
-## Limite das próximas fases
+## Módulos integrados
 
-Data Connectors e chat híbrido não foram habilitados. A decisão sobre organizações
-foi aprovada em 07/11/2026 e a fundação multi-organização foi implementada.
-O cliente Trino atual também precisa de validação SQL estrutural, allowlists,
-limites, cancelamento e validação de destinos de rede. Não conectar fontes reais
-pelas rotas SQL legadas. Mermaid precisa de renderização isolada e fallback
-textual; o renderizador existente ainda não atende à Fase E.
+[Data Connectors](DATA_CONNECTORS.md) configura fontes aprovadas no servidor,
+concede grupos e seleciona tabelas. O [chat Atlas](ATLAS_CHAT.md) combina documentos
+e planos analíticos fechados, com tabela, proveniência e gráficos numéricos.
+Mermaid tem saída isolada e fallback textual. As rotas antigas de SQL livre
+estão bloqueadas; consultas novas passam pela política do conector.
 
 ## Migração v5: organizações e acesso
 
@@ -127,3 +126,73 @@ Rollback operacional: pare o gateway e restaure o backup completo pre-v5 para
 um caminho novo, com a versão anterior da aplicação. Não execute downgrade de
 colunas no banco em uso; mudanças posteriores ao backup exigem reconciliação.
 Testes cobrem restauração e novo upgrade, além de rollback de DDL em falha.
+
+## Executar a demonstração completa com Docker Compose
+
+Use o `.env` já configurado conforme o README (JWT, administrador e provedor de
+IA). O override abaixo é **opt-in**: ativa o seed Atlas e acrescenta um Trino de
+demonstração, com conta de leitura e memória separada. O volume SQLite existente
+é preservado e recebe as migrations com backup automático.
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.atlas.yml config --quiet
+docker compose -f docker-compose.yml -f docker-compose.atlas.yml up --build -d
+docker compose -f docker-compose.yml -f docker-compose.atlas.yml ps
+# Aguarde o atlas-trino ficar saudável antes da carga:
+python scripts/atlas_trino_load.py
+python scripts/atlas_trino_load.py --verify
+```
+
+Acesse `http://127.0.0.1:9080`, escolha **Atlas Serviços Digitais (demonstração)**
+no topo e abra **Data Connectors**. Cadastre `atlas_local`, selecione ao menos
+`invoices` e `payments`, conceda o grupo `admin` (ou grupo com `data.query`),
+habilite e teste. No chat, selecione a fonte e `2026-11-01`; abra as perguntas
+sugeridas e confira os resultados e as fontes. Não há cadastro automático de
+conexão nem concessão automática de consulta a todos os usuários.
+
+O perfil interno fixa o IP `172.29.88.10` da rede dedicada `172.29.88.0/24`.
+Se houver conflito de subnet no host, ajuste a rede e a allowlist em conjunto.
+O Trino só publica `127.0.0.1:18081`. A conta `atlas_loader` é usada apenas pelo
+carregador local; o gateway sempre usa `atlas_reader`. Esses nomes sem senha são
+exclusivos de uma demonstração isolada em loopback; não são autenticação para
+fontes empresariais. Enterprise exige TLS e credencial real read-only no servidor.
+
+Trino Memory perde os dados quando seu container reinicia; execute a carga
+novamente nesse caso. A carga é determinística e idempotente: se encontrar o
+mesmo manifest/contagens, não escreve. Se encontrar um schema diferente ou
+parcial, recusa sobrescrevê-lo. Nunca executa DROP/TRUNCATE nem altera o SQLite.
+O gerador e o carregador não dependem de dados externos; o runtime Trino exige
+a imagem Docker especificada. Nenhum serviço proprietário é necessário.
+
+## Gateway nativo com Trino isolado
+
+Para validar sem iniciar os serviços da instalação existente:
+
+```powershell
+docker compose -f trino/atlas/compose.yml -p ia-atlas-validation up -d
+python scripts/atlas_trino_load.py
+$env:Demo__Atlas__SeedKnowledge='true'
+$env:TRINO_CONNECTORS_FILE='config/trino-sources.example.json'
+# Defina Jwt__Key, Bootstrap e provedor conforme README; .NET não lê .env sozinho.
+dotnet run --project ai-gateway --urls http://localhost:9089
+```
+
+Inicie o frontend com `yarn dev` em `front`. Não execute os dois modos na mesma
+porta `18081`. Para parar apenas o Trino isolado de validação, use
+`docker compose -f trino/atlas/compose.yml -p ia-atlas-validation down`.
+Isso não toca volumes da aplicação; a memória sintética será recarregada no
+próximo teste. Sem `down -v` ou reset do banco do portal.
+
+## Testes adicionais
+
+```powershell
+dotnet run --project tests/Connectors -- --real-trino
+python scripts/smoke_local.py --atlas
+python scripts/smoke_local.py --atlas --real-trino
+```
+
+O primeiro e o terceiro comandos usam exclusivamente o Trino isolado em
+`127.0.0.1:18081`, já carregado. O smoke cria gateway/SQLite temporários e usa
+doubles de LLM/OCR, sem inferência paga. O comando sem `--real-trino` também
+simula Trino para injetar falhas e respostas vazias. Resultados efetivos,
+Docker smoke e testes visuais estão no diário de implementação.
