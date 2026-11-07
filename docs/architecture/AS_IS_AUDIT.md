@@ -95,3 +95,52 @@ Arquivos previstos: `PortalDbContext.cs`, inicializador e scripts/runner de migr
 Testes bloqueadores: banco vazio/legado, backup restaurável, segunda execução sem efeitos adicionais, A/B em listar/ler/enviar/renomear/excluir/OCR, rejeição antes de serviços externos, persistência após restart, IDs/cursores estáveis e idempotência. Usar serviços de teste; nenhum crédito externo.
 
 **Parada para revisão:** exigida em `docs/delivery/ROADMAP.md` (etapa 0) e `CODEX_START_HERE.md`. O modelo de dados, contratos e comportamento dos legados devem ser revisados antes de criar entidades, rotas ou alterar o esquema.
+
+
+## Atlas BI: auditoria de 06/11/2026
+
+Main sincronizada por fetch + merge --ff-only, sem alteracoes locais. Trabalho em
+`feature/atlas-business-intelligence`; PR #8 ja presente na base remota.
+
+- Backend ASP.NET Core net8, EF SQLite. DatabaseInitializer usa ChatSchemaMigrator
+  com SQL v1-v4, checksum e backup consistente antes de upgrades. Nenhum banco da
+  instalacao foi aberto ou alterado nesta entrega.
+- KnowledgeBaseItem ja oferece KeyName, Section, Subsection, Title, Content e
+  IsActive. Repositorio e /api/kb/all e /api/kb/{id} alimentam a tela existente.
+  Leitura exige kb.view; save/toggle/upsert/reindex exigem kb.manage.
+- KB e RBAC sao globais da instalacao: nao existem Organization, memberships ou
+  escopo de tenant. Sessao de chat tem dono autenticado, mas isso nao isola KB.
+- RAG local pesquisa os 200 documentos ativos mais recentes por palavras em
+  titulo/conteudo, selecionando ate oito; nao constitui busca semantica.
+  Caminho vetorial usa ONNX/Qdrant e reindex autenticado separado.
+- React 18/TypeScript/Vite, MUI, React Router e Axios com JWT; shell e tokens
+  claro/escuro existentes preservados. /kb ja permite editar/ativar documentos.
+- TrinoRestClient, QueryService, MetadataService, SqlPlannerService e DataRagService
+  existem. Remover comentarios/semicolon nao valida SQL. /api/sql/ask executa SQL
+  do LLM; ask-rag apenas testa prefixo SELECT. Schema vem do cliente. Nao ha
+  politica de catalogos por tenant, limite efetivo de linhas ou parser seguro.
+  Timeout HTTP e cinco minutos; nextUri nao tem validacao de origem; SQL e erros
+  brutos entram em logs/excecoes. Nao habilitar conectores novos nesses contratos.
+- Compose tem SQLite persistente, OCR/ML e perfil Qdrant; nao tem servidor Trino.
+  Chat local/vetorial nao integra automaticamente o planner SQL.
+- Mermaid existente usa securityLevel loose, innerHTML e fallback com diagrama
+  de exemplo alheio ao pedido. Precisa sandbox e fallback textual antes da fase E.
+
+### Plano incremental e impacto
+
+A: snapshot incorporado v1 com dez entradas, opt-in Demo:Atlas:SeedKnowledge,
+transacao insert-only por KeyName; categoria em Section e origem/versao em
+Subsection e corpo. Sem alteracao de schema: nenhuma migration/rollback DDL novo.
+Chaves existentes, inclusive inativas/editadas, nunca sao atualizadas. Nao
+reescrever organization_base nem conceder permissoes extras. RAG vetorial requer
+reindex explicito; ausencia de modelos nao bloqueia o seed local.
+
+B: gerador offline deterministico separado do SQLite da aplicacao; tabelas CSV,
+montantes em centavos e verificacao referencial/financeira, sem fontes externas.
+
+C/D: bloqueio arquitetural real: definir organizacoes/memberships e vinculos de
+KB/conectores antes de anunciar isolamento. Implementar enforcement SQL e rede,
+read-only no Trino e limites antes de integrar ao chat. Credenciais por referencia
+no ambiente, sem texto puro no SQLite. Nao expor menu de operacoes sem backend.
+E depende dessas protecoes e de renderizacao Mermaid segura; nao representa
+funcionalidade concluida nesta etapa.

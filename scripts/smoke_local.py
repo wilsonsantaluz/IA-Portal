@@ -16,6 +16,7 @@ import time
 import urllib.request
 import urllib.error
 import uuid
+import sys
 from contextlib import closing
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -113,6 +114,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="portal-smoke-") as temp:
         dbfile = Path(temp) / "portal.db"
         admin_secret = uuid.uuid4().hex
+        atlas_count = 10 if "--atlas" in sys.argv else 0
         env = dict(os.environ)
         env.update({
             "ASPNETCORE_URLS": base,
@@ -121,6 +123,7 @@ def main():
             "Bootstrap__AdminPassword": admin_secret,
             "Jwt__Key": uuid.uuid4().hex + uuid.uuid4().hex,
             "Chat__UseAdvancedRag": "false",
+            "Demo__Atlas__SeedKnowledge": "true" if atlas_count else "false",
             "DEEPSEEK_BASE_URL": f"http://127.0.0.1:{services.server_port}",
             "DEEPSEEK_API_KEY": "test-only",
             "DEEPSEEK_ENABLED": "true",
@@ -180,7 +183,11 @@ def main():
                 login = request("/api/auth/login", {"email": "admin@example.test", "password": admin_secret})
                 token = login["token"]
                 assert "admin" in login["roles"]
-                assert len(request("/api/kb/all")) == 1
+                assert len(request("/api/kb/all")) == 1 + atlas_count
+                if atlas_count:
+                    atlas_docs = [d for d in request("/api/kb/all") if d["keyName"].startswith("atlas-")]
+                    assert len(atlas_docs) == 10
+                    assert all("synthetic-demo" in request(f"/api/kb/{d['id']}")["content"] for d in atlas_docs)
                 item = request("/api/kb/upsert", {
                     "keyName": "test_receivables", "section": "Auditoria", "title": "Recebiveis teste",
                     "content": "Protocolo TEST-MARKER para conciliacao de recebiveis.", "isActive": True
@@ -224,7 +231,7 @@ def main():
                 start(log)
                 request("/api/auth/login", {"email": "admin@example.test", "password": admin_secret})
                 assert len(request(f"/api/chatBot/history/{session}")) == 6
-                assert len(request("/api/kb/all")) == 2
+                assert len(request("/api/kb/all")) == 2 + atlas_count
                 with closing(sqlite3.connect(dbfile)) as db:
                     assert db.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
                     assert db.execute("SELECT COUNT(*) FROM Users").fetchone()[0] == 1

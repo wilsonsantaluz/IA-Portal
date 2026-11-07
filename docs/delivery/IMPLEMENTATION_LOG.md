@@ -176,3 +176,44 @@ Validações executadas: `npm --prefix front run typecheck`, `npm --prefix front
 
 Executados e aprovados: `npm --prefix front run typecheck`; `docker build -t ia-portal-ai-final-front ./front` (TypeScript e build de produção); `python scripts/test_ai_ui.py --skip-build` (seis grupos, provedores simulados e banco temporário). O helper de envio pausa explicitamente a requisição antes do streaming e verifica aviso visível, texto não vazio, botão desabilitado e remoção do aviso após concluir. Demais verificações de histórico, modelos, autorização, acessibilidade e temas permaneceram aprovadas. Aviso de chunks grandes no build permanece. Frontend aplicado localmente sem recriar backend nem alterar banco; sem merge automático.
 
+
+
+## Atlas - 06/11/2026: auditoria e Fase A
+
+Branch feature/atlas-business-intelligence; main limpa e sincronizada por
+`git fetch origin` e `git merge --ff-only origin/main`. Auditoria registrada em
+AS_IS_AUDIT.md. Nenhuma instalacao, volume ou banco existente foi alterado.
+
+Implementado snapshot incorporado de dez documentos v1 e seed transacional,
+opt-in Demo:Atlas:SeedKnowledge, por IDs estaveis. Reutiliza KnowledgeBaseItem,
+rotas, tela /kb, RBAC e recuperacao local existentes. Categoria em Section,
+origem/versao em Subsection e corpo; nao requer migration. Sem overwrite de
+chaves existentes, edicoes humanas ou estado inativo. Sem indexacao vetorial
+implicita; reindex autenticado documentado. KB continua global, nao multi-tenant.
+
+Validacoes efetivamente executadas:
+- `dotnet run --project tests/AtlasKnowledge/AtlasKnowledge.csproj --no-restore`:
+  PASS opt-in, dez itens/metadados, idempotencia, edicao/inativacao, conteudo
+  legado e candidatos da busca textual. Falha de INSERT injetada via trigger:
+  rollback integral e repeticao bem-sucedida. Testes em SQLite em memoria.
+- `dotnet run --project tests/ChatSessions/ChatSessions.csproj`: PASS migracao
+  legada, backup/restauracao, checksum, rollback DDL, isolamento e repositorio.
+- `dotnet run --project tests/access/SeedSmoke/SeedSmoke.csproj`: PASS seed
+  preexistente preserva usuarios, hashes, grupos, KB e permissoes.
+- `dotnet build ai-gateway/AiGateway.csproj --no-restore`: PASS, zero erros.
+  Compilacao inicial por dotnet run reportou avisos preexistentes; build incremental
+  final reportou zero avisos. Nao foram refatorados trechos fora do escopo.
+- Em front: `npm run typecheck` e `npm run build`: PASS; Vite alerta chunks >500 kB.
+- `dotnet build ocr-service/OcrService.csproj` e
+  `dotnet build ml-service/MlService.csproj`: PASS, zero erros/avisos.
+- `python scripts/smoke_local.py`: PASS gateway HTTP real/SQLite temporario,
+  login, KB, SSE, OCR simulado, ownership A/B, historico/restart, usage e providers.
+  LLM/OCR doubles; nao valida inferencia paga ou extracao Tesseract real.
+- `docker compose config --quiet`: PASS; nao iniciou containers ou alterou volumes.
+- `git diff --check`: PASS.
+
+`python scripts/smoke_local.py --atlas`: PASS suite HTTP completa com seed ativo,
+dez documentos acessiveis por /api/kb/all e /api/kb/{id}, origem no conteudo e
+contagens preservadas apos restart (sem duplicacao).
+Sem smoke de navegador/temas, Qdrant/ONNX ou Trino nesta entrega. O frontend nao
+foi alterado. Runbook: docs/demo/ATLAS_LOCAL.md.

@@ -193,3 +193,7 @@ For a detailed Portuguese audit and the current list of limitations, see [docs/R
 Automatic conversation titles are generated after the first successful response, with a safe first-question fallback and manual edits preserved. Title-call usage is stored separately; persistent chat/document usage metrics and optional versioned pricing are now available through protected APIs; provider settings, personal preferences and consumption screens are available at `/settings/ai` and `/usage`. See [usage documentation](docs/features/USAGE_METERING.md). See [chat documentation](docs/features/CHAT_SESSIONS.md).
 
 AI settings and consumption: [configuration, permissions and limits](docs/features/AI_SETTINGS.md). API keys remain server environment variables; the UI never reads or stores their values. Automatic fallback between providers is disabled.
+
+## Atlas demonstrativo
+
+Seed opt-in de dez documentos e gerador offline de dados financeiros sinteticos: [instrucoes, dicionario e limites](docs/demo/ATLAS_LOCAL.md). Data Connectors e chat hibrido ainda nao estao habilitados; isolamento por organizacao e seguranca SQL sao dependencias pendentes.
