@@ -238,3 +238,14 @@ workload. MKL Redist não contém linux-arm64; ONNX/tokenizer contêm, mas infer
 nativa não foi testada nessa arquitetura. OCR atual usa executáveis de sistema.
 Compatibilidade integral ARM64, dimensionamento e hardening/deploy permanecem
 para outra etapa. Detalhes e evidências em infra/oracle/README.md.
+
+## 2026-11-07 — Community/shared-core audit and workspace increment
+
+The new English [CURRENT_STATE.md](CURRENT_STATE.md) is the baseline audit for
+the shared self-hosted/managed-core direction. Existing organizations/filters
+were confirmed before changes. Organization provisioning/policies, scoped model
+preferences/defaults and the selector fix are the bounded increment; see the
+[delivery report](../delivery/COMMUNITY_WORKSPACE_REPORT.md) for migration 007,
+legacy policy, actual tests and remaining SaaS/security/ARM64 limits. No license
+selected, application deployed or Oracle resource modified in this task. The
+previous local OCI retry process was stopped to respect that instruction.

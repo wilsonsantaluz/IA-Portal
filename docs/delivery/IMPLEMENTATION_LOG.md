@@ -693,3 +693,75 @@ Nenhuma chave privada lida/copiadada, nenhum .env/banco/app alterado, sem deploy
 SSH remoto ou inferência. Estado bruto/revisão de rede ficam em artifacts/oci-audit
 (ignorado), sem dados pessoais no commit. Alterações deste incremento no repo
 são apenas documentação operacional; não houve novo build de backend/frontend.
+
+## 2026-11-07 — Shared Community/Cloud core: bounded workspace increment
+
+Audit completed before application edits in
+[CURRENT_STATE.md](../architecture/CURRENT_STATE.md). New branch
+feature/community-organizations from clean 01d33bc. The previous local OCI retry
+runner was stopped by verified PID/start time to honor the new no-OCI-change
+instruction; no OCI API called. No production deployment, license choice, paid
+inference/dependency, .env edit or existing database reset/migration performed.
+
+Existing tenant middleware, membership validation, query/write guards, KB/vector
+revalidation, conversations and Trino grants were reused. Delivered organization
+creation, explicit Owner/Admin/Member/Viewer policies (legacy custom groups
+preserved), owner-only membership changes with CAS/final-owner protection,
+organization model defaults/preferences, a workspace screen and the explicit
+header selector fix. Credentials/endpoints remain installation-owned, not a
+plaintext tenant secret editor. Added one insert-only, versioned support template
+using the existing KB/index service and existing chat; wizard UX specified with
+only the first reusable form implemented. English community/architecture/security/
+  self-hosting/roadmap documentation added; Apache/AGPL decision left pending.
+Two historical employer identifiers generalized; vector question/title logging
+removed from the audited retrieval path.
+
+Migration 007: additive membership policy/version and organization AI tables;
+legacy model preference copied only to organization 1. Existing admins keep Admin,
+lowest active admin becomes exactly one initial Owner per organization, existing
+custom grants stay unchanged. Old migration text/checksums untouched. Backup,
+restore/re-upgrade, idempotency and injected late DDL rollback tested on real v6
+fixtures (including multiple administrators), never on the existing portal DB.
+During failure testing, SQLite 8 ExecuteNonQuery suppressed later batch errors;
+runner now explicitly consumes each reader result before recording success.
+Upstream reference: https://github.com/dotnet/efcore/issues/32740.
+
+Actual verification:
+- Backend gateway build PASS (11 preexisting warnings); OCR/ML builds PASS (0).
+- .NET suites Workspace, Organizations, AtlasKnowledge, Connectors, Providers,
+  ChatSessions, ChatTitles, Usage, BusinessChat and access/SeedSmoke PASS.
+- Workspace additionally sends a scoped vector filter and injects foreign,
+  missing-scope, mismatched-row and inactive candidates; rejects them before
+  reranking and loads only authorized relational context: PASS.
+- python scripts/smoke_organizations.py PASS: real HTTP/JWT/temporary SQLite,
+  tenant creation/switch/forged IDs; defaults/preferences; Member/Admin/Viewer
+  denials and existing-JWT revocation; final Owner/stale versions; cross-tenant
+  KB/history/usage/connectors; template idempotency, human edits and actual
+  retrieval into the existing streaming prompt. LLM HTTP double, no paid calls.
+- python scripts/smoke_local.py --atlas PASS: complete existing API regression,
+  temporary SQLite and LLM/OCR/Trino HTTP doubles, restart persistence.
+- RagSmoke first required its explicit disposable endpoint. Then PASS with new
+  empty Qdrant container, real local ONNX embeddings/reranking, fake LLM, SQLite
+  temp and SSE. Container removed in finally. A wrapper console encoding error
+  happened after test exit 0; saved test log was read safely to confirm success.
+  This validates the Windows host path, not ARM64. No local user index touched.
+- npm run typecheck/build --prefix front PASS (existing large-chunk warning).
+- Playwright organizations.cjs PASS: actual create/header switch/reload/default/
+  template UI with API fixtures, themes, 390/320px and axe main checks. Atlas UI
+  regression and atlas-security.cjs PASS. Light/dark captures inspected locally.
+- Python Atlas dataset tests PASS (4). git diff --check PASS.
+
+Initial failures were fixed and rerun: schema max version, old synthetic fixtures,
+late batch error suppression, deterministic owner update, expected Owner label,
+test HTTP/SSE route assumptions, Python SQLite connection cleanup on Windows,
+required form labels and stale hover-tooltip timing during browser resize.
+No authorization bypass or production data reset was used.
+
+Full file inventory, command outcomes, limits and next steps:
+[COMMUNITY_WORKSPACE_REPORT.md](COMMUNITY_WORKSPACE_REPORT.md).
+Not delivered: invitations, tenant credential vault/model allowlists, multiple KB
+libraries/history, agents, official WhatsApp/other channels, billing/quotas, CI
+workflow or production readiness. Recommended next: consenting invitations and
+ownership UX, then tenant credential/model policy. Existing running containers
+were not upgraded; SELF_HOSTING.md describes preserving the current Compose
+settings and applying the reviewed images/migration with backup locally.
