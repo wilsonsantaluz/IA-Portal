@@ -33,7 +33,7 @@ docker compose build ai-gateway portal-front
 docker compose up -d --no-deps ai-gateway portal-front
 ```
 
-These commands apply migration 007 at gateway startup with a pre-upgrade backup.
+These commands apply pending migrations through 008 at gateway startup with a pre-upgrade backup.
 They were not run against the existing installation during this increment.
 
 Open `http://127.0.0.1:9080`. A fresh installation creates the default organization
@@ -52,14 +52,17 @@ Owners can change membership policies/status; the last active Owner cannot be
 removed. Admin handles workspace configuration and ordinary user/group management;
 Member can chat/edit KB/query explicitly granted sources; Viewer can read KB.
 Connector group grants remain additional requirements; a role does not invent or
-automatically grant a physical data source. Associating existing accounts through
-consenting invitations is planned, not an implemented public invitation endpoint.
+automatically grant a physical data source. Owners can invite existing accounts
+with single-use 24-hour Member/Viewer links and transfer ownership with explicit
+confirmation. Any authenticated holder can accept a link; share it privately.
+No email is sent. See [invitation operations](features/ORGANIZATION_INVITATIONS.md).
+Ownership of organization 1 includes installation-wide AI administration privileges.
 
 The installation's provider endpoints/credentials remain controlled by the
 default organization administrator. No tenant secret editor is implemented.
 Tenant defaults and personal preferences are isolated, and never reveal keys.
 
-## Existing data and migration 007
+## Existing data and migrations 007–008
 
 Startup runs checksummed migrations. Existing schemas are never recreated.
 Migration 005 previously associated legacy users/data with organization 1.
@@ -74,6 +77,9 @@ The old table remains as archival data; runtime uses tenant-scoped preferences.
 Other memberships inherit their own organization default or installation default.
 Passwords, documents, connector grants, conversations and selected session models
 are unchanged. No API key is copied to SQLite.
+
+Migration 008 adds hashed invitations without resetting existing data. Existing
+membership roles are unchanged until an explicit accepted invitation or transfer.
 
 Upgrades create a consistent pre-change SQLite backup and validate foreign keys.
 Version 007 also explicitly consumes every SQLite batch result so a later SQL
@@ -112,6 +118,7 @@ dotnet build ai-gateway/AiGateway.csproj
 dotnet build ocr-service/OcrService.csproj
 dotnet build ml-service/MlService.csproj
 dotnet run --project tests/Workspace
+dotnet run --project tests/Invitations
 dotnet run --project tests/Organizations
 dotnet run --project tests/Connectors
 python scripts/smoke_organizations.py

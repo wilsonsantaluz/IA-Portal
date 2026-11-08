@@ -3,6 +3,7 @@
 New contributors: [current state](architecture/CURRENT_STATE.md),
 [target architecture](architecture/TARGET_ARCHITECTURE.md),
 [product roadmap](ROADMAP.md), [self-hosting](SELF_HOSTING.md),
+[organization invitations](features/ORGANIZATION_INVITATIONS.md),
 [setup specification](features/SETUP_WIZARD.md) and
 [license decision](LICENSE_OPTIONS.md). These English documents describe the
 Community/shared-core direction. Historical delivery records below remain in

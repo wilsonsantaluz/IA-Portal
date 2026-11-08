@@ -31,7 +31,7 @@ already exist; do not introduce a Python service just to match a diagram.
 
 | Module | Existing / this increment | Next boundary |
 | --- | --- | --- |
-| Identity & Organizations | JWT, membership verification, local custom groups, explicit Owner/Admin/Member/Viewer, organization provisioning and active selector | Consenting invitations, ownership transfer UX, account-level password recovery/MFA |
+| Identity & Organizations | JWT, validated memberships, custom groups, Owner/Admin/Member/Viewer, provisioning/selector, consenting existing-account bearer invitations and atomic ownership transfer | Verified recipient-bound onboarding/delivery, account-level password recovery/MFA |
 | Knowledge | Tenant rows, public versioned template import, text retrieval and optional vector revalidation | Multiple libraries, document history, per-document ACL, retention/index-job lifecycle |
 | Data Connectors | Tenant-approved Trino profiles and group grants, fixed read-only plans | Capability-based adapters for PostgreSQL, SQL Server and REST; tenant vault references |
 | Conversations / AI Agents | User-owned history, model routing, titles, usage, tenant model defaults/preferences | Agent definitions, versioned instructions and authorized tool schemas; no arbitrary SQL runner |
