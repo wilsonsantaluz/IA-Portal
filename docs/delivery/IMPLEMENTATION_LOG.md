@@ -765,3 +765,34 @@ workflow or production readiness. Recommended next: consenting invitations and
 ownership UX, then tenant credential/model policy. Existing running containers
 were not upgraded; SELF_HOSTING.md describes preserving the current Compose
 settings and applying the reviewed images/migration with backup locally.
+
+## 2026-11-08 — Consenting invitations and ownership transfer
+
+Continued from the delivered Community workspace in a dedicated branch after
+fetch showed origin/main still at 90b5b86. Initial tree was clean; previous work
+was retained. Reused JWT/membership policies and tenant scope rather than creating
+a second identity system. Added Owner-issued existing-account Member/Viewer links
+with explicit consent, 24-hour single use, revocation, SHA-256-only persistence,
+issuer-version invalidation and no global account lookup. Links are bearer
+capabilities, not verified-address invitations; the UI states this clearly.
+
+Ownership transfer atomically promotes the active target and demotes the actor
+to Admin using both versions. Confirmation warns about installation administration
+for organization 1. Generic role changes no longer promote a new Owner. Migration
+008 is additive; older checksums and live data/environment are unchanged.
+
+PASS: gateway build; .NET Invitations, Workspace, Organizations, AtlasKnowledge,
+Connectors, Providers, ChatSessions, ChatTitles, Usage, BusinessChat and SeedSmoke;
+real HTTP organization smoke; complete local Atlas HTTP smoke; frontend typecheck
+and production build; invitation/organization/Atlas/security browser tests including
+themes, mobile, axe, numeric charts and Mermaid sandbox/fallback. Existing compiler
+and frontend chunk-size warnings remain. Temporary v7 upgrade/repeat/backup restore
+and injected late-DDL rollback passed. External LLM/OCR/Trino were doubles; browser
+APIs were fixtures. No new ARM64/native OCR/vector or live deployment validation.
+
+Full file inventory, exact commands, migration/rollback and local operation:
+[INVITATIONS_REPORT.md](INVITATIONS_REPORT.md). Next recommended increment is tenant
+model allowlists and encrypted/vault-backed credentials. Email-bound onboarding,
+recovery/MFA, audit retention, quotas/CI and production hardening remain pending.
+Existing containers/SQLite were not reset or upgraded; .env was not modified.
+The separately authorized OCI retry runner was left alone; no remote changes.

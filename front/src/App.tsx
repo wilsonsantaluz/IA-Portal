@@ -1,5 +1,6 @@
 import DataConnectorsPage from "./pages/DataConnectorsPage";
 import OrganizationsPage from "./pages/OrganizationsPage";
+import AcceptInvitationPage from "./pages/AcceptInvitationPage";
 import { Routes, Route, Navigate } from "react-router-dom";
 
 import LoginPage from "./pages/LoginPage";
@@ -41,6 +42,7 @@ export default function App() {
       >
         <Route index element={<HomeRoute />} />
         <Route path="organizations" element={<OrganizationsPage />} />
+        <Route path="invite" element={<AcceptInvitationPage />} />
         <Route
           path="chat"
           element={

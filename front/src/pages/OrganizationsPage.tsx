@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Box, Button, Divider, MenuItem, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Divider, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { Link } from "react-router-dom";
 import api from "../services/api";
 import { useAuth } from "../auth/AuthProvider";
 import OrganizationForm from "../components/OrganizationForm";
+import OrganizationInvitations from "../components/OrganizationInvitations";
 import { aiError, type ProviderOption } from "../components/ConversationModelPicker";
 
 type Organization = { id: number; name: string; slug: string; policyRole: string | null };
-type Member = { userId: number; userName: string; policyRole: string | null; isActive: boolean; version: number };
+type Member = { userId: number; userName: string; policyRole: string | null; isActive: boolean; version: number; accountActive?: boolean };
 type Defaults = { provider: string | null; model: string | null; version: number; inherited: boolean };
 type Template = { id: string; name: string; description: string; version: string; exampleQuestions: string[] };
 export default function OrganizationsPage() {
@@ -18,6 +19,7 @@ export default function OrganizationsPage() {
   const [defaults, setDefaults] = useState<Defaults | null>(null);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [choice, setChoice] = useState("");
+  const [transferOpen, setTransferOpen] = useState(false); const [targetId, setTargetId] = useState("");
   const [busy, setBusy] = useState(false); const [error, setError] = useState(""); const [notice, setNotice] = useState("");
   const canManage = hasPermission("organizations.manage"), canMembers = hasPermission("access.manage");
   const load = useCallback(async () => {
@@ -29,6 +31,8 @@ export default function OrganizationsPage() {
   }, [canMembers, user?.organizationId]);
   useEffect(() => { void load().catch(e => setError(aiError(e))); }, [load]);
   const active = organizations.find(o => o.id === user?.organizationId);
+  const currentMember = members.find(m => m.userId === user?.userId);
+  const transferTargets = members.filter(m => m.isActive && m.accountActive !== false && m.userId !== user?.userId && m.policyRole !== "Owner");
   async function perform(action: () => Promise<unknown>, message: string) {
     setBusy(true); setError(""); setNotice("");
     try { await action(); await refresh(); await load(); setNotice(message); return true; } catch (e) { setError(aiError(e)); return false; } finally { setBusy(false); }
@@ -65,11 +69,13 @@ export default function OrganizationsPage() {
           <TextField select size="small" label={`Papel de ${m.userName}`} value={m.policyRole || "legacy"} disabled={busy || active?.policyRole !== "Owner"} sx={{ minWidth: 140 }}
             onChange={e => void perform(() => api.put(`api/organizations/current/members/${m.userId}`, { role: e.target.value, isActive: m.isActive, version: m.version }), "Papel atualizado.")}>
             {!m.policyRole && <MenuItem value="legacy" disabled>Grupos personalizados</MenuItem>}
-            {["Owner", "Admin", "Member", "Viewer"].map(role => <MenuItem key={role} value={role}>{role}</MenuItem>)}
+            {(m.policyRole === "Owner" ? ["Owner", "Admin", "Member", "Viewer"] : ["Admin", "Member", "Viewer"]).map(role => <MenuItem key={role} value={role}>{role}</MenuItem>)}
           </TextField>
           <Button disabled={busy || active?.policyRole !== "Owner"} onClick={() => void perform(() => api.put(`api/organizations/current/members/${m.userId}`, { role: m.policyRole || "Member", isActive: !m.isActive, version: m.version }), "Associação atualizada.")}>{m.isActive ? "Desativar associação" : "Reativar associação"}</Button>
         </Stack>)}
+        {active?.policyRole === "Owner" && <Button sx={{alignSelf:"flex-start"}} disabled={busy || transferTargets.length === 0} onClick={() => {setTargetId("");setTransferOpen(true);}}>Transferir propriedade</Button>}
       </>}
+      {active?.policyRole === "Owner" && <><Divider /><OrganizationInvitations /></>}
       {hasPermission("kb.manage") && <>
         <Divider /><Typography variant="h6" component="h3">Templates de conhecimento</Typography>
         {templates.map(t => <Box key={t.id}>
@@ -80,5 +86,22 @@ export default function OrganizationsPage() {
         </Box>)}
       </>}
     </Stack>
+    <Dialog open={transferOpen} onClose={() => !busy && setTransferOpen(false)} aria-labelledby="ownership-transfer-title">
+      <DialogTitle id="ownership-transfer-title">Transferir propriedade da organização?</DialogTitle>
+      <DialogContent>
+        <Typography sx={{mb:2}}>O membro selecionado se tornará Owner e poderá gerenciar todos os membros e convites. Você continuará como Admin. A alteração vale somente para esta organização.</Typography>
+        {active?.id === 1 && <Alert severity="warning" sx={{mb:2}}>A organização padrão também controla as configurações globais de IA. O novo Owner terá privilégios de administração da instalação.</Alert>}
+        <TextField select fullWidth label="Novo Owner" value={targetId} onChange={e=>setTargetId(e.target.value)} disabled={busy}>
+          {transferTargets.map(m=><MenuItem key={m.userId} value={String(m.userId)}>{m.userName}</MenuItem>)}
+        </TextField>
+      </DialogContent>
+      <DialogActions><Button disabled={busy} onClick={()=>setTransferOpen(false)}>Cancelar</Button>
+        <Button variant="contained" disabled={busy || !targetId || !currentMember} onClick={()=>void (async()=>{
+          const target=transferTargets.find(m=>m.userId===Number(targetId));if(!target || !currentMember)return;
+          const ok=await perform(()=>api.post("api/organizations/current/transfer-ownership",{targetUserId:target.userId,ownerVersion:currentMember.version,targetVersion:target.version}),"Propriedade transferida. Você agora é Admin nesta organização.");
+          if(ok)setTransferOpen(false);
+        })()}>Confirmar transferência</Button>
+      </DialogActions>
+    </Dialog>
   </Box>;
 }

@@ -7,7 +7,7 @@ sealed class PreOrganizationContext(DbContextOptions<PortalDbContext> options) :
     {
         base.OnModelCreating(model);
         model.Ignore<ConnectorGrant>(); model.Ignore<DataConnector>();
-        model.Ignore<OrganizationAiDefault>(); model.Ignore<OrganizationAiPreference>();
+        model.Ignore<OrganizationInvitation>(); model.Ignore<OrganizationAiDefault>(); model.Ignore<OrganizationAiPreference>();
         model.Ignore<OrganizationMembership>(); model.Ignore<Organization>();
         foreach (var type in new[] { typeof(Role), typeof(KnowledgeBaseItem), typeof(ChatSession), typeof(ChatKbRating) })
             model.Entity(type).Ignore("OrganizationId");

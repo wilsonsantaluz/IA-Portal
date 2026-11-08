@@ -15,6 +15,7 @@ const auth={userId:1,userName:'Owner sintético',email:'owner@example.test',toke
   else if(endpoint==='/api/organizations'&&request.method()==='POST'){const body=request.postDataJSON();assert.equal(org,1);assert.equal(body.slug,'synthetic-workspace');organizations.push({id:2,name:body.name,slug:body.slug,policyRole:'Owner'});data=organizations[1];status=201;}
   else if(endpoint==='/api/organizations')data=organizations;
   else if(endpoint==='/api/organizations/current/members')data=[{userId:1,userName:'Owner sintético',policyRole:'Owner',isActive:true,version:0}];
+  else if(endpoint==='/api/organizations/current/invitations')data=[];
   else if(endpoint==='/api/organizations/current/ai-default'&&request.method()==='PUT'){assert.equal(org,2);settings={...request.postDataJSON(),version:1,inherited:false};data=settings;}
   else if(endpoint==='/api/organizations/current/ai-default')data=settings;
   else if(endpoint==='/api/ai/providers')data=[{id:'deepseek',models:['fixture'],defaultModel:'fixture',streaming:true,apiBilling:'external'}];

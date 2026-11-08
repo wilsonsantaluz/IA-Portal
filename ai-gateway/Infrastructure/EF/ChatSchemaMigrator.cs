@@ -167,6 +167,24 @@ public static class ChatSchemaMigrator
             using (var reader = await check.ExecuteReaderAsync()) if (await reader.ReadAsync()) throw new InvalidOperationException("Integridade invalida no workspace.");
             await tx.CommitAsync();
         }
+        async Task UpgradeInvitations(bool fresh,bool alreadyBackedUp) {
+            using var resource8=typeof(ChatSchemaMigrator).Assembly.GetManifestResourceStream("AiGateway.Infrastructure.EF.Migrations.008_OrganizationInvitations.sql")!;
+            var script=(await new StreamReader(resource8).ReadToEndAsync()).Replace("\r\n","\n");
+            var hash=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(script)));
+            using var command=connection.CreateCommand();command.CommandText="SELECT Checksum FROM SchemaVersions WHERE Version=8";
+            var recorded=await command.ExecuteScalarAsync();
+            var columns=await Columns("OrganizationInvitations");
+            var complete=columns.IsSupersetOf(new[]{"Id","OrganizationId","TokenHash","Role","CreatedByUserId","IssuerMembershipVersion","CreatedAt","ExpiresAt","AcceptedAt","AcceptedByUserId","RevokedAt","Version"});
+            if(recorded is not null){if(!Equals(recorded,hash)||!complete)throw new InvalidOperationException("Esquema/checksum de convites incompativel.");return;}
+            if(!fresh && columns.Count>0)throw new InvalidOperationException("Migracao parcial de convites nao reconhecida.");
+            if(!fresh && !alreadyBackedUp)await Backup(8);
+            await using var tx=await db.Database.BeginTransactionAsync();
+            if(!fresh)await ExecuteScript(script);
+            await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO SchemaVersions VALUES (8,{hash},{DateTime.UtcNow})");
+            using var check=connection.CreateCommand();check.Transaction=(SqliteTransaction)tx.GetDbTransaction();check.CommandText="PRAGMA foreign_key_check";
+            using(var reader=await check.ExecuteReaderAsync())if(await reader.ReadAsync())throw new InvalidOperationException("Integridade invalida nos convites.");
+            await tx.CommitAsync();
+        }
         var isEmpty = await Count("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'") == 0;
         if (isEmpty) await db.Database.EnsureCreatedAsync();
         var expected = new Dictionary<string, string[]> {
@@ -193,14 +211,15 @@ public static class ChatSchemaMigrator
         if (ledger) {
             using var c = connection.CreateCommand(); c.CommandText = "SELECT Checksum FROM SchemaVersions WHERE Version=1";
             var recorded = await c.ExecuteScalarAsync();
-            if (recorded is not string value || value != checksum || !current || await Count("SELECT COUNT(*) FROM SchemaVersions WHERE Version>7") != 0)
+            if (recorded is not string value || value != checksum || !current || await Count("SELECT COUNT(*) FROM SchemaVersions WHERE Version>8") != 0)
                 throw new InvalidOperationException("Versão/checksum de esquema incompatível. Inicialização interrompida.");
             var hadV2 = await Count("SELECT COUNT(*) FROM SchemaVersions WHERE Version=2") != 0;
             var hadV3 = await Count("SELECT COUNT(*) FROM SchemaVersions WHERE Version=3") != 0;
             var hadV4 = await Count("SELECT COUNT(*) FROM SchemaVersions WHERE Version=4") != 0;
             var hadV5 = await Count("SELECT COUNT(*) FROM SchemaVersions WHERE Version=5") != 0;
             var hadV6 = await Count("SELECT COUNT(*) FROM SchemaVersions WHERE Version=6") != 0;
-            await UpgradeTitles(false, false); await UpgradeUsage(false, !hadV2); await UpgradeProviders(false, !hadV3); await UpgradeOrganizations(false, !hadV2 || !hadV3); await UpgradeConnectors(false, !hadV2 || !hadV3 || !hadV5); await UpgradeWorkspace(false,!hadV2 || !hadV3 || !hadV4 || !hadV5 || !hadV6); return;
+            var hadV7 = await Count("SELECT COUNT(*) FROM SchemaVersions WHERE Version=7") != 0;
+            await UpgradeTitles(false, false); await UpgradeUsage(false, !hadV2); await UpgradeProviders(false, !hadV3); await UpgradeOrganizations(false, !hadV2 || !hadV3); await UpgradeConnectors(false, !hadV2 || !hadV3 || !hadV5); await UpgradeWorkspace(false,!hadV2 || !hadV3 || !hadV4 || !hadV5 || !hadV6); await UpgradeInvitations(false,!hadV2 || !hadV3 || !hadV4 || !hadV5 || !hadV6 || !hadV7); return;
         }
         if (partial && !current) throw new InvalidOperationException("Migração parcial desconhecida. Restaure um backup validado.");
         if (!current) await Backup(1);
@@ -222,5 +241,6 @@ public static class ChatSchemaMigrator
         await UpgradeOrganizations(isEmpty, !current);
         await UpgradeConnectors(isEmpty, true);
         await UpgradeWorkspace(isEmpty,!isEmpty);
+        await UpgradeInvitations(isEmpty,!isEmpty);
     }
 }

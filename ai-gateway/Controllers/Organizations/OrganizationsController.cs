@@ -26,7 +26,7 @@ public sealed class OrganizationsController(PortalDbContext db, OrganizationWork
     [HttpGet("current/members"), Authorize(Policy=PortalAccess.Administration)]
     public async Task<IActionResult> Members(CancellationToken ct) => Ok(await db.OrganizationMemberships
         .Where(m=>m.OrganizationId==db.OrganizationId).Join(db.Users,m=>m.UserId,u=>u.UserId,(m,u)=>new {
-            u.UserId,u.UserName,m.PolicyRole,m.IsActive,m.Version
+            u.UserId,u.UserName,m.PolicyRole,m.IsActive,m.Version,accountActive=u.IsActive
         }).OrderBy(x=>x.UserName).ToListAsync(ct));
 
     [HttpPut("current/members/{userId:int}"), Authorize(Policy=PortalAccess.Administration)]
@@ -36,6 +36,11 @@ public sealed class OrganizationsController(PortalDbContext db, OrganizationWork
 
     [HttpGet("current/ai-default")]
     public async Task<IActionResult> Default(CancellationToken ct) => Ok(await workspace.Default(ct));
+
+    [HttpPost("current/transfer-ownership"),Authorize(Policy=PortalAccess.Administration)]
+    public async Task<IActionResult> Transfer(OwnershipTransferRequest request,CancellationToken ct){
+        await workspace.TransferOwnership(PortalAccess.UserId(User),request,ct);return NoContent();
+    }
 
     [HttpPut("current/ai-default"), Authorize(Policy=PortalAccess.Organizations)]
     public async Task<IActionResult> Default(AiGateway.Dtos.DefaultUpdate request,CancellationToken ct) {

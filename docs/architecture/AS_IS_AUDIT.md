@@ -249,3 +249,19 @@ preferences/defaults and the selector fix are the bounded increment; see the
 legacy policy, actual tests and remaining SaaS/security/ARM64 limits. No license
 selected, application deployed or Oracle resource modified in this task. The
 previous local OCI retry process was stopped to respect that instruction.
+
+## Follow-up audit: invitations and ownership — 2026-11-08
+
+Re-read AGENTS and existing delivery/product roadmaps before changes. Initial tree
+was clean. Fetch still showed origin/main at 90b5b86; continued in a new
+feature/organization-invitations branch from the delivered cef803c, preserving
+the previous commits without merging main. Existing JWT identity, scoped entities,
+workspace policies, frontend selector and v7 migrations were reused.
+
+No invitation table/service or explicit ownership-transfer UI existed at this
+baseline. Added only existing-account capability invitations and atomic transfer,
+with v8 migration preservation, consent/isolation/concurrency tests and actual API
+smoke. No global account lookup, email delivery or tenant credential editor is
+claimed. See [the report](../delivery/INVITATIONS_REPORT.md). The user subsequently
+authorized/restarted the independent OCI retry runner; this follow-up leaves it
+alone and makes no remote OCI changes or live application/database upgrades.

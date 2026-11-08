@@ -170,8 +170,21 @@ all SQLite batch results before committing, avoiding the later-statement error
 suppression reproduced during failure injection (see
 [upstream issue](https://github.com/dotnet/efcore/issues/32740)).
 
-Still missing: consenting invitations, independent per-tenant provider credentials
+Still missing after that increment: consenting invitations, independent per-tenant provider credentials
 and model allowlists, document version history/libraries, agent definitions,
 external channel adapters, enforceable quotas/billing, durable audit retention,
 mandatory CI, production hardening and an owner-approved license. The existing
 running installation was not upgraded or reset as part of these tests.
+
+## Follow-up: invitations and ownership (2026-11-08)
+
+Existing-account, Owner-issued bearer invitations now support explicit consent,
+single-use 24-hour expiry, revocation, issuer-version invalidation and Member/Viewer
+roles. Atomic ownership transfer has confirmation/version checks; organization 1
+also grants installation administration. Migration 008 is additive and tested
+against real v7 fixtures with rollback/backup restoration. No global account lookup
+or email delivery exists. Links are not recipient-address-bound. See
+[security/operation contract](../features/ORGANIZATION_INVITATIONS.md) and
+[test/file report](../delivery/INVITATIONS_REPORT.md). The running installation was
+not migrated during these tests. Independent tenant credentials/model allowlists,
+verified onboarding, durable audit/quotas and public-hosting hardening remain open.

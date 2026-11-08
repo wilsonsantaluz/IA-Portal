@@ -32,6 +32,8 @@ builder.Services.AddCors(options =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<OrganizationScope>();
 builder.Services.AddScoped<OrganizationWorkspaceService>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<OrganizationInvitationService>();
 builder.Services.AddSingleton<ConnectorProfiles>();
 builder.Services.AddScoped<DataConnectorService>();
 builder.Services.AddHttpClient("trino-secure", c => c.Timeout = TimeSpan.FromSeconds(20)).ConfigurePrimaryHttpMessageHandler(ConnectorProfiles.Handler);

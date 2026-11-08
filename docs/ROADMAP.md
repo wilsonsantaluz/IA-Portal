@@ -11,7 +11,8 @@ commercial fork or payment gateway in this plan's first delivery.
 | Knowledge template foundation | First bounded delivery | One versioned technical-support template, insert-only import into current tenant; no fake connectors/tools |
 | Setup journey | Specification + reusable first form | `features/SETUP_WIZARD.md`; organization create form reused by workspace page |
 | Community governance | Draft documentation | Contribution/security/conduct guides; Apache 2.0 vs AGPLv3 decision pending |
-| Organization invitations | Planned | Explicit consent, expiring one-time invitation, no cross-tenant user enumeration or automatic account takeover |
+| Organization invitations | Bounded delivery | Existing-account bearer links, explicit consent, 24-hour single use/revocation, no global user lookup; atomic ownership transfer with confirmation |
+| Account onboarding | Planned | Verified recipient-bound invitations/delivery, signup, recovery and MFA; current links are not address-bound |
 | Tenant model/credential policy | Planned | Per-tenant approved model allowlists, encrypted/vault-backed secret references and rotation; no browser-held API keys |
 | Knowledge lifecycle | Planned | Libraries, version history, index jobs, deletion/retention, per-document ACL |
 | Extensible data access | Planned | Adapter contracts exercised by a real PostgreSQL/SQL Server/REST source, read-only grants and SSRF controls |

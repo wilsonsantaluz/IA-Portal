@@ -81,7 +81,7 @@ try {
 
 sealed class V6Context(DbContextOptions<PortalDbContext> options):PortalDbContext(options) {
     protected override void OnModelCreating(ModelBuilder model) {
-        base.OnModelCreating(model);model.Ignore<OrganizationAiDefault>();model.Ignore<OrganizationAiPreference>();
+        base.OnModelCreating(model);model.Ignore<OrganizationInvitation>(); model.Ignore<OrganizationAiDefault>();model.Ignore<OrganizationAiPreference>();
         model.Entity<OrganizationMembership>().Ignore(x=>x.PolicyRole).Ignore(x=>x.Version);
     }
 }

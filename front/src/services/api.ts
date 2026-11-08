@@ -23,7 +23,10 @@ api.interceptors.response.use(
   err => {
     if (err.response?.status === 401) {
       localStorage.removeItem("auth");
-      window.location.href = "/login";
+      if (window.location.pathname !== "/login") {
+        const invitation = window.location.pathname === "/invite" && /^#invite=[a-fA-F0-9]{64}$/.test(window.location.hash) ? window.location.hash : "";
+        window.location.href = "/login" + invitation;
+      }
     }
     return Promise.reject(err);
   }
