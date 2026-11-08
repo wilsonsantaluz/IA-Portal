@@ -60,18 +60,19 @@ public sealed class AiProviderCatalog(PortalDbContext db, IConfiguration cfg)
     }
     public async Task<ModelSelection> Preference(int user, CancellationToken ct)
     {
-        var preference = await db.AiUserPreferences.AsNoTracking().SingleOrDefaultAsync(p => p.UserId == user, ct);
+        var preference = await db.OrganizationAiPreferences.AsNoTracking().SingleOrDefaultAsync(p => p.OrganizationId == db.OrganizationId && p.UserId == user, ct);
+        var organization = await db.OrganizationAiDefaults.AsNoTracking().SingleOrDefaultAsync(p => p.OrganizationId == db.OrganizationId, ct);
         var global = await db.AiSystemDefaults.AsNoTracking().SingleOrDefaultAsync(p => p.Id == 1, ct);
-        var provider = preference?.Provider ?? global?.Provider ?? Option("AI_DEFAULT_PROVIDER", "deepseek");
-        var model = preference?.Model ?? global?.Model ?? (await Get(provider, ct)).DefaultModel;
+        var provider = preference?.Provider ?? organization?.Provider ?? global?.Provider ?? Option("AI_DEFAULT_PROVIDER", "deepseek");
+        var model = preference?.Model ?? organization?.Model ?? global?.Model ?? (await Get(provider, ct)).DefaultModel;
         return new(provider, model);
     }
     public async Task<ModelSelection> Default(int user, CancellationToken ct) { var selected = await Preference(user, ct); await Resolve(selected.Provider, selected.Model, ct); return selected; }
     public async Task SetPreference(int user, ModelSelection selection, CancellationToken ct)
     {
         await Resolve(selection.Provider, selection.Model, ct);
-        var preference = await db.AiUserPreferences.SingleOrDefaultAsync(p => p.UserId == user, ct);
-        if (preference is null) { preference = new() { UserId = user }; db.AiUserPreferences.Add(preference); }
+        var preference = await db.OrganizationAiPreferences.SingleOrDefaultAsync(p => p.OrganizationId == db.OrganizationId && p.UserId == user, ct);
+        if (preference is null) { preference = new() { UserId = user, OrganizationId = db.OrganizationId }; db.OrganizationAiPreferences.Add(preference); }
         preference.Provider = selection.Provider; preference.Model = selection.Model;
         try { await db.SaveChangesAsync(ct); } catch (DbUpdateException) { throw new ChatException(409, "Preferência alterada; atualize a página."); }
     }

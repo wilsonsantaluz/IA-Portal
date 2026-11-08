@@ -43,7 +43,8 @@ public static class AtlasKnowledgeSeed
         {
             if (!await db.OrganizationMemberships.AnyAsync(x => x.OrganizationId == organization.Id && x.UserId == userId, ct))
             {
-                db.OrganizationMemberships.Add(new OrganizationMembership { OrganizationId = organization.Id, UserId = userId });
+                var hasOwner = await db.OrganizationMemberships.AnyAsync(x => x.OrganizationId == organization.Id && x.PolicyRole == "Owner" && x.IsActive, ct);
+                db.OrganizationMemberships.Add(new OrganizationMembership { OrganizationId = organization.Id, UserId = userId, PolicyRole = hasOwner ? "Admin" : "Owner" });
                 if (!await db.UserRoles.IgnoreQueryFilters().AnyAsync(x => x.UserId == userId && x.RoleId == role.RoleId, ct))
                     db.UserRoles.Add(new UserRole { UserId = userId, RoleId = role.RoleId });
             }

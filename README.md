@@ -1,8 +1,23 @@
-# IA-Portal — Enterprise AI Knowledge Portal
+# IA-Portal — Enterprise knowledge, data connectors and AI
 
-A portfolio-oriented prototype of a corporate knowledge portal combining a **.NET 8 API**, **React/TypeScript interface**, **SQLite persistence**, document OCR, and an external large language model (LLM). It illustrates architecture patterns for knowledge management, document analysis, and AI-assisted workflows.
+A self-hosted enterprise knowledge platform combining a **.NET 8 API**, **React/TypeScript interface**, **SQLite persistence**, document OCR, approved data connectors and explicit LLM routing. The direction is a shared Community core and future managed **IA-Portal Cloud**, with contributions through pull requests. No separate commercial edition or payment gateway is implemented.
 
-> **Status: local development prototype, not production-ready.** This public repository has a reduced, generalized scope. It is not a complete production deployment, and its optional advanced RAG integrations require additional setup.
+> **Status: development-stage platform, not production-ready.** Community/Cloud is the product direction; no open-source license has been selected yet. Managed hosting, configurable agents, official external channels and billing remain planned. Optional vector RAG requires additional setup.
+
+Start with [self-hosting](docs/SELF_HOSTING.md), the [current-state audit](docs/architecture/CURRENT_STATE.md),
+[target architecture](docs/architecture/TARGET_ARCHITECTURE.md) and [product roadmap](docs/ROADMAP.md).
+Contribution and disclosure guidance: [CONTRIBUTING](CONTRIBUTING.md), [SECURITY](SECURITY.md),
+[CODE_OF_CONDUCT](CODE_OF_CONDUCT.md). [Apache 2.0 and AGPLv3](docs/LICENSE_OPTIONS.md)
+are documented alternatives pending an owner decision; neither is applied automatically.
+
+Organization workspaces reuse the existing tenant middleware: initial organization,
+multiple memberships, Owner/Admin/Member/Viewer policies, protected final Owner,
+organization model defaults and isolated per-organization personal preferences.
+The **Organizações** screen provisions workspaces and imports one versioned,
+synthetic technical-support knowledge template. Existing custom groups/data remain
+supported. Provider credentials/endpoints are still installation-owned; tenant
+vaults, invitations and the complete [setup wizard](docs/features/SETUP_WIZARD.md)
+are future work.
 
 Technical documentation and the incremental chat-platform plan are indexed in [docs/README.md](docs/README.md). The [current audit](docs/architecture/AS_IS_AUDIT.md) distinguishes implemented behavior from proposed conversation, usage, and provider features.
 
@@ -36,18 +51,16 @@ Local mode does **not** require Qdrant, Trino, or ONNX models. AI responses requ
 | SQLite | Local storage for users, knowledge, conversations, and ratings |
 | Optional advanced RAG | Qdrant vector retrieval, ONNX embeddings and reranking, and optional Trino queries |
 
-```text
-React / TypeScript UI
-        |
-        v
-  .NET 8 AI Gateway ----> SQLite (users, knowledge, history)
-        |       |
-        |       +----> DeepSeek API (external LLM)
-        |
-        +------------> OCR service (Tesseract / Poppler)
-        |
-        +-- optional --> Qdrant + ONNX models
-        +-- optional --> Trino (separate analytical data source)
+```mermaid
+flowchart LR
+    UI[React and TypeScript] --> API[.NET modular gateway]
+    API --> Identity[Identity and organizations]
+    API --> KB[Knowledge and conversations]
+    API --> SQLite[(SQLite)]
+    API --> Models[DeepSeek / OpenAI / Ollama]
+    API --> OCR[OCR .NET / Tesseract / Poppler]
+    KB -. optional .-> Vectors[Qdrant and ONNX]
+    API -. optional .-> Trino[Read-only Trino connector]
 ```
 
 ## Quick start with Docker
@@ -121,7 +134,7 @@ To run only the OCR service in Docker:
 docker compose run --rm -p 127.0.0.1:9082:8080 ocr-service
 ```
 
-**Schema evolution:** initialization uses versioned SQL migrations with checksums and consistent backups before upgrading existing SQLite schemas. `EnsureCreatedAsync` is used only for an empty installation. Migrations v5/v6 add organizations and connectors without recreating the existing database. Earlier SQL Server installations are not imported automatically.
+**Schema evolution:** initialization uses versioned SQL migrations with checksums and consistent backups before upgrading existing SQLite schemas. `EnsureCreatedAsync` is used only for an empty installation. Migrations v5/v6 add organizations and connectors; v7 adds membership policies and tenant model settings without recreating the existing database. Earlier SQL Server installations are not imported automatically.
 
 ## Optional advanced RAG
 

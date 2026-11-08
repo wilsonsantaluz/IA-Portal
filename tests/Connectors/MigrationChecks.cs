@@ -55,5 +55,9 @@ static class MigrationChecks
 }
 sealed class PreConnectorContext(DbContextOptions<PortalDbContext> options) : PortalDbContext(options)
 {
-    protected override void OnModelCreating(ModelBuilder model) { base.OnModelCreating(model); model.Ignore<ConnectorGrant>(); model.Ignore<DataConnector>(); }
+    protected override void OnModelCreating(ModelBuilder model) {
+        base.OnModelCreating(model); model.Ignore<ConnectorGrant>(); model.Ignore<DataConnector>();
+        model.Ignore<OrganizationAiDefault>(); model.Ignore<OrganizationAiPreference>();
+        model.Entity<OrganizationMembership>().Ignore(x=>x.PolicyRole).Ignore(x=>x.Version);
+    }
 }

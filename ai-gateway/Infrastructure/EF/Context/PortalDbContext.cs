@@ -18,6 +18,8 @@ public class PortalDbContext : DbContext
     public DbSet<ConnectorGrant> ConnectorGrants => Set<ConnectorGrant>();
     public DbSet<Organization> Organizations => Set<Organization>();
     public DbSet<OrganizationMembership> OrganizationMemberships => Set<OrganizationMembership>();
+    public DbSet<OrganizationAiDefault> OrganizationAiDefaults => Set<OrganizationAiDefault>();
+    public DbSet<OrganizationAiPreference> OrganizationAiPreferences => Set<OrganizationAiPreference>();
 
     private void EnforceScope()
     {
@@ -28,7 +30,11 @@ public class PortalDbContext : DbContext
             if (entry.Entity is IOrganizationEntity)
             {
                 var property = entry.Property(nameof(IOrganizationEntity.OrganizationId));
-                if (entry.State == EntityState.Added) property.CurrentValue = OrganizationId;
+                if (entry.State == EntityState.Added) {
+                    if (entry.Entity is OrganizationAiDefault or OrganizationAiPreference && (int)property.CurrentValue! != 0 && (int)property.CurrentValue! != OrganizationId)
+                        throw new ChatException(403, "Acesso entre organizacoes negado.");
+                    property.CurrentValue = OrganizationId;
+                }
                 else if ((int)property.OriginalValue! != OrganizationId || (int)property.CurrentValue! != OrganizationId)
                     throw new ChatException(403, "Acesso entre organizacoes negado.");
             }
@@ -64,8 +70,21 @@ public class PortalDbContext : DbContext
         modelBuilder.Entity<Organization>(e => { e.ToTable("Organizations"); e.HasKey(x => x.Id); e.HasIndex(x => x.Slug).IsUnique(); });
         modelBuilder.Entity<OrganizationMembership>(e => {
             e.ToTable("OrganizationMemberships"); e.HasKey(x => new { x.OrganizationId, x.UserId });
+            e.Property(x => x.PolicyRole).HasMaxLength(20);
+            e.Property(x => x.Version).IsConcurrencyToken().HasDefaultValue(0);
             e.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<OrganizationAiDefault>(e => {
+            e.ToTable("OrganizationAiDefaults"); e.HasKey(x => x.OrganizationId); e.Property(x => x.Version).IsConcurrencyToken();
+            e.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+            e.HasQueryFilter(x => IsSystem || x.OrganizationId == OrganizationId);
+        });
+        modelBuilder.Entity<OrganizationAiPreference>(e => {
+            e.ToTable("OrganizationAiPreferences"); e.HasKey(x => new { x.OrganizationId, x.UserId });
+            e.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+            e.HasQueryFilter(x => IsSystem || x.OrganizationId == OrganizationId);
         });
         modelBuilder.Entity<KnowledgeBaseItem>().HasQueryFilter(x => IsSystem || x.OrganizationId == OrganizationId);
         modelBuilder.Entity<Role>().HasQueryFilter(x => IsSystem || x.OrganizationId == OrganizationId);
@@ -372,4 +391,11 @@ public class RolePermission
 
 public interface IOrganizationEntity { int OrganizationId { get; set; } }
 public class Organization { public int Id { get; set; } public string Name { get; set; } = ""; public string Slug { get; set; } = ""; public bool IsActive { get; set; } = true; }
-public class OrganizationMembership { public int OrganizationId { get; set; } public int UserId { get; set; } public bool IsActive { get; set; } = true; }
+public class OrganizationMembership {
+    public int OrganizationId { get; set; }
+    public int UserId { get; set; }
+    public bool IsActive { get; set; } = true;
+    // Null deliberately preserves existing custom group grants (no automatic privilege gain).
+    public string? PolicyRole { get; set; }
+    public int Version { get; set; }
+}

@@ -1,6 +1,6 @@
 # Atlas Serviços Digitais — Base de conhecimento fictícia (v1)
 
-> DEMONSTRAÇÃO. Empresa, pessoas, contratos, políticas, indicadores e valores são inteiramente fictícios. Não são aconselhamento jurídico ou financeiro. Não utilizar dados da Conveste nem de clientes reais.
+> DEMONSTRAÇÃO. Empresa, pessoas, contratos, políticas, indicadores e valores são inteiramente fictícios. Não são aconselhamento jurídico ou financeiro. NãN?o utilizar dados de empregadores nem de clientes reais.
 
 ## 01 — Perfil da organização
 **ID:** atlas-company-profile

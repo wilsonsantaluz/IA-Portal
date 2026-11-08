@@ -1,4 +1,12 @@
-# IA-Portal — Índice técnico e decisões
+# IA-Portal — Technical documentation
+
+New contributors: [current state](architecture/CURRENT_STATE.md),
+[target architecture](architecture/TARGET_ARCHITECTURE.md),
+[product roadmap](ROADMAP.md), [self-hosting](SELF_HOSTING.md),
+[setup specification](features/SETUP_WIZARD.md) and
+[license decision](LICENSE_OPTIONS.md). These English documents describe the
+Community/shared-core direction. Historical delivery records below remain in
+Portuguese and must not be confused with a claim that all SaaS features exist.
 
 Este conjunto documenta **o objetivo e os contratos propostos**, não uma afirmação de que tudo já está implementado. O Codex deve confrontá-lo com o repositório antes de editar código.
 

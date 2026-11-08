@@ -214,3 +214,38 @@ Restart do gateway preservou docs/conexao/conversa sem duplicar ou criar backup.
 A limitacao anterior de "LLM pago nao executado" descreve a entrega inicial e
 foi superada para esse smoke local; nao representa auditoria ampla do modelo
 ou validacao de fontes empresariais/publicas externas. Diario contem detalhes.
+
+## 2026-11-07 — Auditoria OCI Always Free e preparo de automação
+
+Somente leitura remota, sem provisionamento/deploy. Nova branch
+feature/oci-always-free criada a partir de main limpa após merge do PR #9.
+CLI Windows 3.96.0 autenticada por API Signing Key; Home sa-saopaulo-1 e um AD.
+Inventário raiz/subcompartments não encontrou VMs, boot/block volumes nem quotas
+customizadas. Shape A1 billing-type LIMITED_FREE; recursos disponíveis e imagem
+oficial Ubuntu 24.04 aarch64 compatível confirmados via APIs OCI. O relatório
+mensal de uso retornou vazio, sujeito ao atraso de billing.
+
+VCN 1 sem default route. VCN 2 com subnet pública, rota default para IGW ativo
+da mesma VCN, mas security list abre SSH para todos e não permite HTTP/HTTPS.
+Nenhum NSG existente encontrado. Dry-run real recusou provisionamento por essas
+regras; nenhuma alteração remota foi executada. Proposta de ingress foi gerada
+apenas em artifacts/oci-audit (ignorado), aguardando autorização do proprietário.
+
+Compose inspecionado: SQLite, gateway .NET, frontend React/Nginx, ML/OCR .NET,
+Qdrant opcional e Trino Atlas. Sem PostgreSQL ou container Python/ReRAG. Todos
+os manifests das imagens-base consultadas oferecem ARM64; isso não comprova
+workload. MKL Redist não contém linux-arm64; ONNX/tokenizer contêm, mas inferência
+nativa não foi testada nessa arquitetura. OCR atual usa executáveis de sistema.
+Compatibilidade integral ARM64, dimensionamento e hardening/deploy permanecem
+para outra etapa. Detalhes e evidências em infra/oracle/README.md.
+
+## 2026-11-07 — Community/shared-core audit and workspace increment
+
+The new English [CURRENT_STATE.md](CURRENT_STATE.md) is the baseline audit for
+the shared self-hosted/managed-core direction. Existing organizations/filters
+were confirmed before changes. Organization provisioning/policies, scoped model
+preferences/defaults and the selector fix are the bounded increment; see the
+[delivery report](../delivery/COMMUNITY_WORKSPACE_REPORT.md) for migration 007,
+legacy policy, actual tests and remaining SaaS/security/ARM64 limits. No license
+selected, application deployed or Oracle resource modified in this task. The
+previous local OCI retry process was stopped to respect that instruction.

@@ -584,3 +584,184 @@ Validação:
 Sem migrations, mudanças no backend ou operações sobre dados. Testes .NET não
 reexecutados pois o incremento altera somente frontend. Preview: localhost:9080;
 recarregar a aba para receber a versão nova. Não houve push/merge/publicação.
+
+## 2026-11-07 — OCI: diagnóstico e provisionamento somente dry-run
+
+Pedido autoriza consultas remotas e arquivos locais; exige confirmação antes
+de qualquer mudança de rede, criação de VM/recurso ou deploy. Nenhuma ação de
+escrita remota foi executada. Branch feature/oci-always-free, criada de main
+limpa. AGENTS, docs/README e ROADMAP lidos antes da implementação.
+
+Entregues:
+- infra/oracle/provision-always-free.ps1: PowerShell 5.1/OCI CLI, DryRun padrão,
+  perfil/config local, Home Region fixa, A1 2 OCPUs/12 GB, imagem oficial Ubuntu
+  24.04 aarch64, boot default com 10 VPU/GB, IPv4 público, chave apenas .pub.
+  Sem fallback de região/shape, recursos adicionais ou edição de .env.
+- Preflight faz inventário da tenancy/subcompartments, quotas/disponibilidade,
+  uso A1 mensal reportado, armazenamento e política completa de ingress da
+  subnet. Falha de leitura/IAM bloqueia; não presume recurso ausente por erro.
+- Retry exclusivamente para capacity OCI explícita, intervalo 1.800 segundos,
+  sem retries automáticos da CLI; lock local, journal antes do POST e reconciliação
+  somente leitura em resposta ambígua. Erros definitivos encerram imediatamente.
+- infra/oracle/provision-always-free.tests.ps1: testes offline sem Pester/OCI,
+  com fixtures sintéticas do preflight e da máquina de estados.
+- infra/oracle/README.md: operação, proposta de rede, recuperação, custos,
+  limites da garantia de gratuidade e diagnóstico Compose/ARM64.
+- docs/architecture/AS_IS_AUDIT.md: achados reais desta inspeção.
+
+Consultas efetivamente realizadas (OCI CLI 3.96.0): region-subscription,
+availability-domain, compartments subtree/ANY, instance list, shapes, imagens e
+image-shape compatibility; limits value/resource-availability compute/storage,
+quotas, boot/block volumes, duas VCNs/subnets/route tables, Internet Gateway e
+security lists; NSGs da VCN 2; usage-api mês atual. Comandos de list --all vazios
+retornam stdout vazio e exit 0; tratado explicitamente. Primeira consulta de uso
+rejeitou precisão de hora; corrigida para limites de dia UTC e retornou items [].
+Nenhuma inferência/modelo externo foi chamado.
+
+Resultados: autenticação PASS; nenhuma VM/volume encontrados. A1 elegível como
+LIMITED_FREE; teto local imposto de 2 OCPUs/12 GB, apesar dos maiores limites de
+Trial. 200 GB free storage livres. Imagem Canonical Ubuntu 24.04 aarch64 publicada
+em 30/10/2026, tamanho 47.694 MiB, compatível. Chave pública SSH localizada em
+Downloads e validada com ssh-keygen -l (RSA 2048); nenhuma chave privada lida ou
+copiada. IP administrativo detectado por HTTPS, guardado apenas no estado local.
+
+VCN 1: route-rules vazia. VCN 2: route default/IGW/public IPv4 PASS; SSH mundial,
+80/443 ausentes. Proposta local de ingress/ETag em artifacts/oci-audit (ignorado
+pelo Git), sem update OCI. Alteração proposta preserva ICMP e egress, restringe
+22 ao /32 administrativo e abre somente web 80/443.
+
+Verificações executadas:
+- powershell -NoProfile -ExecutionPolicy Bypass -File
+  infra/oracle/provision-always-free.tests.ps1: PASS, 74 assertions offline;
+  sem API OCI, sem VM e sem espera real. Inclui portas internas bloqueadas,
+  quota/histórico A1/VM parada, dry-run, aprovação, lock, journal, erro fatal,
+  timeout, reconciliação e capacity -> sucesso simulado.
+- powershell -NoProfile -ExecutionPolicy Bypass -File
+  infra/oracle/provision-always-free.ps1 -Mode DryRun: execução real somente
+  leitura contra OCI, repetida; resultado Blocked com quatro motivos esperados
+  da security list. Exit 2 confirmado por subprocess Python, sem launch.
+- docker buildx imagetools inspect --raw: PASS manifests linux/arm64 de
+  dotnet aspnet/sdk 8.0, node22-alpine, nginx1.25-alpine, qdrant1.20.0 e digest
+  Trino484 fixado. Não foi feito build/runtime ARM64; NuGet MKL só x64 é ressalva.
+- git diff --check: PASS.
+
+Não executados: provisionamento real, alteração de rede, scheduler, deploy,
+login SSH remoto, build da aplicação (fontes de backend/frontend inalteradas),
+inferência ARM64 ou benchmark. Sem migrations, reset de banco, upgrade da conta,
+push ou merge. Logs/estado em LOCALAPPDATA, sem credenciais; inventário bruto
+local ignorado pode conter tags pessoais e não deve ser publicado. A próxima
+etapa depende da confirmação explícita para a mudança concreta de rede e/ou
+início do provisionamento. Gratuidade continua condicionada aos termos OCI e
+uso agregado; limite/estimativa de preço não equivale a garantia de fatura zero.
+
+## 2026-11-07 — Rede OCI autorizada e loop real iniciado
+
+O proprietário respondeu "sim autorizo" ao resumo que propôs restringir SSH ao
+/32 administrativo, liberar 80/443 na VCN 2 e, após dry-run aprovado, iniciar o
+provisionamento A1 2 OCPUs/12 GB/boot padrão. Autorização não inclui deploy.
+Branch feature/oci-always-free inicialmente limpa; AGENTS relido.
+
+Executado sequencialmente:
+- IP público de saída relido por HTTPS e confirmado igual ao /32 aprovado.
+- Subnet/route table/IGW da VCN 2 relidos: públicos/rota default/IGW habilitado
+  da mesma VCN. Security list relida e ingress/egress comparados ao diagnóstico
+  anterior antes de qualquer update. Nenhuma mudança concorrente encontrada.
+- OCI network security-list update usando payload local previamente revisado e
+  --if-match com ETag recém-lido: PASS. Somente ingress alterado. Nova leitura
+  confirmou TCP 22 restrito, 80/443 públicos stateful, ICMP e egress preservados.
+  VCN 1, rotas, IGWs, conta e outros recursos não foram alterados.
+- powershell -NoProfile -ExecutionPolicy Bypass -File
+  infra/oracle/provision-always-free.ps1 -Mode DryRun -AdminCidr <aprovado>:
+  PASS, Ready/blockers=0. Inventário/limites/imagem/armazenamento/rede aprovados.
+- Runner PowerShell iniciado com Start-Process -WindowStyle Hidden, imagem
+  fixada ao ID aprovado, -Mode Provision -ProvisionApproved e o mesmo /32.
+  Estado/PID/início e stdout/stderr somente no LOCALAPPDATA, fora do Git.
+- Preflight do modo real: Ready. Primeiro launch em 07/11/2026 às 18:41:24
+  America/Sao_Paulo; resposta capacity explícita às 18:41:27. Journal=Capacity;
+  processo vivo, aguardando intervalo de 1.800 segundos; stderr vazio.
+- Verificação somente leitura após o launch: zero instâncias não terminadas,
+  zero boot volumes e zero block volumes. Identidade do processo (PID/início)
+  conferida. Nenhuma VM criada nesta primeira tentativa.
+
+README atualizado com estado histórico/operacional, acompanhamento e interrupção
+segura do runner oculto. Ele não é tarefa agendada nem serviço persistente após
+reinício; requer PC ligado e sem suspensão. Script aguarda capacity e se encerra
+em sucesso ou em erro definitivo, conforme as travas implementadas. Não iniciar
+outro processo em paralelo. Monitorar logs/journal para o resultado futuro.
+
+Nenhuma chave privada lida/copiadada, nenhum .env/banco/app alterado, sem deploy,
+SSH remoto ou inferência. Estado bruto/revisão de rede ficam em artifacts/oci-audit
+(ignorado), sem dados pessoais no commit. Alterações deste incremento no repo
+são apenas documentação operacional; não houve novo build de backend/frontend.
+
+## 2026-11-07 — Shared Community/Cloud core: bounded workspace increment
+
+Audit completed before application edits in
+[CURRENT_STATE.md](../architecture/CURRENT_STATE.md). New branch
+feature/community-organizations from clean 01d33bc. The previous local OCI retry
+runner was stopped by verified PID/start time to honor the new no-OCI-change
+instruction; no OCI API called. No production deployment, license choice, paid
+inference/dependency, .env edit or existing database reset/migration performed.
+
+Existing tenant middleware, membership validation, query/write guards, KB/vector
+revalidation, conversations and Trino grants were reused. Delivered organization
+creation, explicit Owner/Admin/Member/Viewer policies (legacy custom groups
+preserved), owner-only membership changes with CAS/final-owner protection,
+organization model defaults/preferences, a workspace screen and the explicit
+header selector fix. Credentials/endpoints remain installation-owned, not a
+plaintext tenant secret editor. Added one insert-only, versioned support template
+using the existing KB/index service and existing chat; wizard UX specified with
+only the first reusable form implemented. English community/architecture/security/
+  self-hosting/roadmap documentation added; Apache/AGPL decision left pending.
+Two historical employer identifiers generalized; vector question/title logging
+removed from the audited retrieval path.
+
+Migration 007: additive membership policy/version and organization AI tables;
+legacy model preference copied only to organization 1. Existing admins keep Admin,
+lowest active admin becomes exactly one initial Owner per organization, existing
+custom grants stay unchanged. Old migration text/checksums untouched. Backup,
+restore/re-upgrade, idempotency and injected late DDL rollback tested on real v6
+fixtures (including multiple administrators), never on the existing portal DB.
+During failure testing, SQLite 8 ExecuteNonQuery suppressed later batch errors;
+runner now explicitly consumes each reader result before recording success.
+Upstream reference: https://github.com/dotnet/efcore/issues/32740.
+
+Actual verification:
+- Backend gateway build PASS (11 preexisting warnings); OCR/ML builds PASS (0).
+- .NET suites Workspace, Organizations, AtlasKnowledge, Connectors, Providers,
+  ChatSessions, ChatTitles, Usage, BusinessChat and access/SeedSmoke PASS.
+- Workspace additionally sends a scoped vector filter and injects foreign,
+  missing-scope, mismatched-row and inactive candidates; rejects them before
+  reranking and loads only authorized relational context: PASS.
+- python scripts/smoke_organizations.py PASS: real HTTP/JWT/temporary SQLite,
+  tenant creation/switch/forged IDs; defaults/preferences; Member/Admin/Viewer
+  denials and existing-JWT revocation; final Owner/stale versions; cross-tenant
+  KB/history/usage/connectors; template idempotency, human edits and actual
+  retrieval into the existing streaming prompt. LLM HTTP double, no paid calls.
+- python scripts/smoke_local.py --atlas PASS: complete existing API regression,
+  temporary SQLite and LLM/OCR/Trino HTTP doubles, restart persistence.
+- RagSmoke first required its explicit disposable endpoint. Then PASS with new
+  empty Qdrant container, real local ONNX embeddings/reranking, fake LLM, SQLite
+  temp and SSE. Container removed in finally. A wrapper console encoding error
+  happened after test exit 0; saved test log was read safely to confirm success.
+  This validates the Windows host path, not ARM64. No local user index touched.
+- npm run typecheck/build --prefix front PASS (existing large-chunk warning).
+- Playwright organizations.cjs PASS: actual create/header switch/reload/default/
+  template UI with API fixtures, themes, 390/320px and axe main checks. Atlas UI
+  regression and atlas-security.cjs PASS. Light/dark captures inspected locally.
+- Python Atlas dataset tests PASS (4). git diff --check PASS.
+
+Initial failures were fixed and rerun: schema max version, old synthetic fixtures,
+late batch error suppression, deterministic owner update, expected Owner label,
+test HTTP/SSE route assumptions, Python SQLite connection cleanup on Windows,
+required form labels and stale hover-tooltip timing during browser resize.
+No authorization bypass or production data reset was used.
+
+Full file inventory, command outcomes, limits and next steps:
+[COMMUNITY_WORKSPACE_REPORT.md](COMMUNITY_WORKSPACE_REPORT.md).
+Not delivered: invitations, tenant credential vault/model allowlists, multiple KB
+libraries/history, agents, official WhatsApp/other channels, billing/quotas, CI
+workflow or production readiness. Recommended next: consenting invitations and
+ownership UX, then tenant credential/model policy. Existing running containers
+were not upgraded; SELF_HOSTING.md describes preserving the current Compose
+settings and applying the reviewed images/migration with backup locally.
