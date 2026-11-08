@@ -134,11 +134,67 @@ def main():
                 request(f"/api/organizations/current/members/{bob}", {"role":"Viewer", "isActive":False, "version":3}, method="PUT", expected=204)
                 token = member["token"]
                 request("/api/auth/me", expected=401)
+                # New recipient already has an account in B, but no access to A.
+                token = owner["token"]; organization = b
+                recipient_secret = uuid.uuid4().hex
+                recipient_id = request("/api/users", {"userName":"Recipient B", "userEmail":"recipient@example.test", "password":recipient_secret, "groupIds":[]}, expected=201)["userId"]
+                recipient_token = request("/api/auth/login", {"email":"recipient@example.test", "password":recipient_secret})["token"]
+                organization = a
+                invite = request("/api/organizations/current/invitations", {"role":"Viewer"}, expected=201)
+                listed = request("/api/organizations/current/invitations")
+                assert invite["token"] not in json.dumps(listed) and "tokenHash" not in json.dumps(listed)
+                token = ""
+                request("/api/organization-invitations/preview", {"token":invite["token"]}, expected=401)
+                token = recipient_token; organization = b
+                request("/api/kb/all", selected=a, expected=401)
+                preview = request("/api/organization-invitations/preview", {"token":invite["token"]})
+                assert preview["name"] == "Workspace A" and preview["role"] == "Viewer"
+                assert len(request("/api/organizations")) == 1, "Preview must not join"
+                joined = request("/api/organization-invitations/accept", {"token":invite["token"], "organizationId":b, "role":"Owner"})
+                assert joined["organizationId"] == a and not joined["alreadyMember"]
+                assert request("/api/auth/me", selected=a)["roles"] == ["Viewer"]
+                request("/api/chatBot/sessions", selected=a, expected=403)
+                request("/api/organization-invitations/accept", {"token":invite["token"]}, expected=404)
+                request("/api/organization-invitations/preview", {"token":"invalid"}, expected=404)
+                token = owner["token"]; organization = a
+                keep = request("/api/organizations/current/invitations", {"role":"Member"}, expected=201)
+                token = recipient_token; organization = b
+                assert request("/api/organization-invitations/accept", {"token":keep["token"]})["alreadyMember"]
+                assert request("/api/auth/me", selected=a)["roles"] == ["Viewer"], "Existing role is preserved"
+                token = owner["token"]; organization = a
+                revoke = request("/api/organizations/current/invitations", {"role":"Member"}, expected=201)
+                request(f"/api/organizations/current/invitations/{revoke['id']}/revoke", {"version":0}, selected=b, expected=404)
+                request(f"/api/organizations/current/invitations/{revoke['id']}/revoke", {"version":0}, expected=204)
+                token = recipient_token; organization = b
+                request("/api/organization-invitations/preview", {"token":revoke["token"]}, expected=404)
+                token = owner["token"]; organization = a
+                request(f"/api/organizations/current/members/{recipient_id}", {"role":"Admin", "isActive":True, "version":0}, method="PUT", expected=204)
+                token = recipient_token
+                request("/api/organizations/current/invitations", expected=403)
+                request("/api/organizations/current/invitations", {"role":"Member"}, expected=403)
+                request("/api/organizations/current/transfer-ownership", {"targetUserId":1,"ownerVersion":0,"targetVersion":0}, expected=403)
+                token = owner["token"]
+                pending = request("/api/organizations/current/invitations", {"role":"Member"}, expected=201)
+                request("/api/organizations/current/transfer-ownership", {"targetUserId":recipient_id,"ownerVersion":99,"targetVersion":1}, expected=409)
+                assert "Owner" in request("/api/auth/me")["roles"], "Failed transfer must be atomic"
+                request("/api/organizations/current/transfer-ownership", {"targetUserId":recipient_id,"ownerVersion":0,"targetVersion":1}, expected=204)
+                assert request("/api/auth/me")["roles"] == ["Admin"]
+                assert "Owner" in request("/api/auth/me", selected=b)["roles"], "Other memberships untouched"
+                request("/api/organizations/current/invitations", expected=403)
+                token = recipient_token; organization = b
+                request("/api/organization-invitations/preview", {"token":pending["token"]}, expected=404)
+                organization = a
+                assert request("/api/auth/me")["roles"] == ["Owner"]
+                request(f"/api/organizations/current/members/{recipient_id}", {"role":"Viewer","isActive":True,"version":2}, method="PUT", expected=409)
                 with closing(sqlite3.connect(database)) as db:
                     assert db.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
                     assert db.execute("SELECT count(*) FROM OrganizationAiDefaults WHERE OrganizationId=?", (a,)).fetchone()[0] == 1
                     assert db.execute("SELECT count(*) FROM OrganizationAiDefaults WHERE OrganizationId=?", (b,)).fetchone()[0] == 0
+                    assert db.execute("SELECT count(*) FROM UserRoles WHERE UserId=?", (recipient_id,)).fetchone()[0] == 0
+                    assert all(value[0] not in (invite["token"],keep["token"],revoke["token"],pending["token"]) for value in db.execute("SELECT TokenHash FROM OrganizationInvitations"))
+                assert all(i["token"] not in log_path.read_text(encoding="utf8") for i in (invite,keep,revoke,pending)), "Capabilities must not be logged"
                 print("PASS: real JWT/HTTP/SQLite create+switch, role revocation on existing JWT, last Owner, Viewer/Member denials, organization defaults/preferences, cross-tenant KB/session/usage/connectors and insert-only template preservation. No paid calls.")
+                print("PASS: authenticated explicit invitation consent across tenants, no preview grant/replay/downgrade/owner overposting/group grant/token logging, tenant-scoped revocation, Admin denial, stale/atomic ownership transfer and issuer invalidation.")
             except Exception:
                 # Only this temporary test process's synthetic log; never application logs or .env.
                 print(log_path.read_text(encoding="utf8")[-2000:])

@@ -20,6 +20,7 @@ public class PortalDbContext : DbContext
     public DbSet<OrganizationMembership> OrganizationMemberships => Set<OrganizationMembership>();
     public DbSet<OrganizationAiDefault> OrganizationAiDefaults => Set<OrganizationAiDefault>();
     public DbSet<OrganizationAiPreference> OrganizationAiPreferences => Set<OrganizationAiPreference>();
+    public DbSet<OrganizationInvitation> OrganizationInvitations => Set<OrganizationInvitation>();
 
     private void EnforceScope()
     {
@@ -31,7 +32,7 @@ public class PortalDbContext : DbContext
             {
                 var property = entry.Property(nameof(IOrganizationEntity.OrganizationId));
                 if (entry.State == EntityState.Added) {
-                    if (entry.Entity is OrganizationAiDefault or OrganizationAiPreference && (int)property.CurrentValue! != 0 && (int)property.CurrentValue! != OrganizationId)
+                    if (entry.Entity is OrganizationAiDefault or OrganizationAiPreference or OrganizationInvitation && (int)property.CurrentValue! != 0 && (int)property.CurrentValue! != OrganizationId)
                         throw new ChatException(403, "Acesso entre organizacoes negado.");
                     property.CurrentValue = OrganizationId;
                 }
@@ -68,6 +69,15 @@ public class PortalDbContext : DbContext
         modelBuilder.Entity<AiUserPreference>(e => { e.ToTable("AiUserPreferences"); e.HasKey(x => x.UserId); e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict); });
         modelBuilder.Entity<AiSystemDefault>(e => { e.ToTable("AiSystemDefault"); e.HasKey(x => x.Id); e.Property(x => x.Version).IsConcurrencyToken(); });
         modelBuilder.Entity<Organization>(e => { e.ToTable("Organizations"); e.HasKey(x => x.Id); e.HasIndex(x => x.Slug).IsUnique(); });
+        modelBuilder.Entity<OrganizationInvitation>(e => {
+            e.ToTable("OrganizationInvitations",t=>t.HasCheckConstraint("CK_OrganizationInvitations_Role","Role IN ('Member','Viewer')"));
+            e.HasKey(x=>x.Id); e.HasIndex(x=>x.TokenHash).IsUnique(); e.HasIndex(x=>new{x.OrganizationId,x.ExpiresAt});
+            e.Property(x=>x.TokenHash).HasMaxLength(64); e.Property(x=>x.Version).IsConcurrencyToken();
+            e.HasOne<Organization>().WithMany().HasForeignKey(x=>x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<User>().WithMany().HasForeignKey(x=>x.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<User>().WithMany().HasForeignKey(x=>x.AcceptedByUserId).OnDelete(DeleteBehavior.Restrict);
+            e.HasQueryFilter(x=>IsSystem || x.OrganizationId==OrganizationId);
+        });
         modelBuilder.Entity<OrganizationMembership>(e => {
             e.ToTable("OrganizationMemberships"); e.HasKey(x => new { x.OrganizationId, x.UserId });
             e.Property(x => x.PolicyRole).HasMaxLength(20);

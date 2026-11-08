@@ -15,12 +15,13 @@ import DescriptionOutlined from "@mui/icons-material/DescriptionOutlined";
 import ForumOutlined from "@mui/icons-material/ForumOutlined";
 import InsightsOutlined from "@mui/icons-material/InsightsOutlined";
 import { useAuth } from "../auth/AuthProvider";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Brand from "../components/Brand";
 import ThemeToggle from "../components/ThemeToggle";
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -31,7 +32,10 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      navigate("/");
+      const from = (location.state as { from?: { pathname?: string; hash?: string } } | null)?.from;
+      const hash = from?.pathname === "/invite" ? from.hash : location.hash;
+      // Only the exact local invitation route may be resumed; no arbitrary return URL.
+      navigate(/^#invite=[a-fA-F0-9]{64}$/.test(hash || "") ? `/invite${hash}` : "/", { replace: true });
     } catch {
       setError("Usuário ou senha inválidos");
     } finally {

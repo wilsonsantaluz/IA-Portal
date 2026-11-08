@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
+import { switchOrganization } from "../auth/switchOrganization";
 import {
   Box,
   Toolbar,
@@ -43,13 +44,6 @@ export default function HeaderBar({
     load(); window.addEventListener("organizations-changed", load);
     return () => { active = false; window.removeEventListener("organizations-changed", load); };
   }, []);
-  async function switchOrganization(id: number) {
-    if (!user) return;
-    const { data } = await api.get("/api/auth/me", { headers: { "X-Organization-Id": String(id) } });
-    localStorage.setItem("auth", JSON.stringify({ ...data, token: user.token }));
-    // Reload clears in-flight view state/history; requests retain their original scoped header.
-    window.location.assign("/");
-  }
   const title =
     (
       {
@@ -62,6 +56,7 @@ export default function HeaderBar({
         "/data-connectors": "Data Connectors",
         "/usage": "Consumo de Inteligência Artificial",
         "/organizations": "Organizações",
+        "/invite": "Convite de organização",
       } as Record<string, string>
     )[pathname] || "IA-Portal";
   return (

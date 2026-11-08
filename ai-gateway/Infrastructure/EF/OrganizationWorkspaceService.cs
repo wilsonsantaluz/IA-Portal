@@ -9,6 +9,7 @@ namespace Portal.AI.Gateway.Infrastructure;
 public sealed record CreateOrganizationRequest([Required, StringLength(100, MinimumLength=2)] string Name,
     [Required, StringLength(48, MinimumLength=3)] string Slug);
 public sealed record MembershipPolicyRequest([Required] string Role, bool IsActive, int Version);
+public sealed record OwnershipTransferRequest(int TargetUserId,int OwnerVersion,int TargetVersion);
 
 public sealed class OrganizationWorkspaceService(PortalDbContext db, AiProviderCatalog catalog,
     ILogger<OrganizationWorkspaceService> logger)
@@ -46,6 +47,7 @@ public sealed class OrganizationWorkspaceService(PortalDbContext db, AiProviderC
         var member = await db.OrganizationMemberships.SingleOrDefaultAsync(m => m.OrganizationId==db.OrganizationId && m.UserId==userId,ct)
             ?? throw new ChatException(404,"Membro não encontrado nesta organização.");
         if (member.Version != request.Version) throw new ChatException(409,"Associação alterada; atualize a página.");
+        if(request.Role=="Owner" && member.PolicyRole!="Owner")throw new ChatException(400,"Use a transferência de propriedade para definir um novo Owner.");
         if (member.PolicyRole=="Owner" && member.IsActive && (!request.IsActive || request.Role!="Owner") &&
             !await db.OrganizationMemberships.AnyAsync(m => m.OrganizationId==db.OrganizationId && m.UserId!=userId && m.IsActive && m.PolicyRole=="Owner" && db.Users.Any(u => u.UserId==m.UserId && u.IsActive),ct))
             throw new ChatException(409,"Mantenha pelo menos um Owner ativo.");
@@ -59,6 +61,20 @@ public sealed class OrganizationWorkspaceService(PortalDbContext db, AiProviderC
     {
         var item=await db.OrganizationAiDefaults.AsNoTracking().SingleOrDefaultAsync(x=>x.OrganizationId==db.OrganizationId,ct);
         return new { item?.Provider, item?.Model, version=item?.Version ?? 0, inherited=item is null };
+    }
+
+    public async Task TransferOwnership(int actor,OwnershipTransferRequest request,CancellationToken ct) {
+        if(actor==request.TargetUserId)throw new ChatException(400,"Selecione outro membro ativo.");
+        await using var tx=await db.Database.BeginTransactionAsync(ct);
+        var owner=await db.OrganizationMemberships.SingleOrDefaultAsync(m=>m.OrganizationId==db.OrganizationId && m.UserId==actor && m.IsActive && m.PolicyRole=="Owner",ct);
+        if(owner is null)throw new ChatException(403,"Somente Owner pode transferir a propriedade.");
+        var target=await db.OrganizationMemberships.SingleOrDefaultAsync(m=>m.OrganizationId==db.OrganizationId && m.UserId==request.TargetUserId && m.IsActive && db.Users.Any(u=>u.UserId==m.UserId && u.IsActive),ct)
+            ?? throw new ChatException(404,"Membro ativo não encontrado nesta organização.");
+        if(owner.Version!=request.OwnerVersion || target.Version!=request.TargetVersion)throw new ChatException(409,"Associação alterada; atualize a página.");
+        if(target.PolicyRole=="Owner")throw new ChatException(409,"O membro já é Owner.");
+        target.PolicyRole="Owner";target.Version++;owner.PolicyRole="Admin";owner.Version++;
+        try{await db.SaveChangesAsync(ct);await tx.CommitAsync(ct);}catch(DbUpdateConcurrencyException){throw new ChatException(409,"Associação alterada; atualize a página.");}
+        logger.LogInformation("OrganizationOwnershipTransferred Organization={Organization} Actor={Actor} NewOwner={NewOwner}",db.OrganizationId,actor,request.TargetUserId);
     }
 
     public async Task SetDefault(int actor, DefaultUpdate request, CancellationToken ct)
