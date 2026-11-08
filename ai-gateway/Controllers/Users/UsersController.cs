@@ -60,6 +60,10 @@ public class UsersController(PortalDbContext db) : ControllerBase
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         var user = await Members.Include(x => x.Roles).ThenInclude(x => x.Role).FirstOrDefaultAsync(x => x.UserId == id, ct);
         if (user is null) return NotFound();
+        var targetPolicy = await db.OrganizationMemberships.Where(m=>m.OrganizationId==db.OrganizationId && m.UserId==id).Select(m=>m.PolicyRole).SingleAsync(ct);
+        var actorPolicy = await db.OrganizationMemberships.Where(m=>m.OrganizationId==db.OrganizationId && m.UserId==PortalAccess.UserId(User)).Select(m=>m.PolicyRole).SingleAsync(ct);
+        if (targetPolicy=="Owner" && actorPolicy!="Owner") return Forbid();
+        if (targetPolicy=="Owner" && !req.IsActive) return Conflict(new { error="Transfira o papel Owner antes de desativar a conta." });
         // A tenant admin must never reset a shared identity and acquire its other memberships.
         var shared = await db.OrganizationMemberships.AnyAsync(x => x.UserId == id && x.OrganizationId != db.OrganizationId, ct);
         if (shared && (req.Password is not null || req.IsActive != user.IsActive || req.UserEmail.Trim().ToLowerInvariant() != user.UserEmail.ToLowerInvariant() || req.UserName.Trim() != user.UserName))

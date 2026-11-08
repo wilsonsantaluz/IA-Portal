@@ -37,7 +37,12 @@ export default function HeaderBar({
   const { pathname } = useLocation();
   const [organizations, setOrganizations] = useState<{ id: number; name: string }[]>([]);
   const [organizationError, setOrganizationError] = useState(false);
-  useEffect(() => { let active = true; api.get("/api/organizations").then(({ data }) => { if (active) setOrganizations(data); }).catch(() => { if (active) setOrganizationError(true); }); return () => { active = false; }; }, []);
+  useEffect(() => {
+    let active = true;
+    const load = () => { void api.get("/api/organizations").then(({ data }) => { if (active) setOrganizations(data); }).catch(() => { if (active) setOrganizationError(true); }); };
+    load(); window.addEventListener("organizations-changed", load);
+    return () => { active = false; window.removeEventListener("organizations-changed", load); };
+  }, []);
   async function switchOrganization(id: number) {
     if (!user) return;
     const { data } = await api.get("/api/auth/me", { headers: { "X-Organization-Id": String(id) } });
@@ -56,6 +61,7 @@ export default function HeaderBar({
         "/settings/ai": "Configurações · Inteligência Artificial",
         "/data-connectors": "Data Connectors",
         "/usage": "Consumo de Inteligência Artificial",
+        "/organizations": "Organizações",
       } as Record<string, string>
     )[pathname] || "IA-Portal";
   return (

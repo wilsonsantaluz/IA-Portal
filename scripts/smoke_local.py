@@ -211,7 +211,7 @@ def main():
                 assert "/api/ocr/analisar" in request("/swagger/v1/swagger.json")["paths"]
                 login = request("/api/auth/login", {"email": "admin@example.test", "password": admin_secret})
                 token = login["token"]
-                assert "admin" in login["roles"]
+                assert "Owner" in login["roles"]
                 assert len(request("/api/kb/all")) == 1
                 if atlas_count:
                     assert len(request("/api/organizations")) == 2

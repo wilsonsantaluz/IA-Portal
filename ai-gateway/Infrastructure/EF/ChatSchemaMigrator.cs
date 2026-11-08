@@ -14,6 +14,14 @@ public static class ChatSchemaMigrator
         var checksum = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(sql)));
         await db.Database.OpenConnectionAsync();
         var connection = (SqliteConnection)db.Database.GetDbConnection();
+        async Task ExecuteScript(string text) {
+            // Microsoft.Data.Sqlite 8 can swallow later batch errors when a reader is
+            // disposed by ExecuteNonQuery. Explicitly consume every result before commit.
+            using var command = connection.CreateCommand(); command.CommandText = text;
+            command.Transaction = (SqliteTransaction?)db.Database.CurrentTransaction?.GetDbTransaction();
+            using var reader = await command.ExecuteReaderAsync();
+            while (await reader.NextResultAsync()) { }
+        }
         async Task<long> Count(string query) { using var c = connection.CreateCommand(); c.CommandText = query; return Convert.ToInt64(await c.ExecuteScalarAsync()); }
         async Task<HashSet<string>> Columns(string table) {
             using var c = connection.CreateCommand(); c.CommandText = $"PRAGMA table_info(\"{table}\")";
@@ -44,7 +52,7 @@ public static class ChatSchemaMigrator
             if (!fresh && columns.Count > 0) throw new InvalidOperationException("Tabela de consumo sem migração reconhecida.");
             if (!fresh && !alreadyBackedUp) await Backup(2);
             await using var tx = await db.Database.BeginTransactionAsync();
-            if (!fresh) await db.Database.ExecuteSqlRawAsync(script);
+            if (!fresh) await ExecuteScript(script);
             await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO SchemaVersions VALUES (2, {hash}, {DateTime.UtcNow})");
             using var check = connection.CreateCommand(); check.Transaction = (SqliteTransaction)tx.GetDbTransaction(); check.CommandText = "PRAGMA foreign_key_check";
             using (var reader = await check.ExecuteReaderAsync()) if (await reader.ReadAsync()) throw new InvalidOperationException("Integridade referencial inválida na migração de títulos.");
@@ -65,7 +73,7 @@ public static class ChatSchemaMigrator
             if (!fresh && (columns.Contains("EstimatedCostNanoUsd") || columns.Contains("PriceVersion"))) throw new InvalidOperationException("Migração parcial de consumo não reconhecida.");
             if (!fresh && !alreadyBackedUp) await Backup(3);
             await using var tx = await db.Database.BeginTransactionAsync();
-            if (!fresh) await db.Database.ExecuteSqlRawAsync(script);
+            if (!fresh) await ExecuteScript(script);
             await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO SchemaVersions VALUES (3, {hash}, {DateTime.UtcNow})");
             await tx.CommitAsync();
         }
@@ -83,7 +91,7 @@ public static class ChatSchemaMigrator
             if (!fresh && (billing || providers || preferences || defaults)) throw new InvalidOperationException("Migração parcial de provedores não reconhecida.");
             if (!fresh && !alreadyBackedUp) await Backup(4);
             await using var tx = await db.Database.BeginTransactionAsync();
-            if (!fresh) await db.Database.ExecuteSqlRawAsync(script);
+            if (!fresh) await ExecuteScript(script);
             await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO SchemaVersions VALUES (4, {hash}, {DateTime.UtcNow})");
             await tx.CommitAsync();
         }
@@ -104,11 +112,11 @@ public static class ChatSchemaMigrator
             }
             if (!fresh && !alreadyBackedUp) await Backup(5);
             await using var tx = await db.Database.BeginTransactionAsync();
-            if (!orgTables && columnCount == 0) await db.Database.ExecuteSqlRawAsync(script);
+            if (!orgTables && columnCount == 0) await ExecuteScript(script);
             else if (orgTables && columnCount == 4) {
                 // Fresh model or fully recognized EnsureCreated baseline. No data rewrites.
                 await db.Database.ExecuteSqlRawAsync("INSERT OR IGNORE INTO Organizations (Id,Name,Slug,IsActive) VALUES (1,'Organizacao padrao','default',1)");
-                await db.Database.ExecuteSqlRawAsync("INSERT OR IGNORE INTO OrganizationMemberships SELECT 1,UserId,1 FROM Users");
+                await db.Database.ExecuteSqlRawAsync("INSERT OR IGNORE INTO OrganizationMemberships (OrganizationId,UserId,IsActive) SELECT 1,UserId,1 FROM Users");
             }
             else throw new InvalidOperationException("Migracao parcial de organizacoes nao reconhecida.");
             await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO SchemaVersions VALUES (5, {hash}, {DateTime.UtcNow})");
@@ -130,9 +138,33 @@ public static class ChatSchemaMigrator
             }
             if (!fresh && !alreadyBackedUp) await Backup(6);
             await using var tx = await db.Database.BeginTransactionAsync();
-            if (!complete) await db.Database.ExecuteSqlRawAsync(script);
-            else await db.Database.ExecuteSqlRawAsync(script[script.IndexOf("CREATE TRIGGER",StringComparison.Ordinal)..].Replace("CREATE TRIGGER ","CREATE TRIGGER IF NOT EXISTS "));
+            if (!complete) await ExecuteScript(script);
+            else await ExecuteScript(script[script.IndexOf("CREATE TRIGGER",StringComparison.Ordinal)..].Replace("CREATE TRIGGER ","CREATE TRIGGER IF NOT EXISTS "));
             await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO SchemaVersions VALUES (6,{hash},{DateTime.UtcNow})");
+            await tx.CommitAsync();
+        }
+        async Task UpgradeWorkspace(bool fresh, bool alreadyBackedUp) {
+            using var resource7 = typeof(ChatSchemaMigrator).Assembly.GetManifestResourceStream("AiGateway.Infrastructure.EF.Migrations.007_OrganizationWorkspace.sql")!;
+            var script = (await new StreamReader(resource7).ReadToEndAsync()).Replace("\r\n", "\n");
+            var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(script)));
+            using var command = connection.CreateCommand(); command.CommandText = "SELECT Checksum FROM SchemaVersions WHERE Version=7";
+            var recorded = await command.ExecuteScalarAsync();
+            var members = await Columns("OrganizationMemberships");
+            var defaults = await Columns("OrganizationAiDefaults");
+            var preferences = await Columns("OrganizationAiPreferences");
+            var complete = members.IsSupersetOf(new[] { "PolicyRole", "Version" }) && defaults.Contains("OrganizationId") && preferences.Contains("OrganizationId");
+            if (recorded is not null) {
+                if (!Equals(recorded,hash) || !complete) throw new InvalidOperationException("Esquema/checksum de workspace incompativel.");
+                return;
+            }
+            if (!fresh && (members.Contains("PolicyRole") || members.Contains("Version") || defaults.Count > 0 || preferences.Count > 0))
+                throw new InvalidOperationException("Migracao parcial de workspace nao reconhecida.");
+            if (!fresh && !alreadyBackedUp) await Backup(7);
+            await using var tx = await db.Database.BeginTransactionAsync();
+            if (!fresh) await ExecuteScript(script);
+            await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO SchemaVersions VALUES (7,{hash},{DateTime.UtcNow})");
+            using var check = connection.CreateCommand(); check.Transaction = (SqliteTransaction)tx.GetDbTransaction(); check.CommandText = "PRAGMA foreign_key_check";
+            using (var reader = await check.ExecuteReaderAsync()) if (await reader.ReadAsync()) throw new InvalidOperationException("Integridade invalida no workspace.");
             await tx.CommitAsync();
         }
         var isEmpty = await Count("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'") == 0;
@@ -161,17 +193,19 @@ public static class ChatSchemaMigrator
         if (ledger) {
             using var c = connection.CreateCommand(); c.CommandText = "SELECT Checksum FROM SchemaVersions WHERE Version=1";
             var recorded = await c.ExecuteScalarAsync();
-            if (recorded is not string value || value != checksum || !current || await Count("SELECT COUNT(*) FROM SchemaVersions WHERE Version>6") != 0)
+            if (recorded is not string value || value != checksum || !current || await Count("SELECT COUNT(*) FROM SchemaVersions WHERE Version>7") != 0)
                 throw new InvalidOperationException("Versão/checksum de esquema incompatível. Inicialização interrompida.");
             var hadV2 = await Count("SELECT COUNT(*) FROM SchemaVersions WHERE Version=2") != 0;
             var hadV3 = await Count("SELECT COUNT(*) FROM SchemaVersions WHERE Version=3") != 0;
+            var hadV4 = await Count("SELECT COUNT(*) FROM SchemaVersions WHERE Version=4") != 0;
             var hadV5 = await Count("SELECT COUNT(*) FROM SchemaVersions WHERE Version=5") != 0;
-            await UpgradeTitles(false, false); await UpgradeUsage(false, !hadV2); await UpgradeProviders(false, !hadV3); await UpgradeOrganizations(false, !hadV2 || !hadV3); await UpgradeConnectors(false, !hadV2 || !hadV3 || !hadV5); return;
+            var hadV6 = await Count("SELECT COUNT(*) FROM SchemaVersions WHERE Version=6") != 0;
+            await UpgradeTitles(false, false); await UpgradeUsage(false, !hadV2); await UpgradeProviders(false, !hadV3); await UpgradeOrganizations(false, !hadV2 || !hadV3); await UpgradeConnectors(false, !hadV2 || !hadV3 || !hadV5); await UpgradeWorkspace(false,!hadV2 || !hadV3 || !hadV4 || !hadV5 || !hadV6); return;
         }
         if (partial && !current) throw new InvalidOperationException("Migração parcial desconhecida. Restaure um backup validado.");
         if (!current) await Backup(1);
         await using (var transaction = await db.Database.BeginTransactionAsync()) {
-        if (!current) await db.Database.ExecuteSqlRawAsync(sql);
+        if (!current) await ExecuteScript(sql);
         await db.Database.ExecuteSqlRawAsync("CREATE TABLE SchemaVersions (Version INTEGER PRIMARY KEY, Checksum TEXT NOT NULL, AppliedAt TEXT NOT NULL)");
         await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO SchemaVersions VALUES (1, {checksum}, {DateTime.UtcNow})");
         using (var check = connection.CreateCommand()) {
@@ -187,5 +221,6 @@ public static class ChatSchemaMigrator
         await UpgradeProviders(isEmpty, true);
         await UpgradeOrganizations(isEmpty, !current);
         await UpgradeConnectors(isEmpty, true);
+        await UpgradeWorkspace(isEmpty,!isEmpty);
     }
 }

@@ -53,7 +53,7 @@ public class KnowledgeBaseRagService : IKnowledgeBaseRagService
             throw new ArgumentException("Prompt vazio.");
 
         string pergunta = req.Prompt.Trim();
-        Console.WriteLine($"[{DateTime.Now}] Gerando embeding {pergunta}");
+        Console.WriteLine($"[{DateTime.Now}] Gerando embedding (conteúdo omitido)");
         var queryEmbedding = _embed.Generate(pergunta);
         Console.WriteLine($"[{DateTime.Now}] Emdeding gerado {queryEmbedding.Length}");
 
@@ -73,8 +73,7 @@ public class KnowledgeBaseRagService : IKnowledgeBaseRagService
             && x.Payload.TryGetValue("organizationId", out var org) && TryGetInt(org) == _db.OrganizationId
             && x.Payload.TryGetValue("itemId", out var itemId) && authorizedIds.Contains(TryGetInt(itemId) ?? -1)).ToList();
 
-        foreach (var (c, i) in candidates.Select((c, i) => (c, i)).Take(10))
-            Console.WriteLine($"[PRE] #{i + 1} embScore={c.score:F4} itemId={Payload(c, "itemId")} title={Payload(c, "title")}");
+        Console.WriteLine($"[RAG] Candidatos autorizados: {candidates.Count}");
 
         var reranked = new List<(float Score, QdrantPointResult Point)>();
 
@@ -85,9 +84,7 @@ public class KnowledgeBaseRagService : IKnowledgeBaseRagService
             reranked.Add((score, c));
         }
         reranked = reranked.OrderByDescending(x => x.Score).ToList();
-        Console.WriteLine($"[{DateTime.Now}][RAG] Pós-reranking:");
-        foreach (var (r, idx) in reranked.Select((x, i) => (x, i)).Take(10))
-            Console.WriteLine($"[POST] #{idx + 1} rerankScore={r.Score:F4} itemId={Payload(r.Point, "itemId")} title={Payload(r.Point, "title")}");
+        Console.WriteLine($"[RAG] Candidatos reordenados: {reranked.Count}");
 
 
         int maxSections = int.Parse(_config["RAG:MaxSections"] ?? "8");

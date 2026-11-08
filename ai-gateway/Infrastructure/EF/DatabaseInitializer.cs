@@ -56,7 +56,7 @@ public static class DatabaseInitializer
         user.Roles.Add(new UserRole { User = user, Role = role });
         db.Users.Add(user);
         await db.SaveChangesAsync();
-        db.OrganizationMemberships.Add(new OrganizationMembership { OrganizationId = 1, UserId = user.UserId });
+        db.OrganizationMemberships.Add(new OrganizationMembership { OrganizationId = 1, UserId = user.UserId, PolicyRole = "Owner" });
         await db.SaveChangesAsync();
         await AtlasKnowledgeSeed.InitializeAsync(db, config);
         } finally { db.SystemOperation = false; }

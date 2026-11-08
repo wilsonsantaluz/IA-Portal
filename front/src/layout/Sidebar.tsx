@@ -23,6 +23,7 @@ import DataUsageOutlined from "@mui/icons-material/DataUsageOutlined";
 import type { ReactNode } from "react";
 
 const destinations: { to: string; label: string; icon: ReactNode; permission: string; alternatePermission?: string }[] = [
+  { to: "/organizations", label: "Organizações", icon: <PeopleOutline />, permission: "" },
   {
     to: "/chat",
     label: "Chat IA",
@@ -114,7 +115,7 @@ export default function Sidebar({
         )}
         <List component="div" disablePadding>
           {destinations
-            .filter((item) => hasPermission(item.permission) || !!item.alternatePermission && hasPermission(item.alternatePermission))
+            .filter((item) => item.permission === "" || hasPermission(item.permission) || !!item.alternatePermission && hasPermission(item.alternatePermission))
             .map((item) => (
               <Tooltip
                 key={item.to}
