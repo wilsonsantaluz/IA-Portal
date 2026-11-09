@@ -894,3 +894,14 @@ Only recovery/backup helpers and a reproducible local capacity probe were added.
 No paid/new cloud resource, replacement model, extra VM service or migration.
 Full evidence, limits and next environment:
 [FULL_CAPACITY_TRIAL.md](../../infra/oracle/FULL_CAPACITY_TRIAL.md).
+
+## 2026-11-09 — Authorized A1 retry interval change
+
+User changed capacity retries from30 to15minutes. Added validated
+`-IntervalMinutes` (15–1440, default15), dynamic interval logging and updated the
+existing timing test. PASS:74 offline assertions, no test OCI calls/sleeps.
+Restarted only the verified sleeping provisioning process, preserving the lock
+directory/journal, same2OCPU/12GB target, image, subnet and public key. The new
+hidden runner explicitly uses15minutes; no concurrent OCI launch was interrupted
+and no second provisioning runner was intentionally left active. Existing
+capacity timestamp still determines the remaining wait after restart.
