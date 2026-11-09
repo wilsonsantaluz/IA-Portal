@@ -905,3 +905,33 @@ directory/journal, same2OCPU/12GB target, image, subnet and public key. The new
 hidden runner explicitly uses15minutes; no concurrent OCI launch was interrupted
 and no second provisioning runner was intentionally left active. Existing
 capacity timestamp still determines the remaining wait after restart.
+
+## 2026-11-09 — WhatsApp Meta test setup and actual local update
+
+User requested continuing WhatsApp, updating local runtime and explaining Meta
+registration/frontend parameters; selected the Meta test number. Clean baseline,
+new feature/whatsapp-local-setup branch. Read AGENTS/service docs and inspected
+current channel code/Compose/RBAC before editing. Meta developer guide remained
+login-gated; primary reference links and account-specific limitations documented.
+
+Added GET api/channels/whatsapp/setup: permission-protected, tenant-scoped approved
+numbers, public IDs/callback and secret-presence booleans only. Unsafe callback
+origins rejected; no secrets serialized or global configuration returned. New
+WhatsAppSetupCard in existing page explains app/test-number setup and current
+receive-only limitation. Optional Compose overlay/private blank env example prepared,
+validated synthetically, not applied with fake/real Meta credentials.
+
+Actual local build/up replaced only gateway/frontend. Verified consistent backup
+and previous image IDs first. Existing schema7→9; fingerprints of users/password
+hashes/KB/history match (1/10/1/2), integrity/FKs ok. Trino/OCR/ML remained running.
+PASS: gateway/frontend image builds/typecheck, Channels unit/migration tests,
+real temporary signed-webhook/worker smoke plus safe setup metadata401/403/scoping/
+non-disclosure, existing organization/full Atlas smokes, channels browser fixtures
+themes/mobile/axe and real updated local browser login/setup card/light/dark.
+An initial live browser assertion used a PowerShell-piped accented string and was
+rerun from a UTF-8 test file successfully. No password reset/local .env edit.
+
+No Meta account created, token generated, tunnel started, real message sent or cloud
+deployment changed. Live Cloud sending/Embedded Signup/Coexistence still pending;
+missing app assets, private secrets and publicly routed callback block actual
+receipt verification. See ../service/META_TEST_SETUP.md for next concrete steps.

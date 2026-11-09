@@ -16,6 +16,7 @@ const auth={userId:1,userName:'Owner sintético',email:'owner@example.test',toke
    if(p==='/api/auth/me')data=auth;
    else if(p==='/api/organizations')data=[{id:1,name:'Synthetic organization'}];
    else if(p==='/api/kb/all')data=[{id:7,title:'Garantia sintética',keyName:'warranty'}];
+   else if(p==='/api/channels/whatsapp/setup')data={appId:null,webhookUrl:null,webhookPath:'/api/webhooks/whatsapp',appSecretConfigured:false,verifyTokenConfigured:false,accessTokenConfigured:false,publicCallbackConfigured:false,receiveConfigurationReady:false,liveSendingAvailable:false,authorizedNumbers:[]};
    else if(p==='/api/channels'&&req.method()==='POST'){
     assert.deepEqual(req.postDataJSON(),{displayName:'Canal sintético',provider:'simulator',externalAccountId:'demo',externalPhoneNumberId:'one',knowledgeIds:[7]});
     connection={id,displayName:'Canal sintético',provider:'simulator',status:'simulated',isEnabled:true,autoReply:false,agentEnabled:true,agentId:'local-extractive-v1',retentionDays:30,monthlyLimit:100,version:0};data=connection;
@@ -31,6 +32,9 @@ const auth={userId:1,userName:'Owner sintético',email:'owner@example.test',toke
    await route.fulfill(status===204?{status}:{status,json:data});
   });
   await page.goto(base+'/channels');await page.getByText('Nenhum canal cadastrado.',{exact:true}).waitFor();
+  await page.getByRole('heading',{name:'Conectar WhatsApp oficial',exact:true}).waitFor();
+  await page.getByText('Nenhum número autorizado no servidor para esta organização.',{exact:true}).waitFor();
+  assert.equal(await page.locator('input[type=password]').count(),0);
   await page.getByLabel('Nome da conexão',{exact:true}).fill('Canal sintético');await page.getByLabel('ID da conta externa',{exact:true}).fill('demo');await page.getByLabel('ID do número externo',{exact:true}).fill('one');
   await page.getByRole('checkbox',{name:'Garantia sintética',exact:true}).check();await page.getByRole('button',{name:'Cadastrar canal',exact:true}).click();
   await page.getByRole('checkbox',{name:'Respostas automáticas simuladas',exact:true}).waitFor();assert.equal(await page.getByRole('checkbox',{name:'Respostas automáticas simuladas',exact:true}).isChecked(),false);

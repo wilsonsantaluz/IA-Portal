@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Alert, Box, Button, Checkbox, FormControlLabel, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import api from "../services/api";
 import { aiError } from "../components/ConversationModelPicker";
+import WhatsAppSetupCard from "../components/WhatsAppSetupCard";
 
 type Connection = { id: string; displayName: string; provider: string; status: string; isEnabled: boolean; autoReply: boolean; agentEnabled: boolean; agentId: string; retentionDays: number; monthlyLimit: number; version: number };
 type Conversation = { id: string; humanHandoff: boolean; version: number; updatedAt: string };
@@ -30,6 +31,7 @@ export default function ChannelsPage() {
   return <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 1100, mx: "auto" }}><Stack gap={3}>
     <Typography variant="h5" component="h2">IA-Portal Service · Canais</Typography>
     <Alert severity="info">MVP local: agente extrativo e respostas simuladas. Cloud API recebe mensagens assinadas somente após configuração pelo operador. Envio real, Embedded Signup e Coexistence estão pendentes.</Alert>
+    <WhatsAppSetupCard />
     {error && <Alert severity="error">{error}</Alert>}{notice && <Alert severity="success">{notice}</Alert>}
     <Typography variant="h6" component="h3">Cadastrar conexão</Typography>
     <TextField label="Nome da conexão" value={name} onChange={e => setName(e.target.value)} inputProps={{ maxLength: 100 }} />

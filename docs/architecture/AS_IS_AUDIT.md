@@ -316,3 +316,17 @@ verified consistent backup made and original accounts/passwords preserved. See
 [the capacity/recovery report](../../infra/oracle/FULL_CAPACITY_TRIAL.md) for exact
 evidence, failed authenticated-bootstrap recheck, diagnostics tradeoff and next
 infrastructure gate. No paid resources or unrequested cloud shape changes.
+
+## 2026-11-09 — WhatsApp local setup and deployment
+
+Existing module inspection confirmed durable/signed reception and simulation,
+but no Cloud sender, token editor or Embedded Signup. Added only an explicit
+credential-free setup DTO/authorized route metadata and pt-BR guide in the current
+channel page. No credential persistence/new migration/framework. Readiness is
+configuration-only and cannot claim a verified Meta connection. The user selected
+the Meta test number; actual app/assets/secrets/callback remain pending.
+
+The existing local SQLite was stillv7. Consistent backup/fingerprints preceded
+the two-service rebuild; v8/v9 applied and identities/content/history matched
+afterward. Full Compose overrides, running Trino/OCR/ML and local `.env` preserved.
+See [test setup/local operation](../service/META_TEST_SETUP.md).

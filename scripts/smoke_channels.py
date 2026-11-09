@@ -32,6 +32,8 @@ def main():
             "Demo__Atlas__SeedKnowledge":"false","Chat__UseAdvancedRag":"false",
             "DEEPSEEK_ENABLED":"false","OPENAI_ENABLED":"false","OLLAMA_ENABLED":"false",
             "WhatsApp__AppSecret":secret,"WhatsApp__VerifyToken":verification,
+            "WhatsApp__AppId":"55555","WhatsApp__AccessToken":"synthetic-access-token-only",
+            "WhatsApp__PublicBaseUrl":"https://synthetic-webhook.example.test/",
             "WhatsApp__Routes__12345__OrganizationId":"1","WhatsApp__Routes__12345__AccountId":"98765"})
         token, organization = "", 1
         def request(path,data=None,method=None,expected=200,anonymous=False,signature=None):
@@ -57,8 +59,15 @@ def main():
                     except OSError: time.sleep(.2)
                 else: raise RuntimeError("Gateway startup timeout")
                 request("/api/channels",expected=401)
+                request("/api/channels/whatsapp/setup",expected=401)
                 token=request("/api/auth/login",{"email":"owner@example.test","password":password})["token"]
                 owner=token
+                setup=request("/api/channels/whatsapp/setup")
+                assert setup["authorizedNumbers"]==[{"phoneNumberId":"12345","accountId":"98765"}]
+                assert setup["receiveConfigurationReady"] and not setup["liveSendingAvailable"]
+                assert setup["appSecretConfigured"] and setup["verifyTokenConfigured"] and setup["accessTokenConfigured"]
+                assert setup["webhookUrl"]=="https://synthetic-webhook.example.test/api/webhooks/whatsapp"
+                assert all(value not in json.dumps(setup) for value in (secret,verification,"synthetic-access-token-only"))
                 item=request("/api/kb/upsert",{"keyName":"warranty","section":"Synthetic","title":"Garantia","content":"garantia sintética autorizada"})
                 doc=item["id"]
                 c=request("/api/channels",{"displayName":"Synthetic local","provider":"simulator","externalAccountId":"demo","externalPhoneNumberId":"one","knowledgeIds":[doc],"organizationId":999})
@@ -104,6 +113,8 @@ def main():
                 assert len(request(f'/api/channels/conversations/{cloud_conv["id"]}/messages'))==1
                 other=request("/api/organizations",{"name":"Other synthetic","slug":"other-synthetic"},expected=201)["id"]
                 organization=other
+                setup=request("/api/channels/whatsapp/setup")
+                assert setup["authorizedNumbers"]==[] and not setup["receiveConfigurationReady"]
                 assert request("/api/channels")==[]
                 request(f'/api/channels/{c["id"]}/conversations',expected=404)
                 request(f'/api/channels/conversations/{conv["id"]}/messages',expected=404)
@@ -114,6 +125,7 @@ def main():
                 request(f"/api/organizations/current/members/{member}",{"role":"Member","isActive":True,"version":0},"PUT",204)
                 token=request("/api/auth/login",{"email":"member@example.test","password":member_password})["token"]
                 request("/api/channels",expected=403)
+                request("/api/channels/whatsapp/setup",expected=403)
                 with closing(sqlite3.connect(database)) as db:
                     assert db.execute("PRAGMA integrity_check").fetchone()[0]=="ok"
                     assert db.execute("SELECT count(*) FROM ChannelMessages WHERE ExternalId='wamid.HBgSyntheticExample+/=='").fetchone()[0]==1

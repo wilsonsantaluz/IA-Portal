@@ -1,5 +1,10 @@
 # IA-Portal Service — channel MVP
 
+**Local update2026-11-09:** the channel module is now running in the existing local
+installation with preserved data, migrations7→9 and a safe Meta setup guide/status
+card. Start with [META_TEST_SETUP.md](META_TEST_SETUP.md) for the chosen test-number
+flow, private parameters and the remaining live-connection gates.
+
 This is a module of the existing .NET gateway and React application, not a new
 microservice or commercial edition. The first delivery is deliberately local:
 
@@ -21,8 +26,8 @@ docker compose build ai-gateway portal-front
 docker compose up -d --no-deps ai-gateway portal-front
 ```
 
-These commands were not executed against the existing installation during this
-delivery. Gateway startup creates a pre-upgrade backup and applies migration 009.
+These commands were executed in the later2026-11-09 local update. Gateway startup
+creates a pre-upgrade backup and applies migration009 when it is pending.
 No reset, `down -v`, new database service or paid resource is needed.
 
 1. Sign in as Owner/Admin and open **Canais** (`/channels`). Custom groups need
