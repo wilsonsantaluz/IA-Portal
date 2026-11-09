@@ -55,6 +55,7 @@ export default function HeaderBar({
         "/settings/ai": "Configurações · Inteligência Artificial",
         "/data-connectors": "Data Connectors",
         "/usage": "Consumo de Inteligência Artificial",
+        "/channels": "IA-Portal Service",
         "/organizations": "Organizações",
         "/invite": "Convite de organização",
       } as Record<string, string>

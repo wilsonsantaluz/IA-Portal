@@ -1,3 +1,4 @@
+import ChannelsPage from "./pages/ChannelsPage";
 import DataConnectorsPage from "./pages/DataConnectorsPage";
 import OrganizationsPage from "./pages/OrganizationsPage";
 import AcceptInvitationPage from "./pages/AcceptInvitationPage";
@@ -41,6 +42,7 @@ export default function App() {
         }
       >
         <Route index element={<HomeRoute />} />
+        <Route path="channels" element={<RequirePermission permission="channels.manage"><ChannelsPage /></RequirePermission>} />
         <Route path="organizations" element={<OrganizationsPage />} />
         <Route path="invite" element={<AcceptInvitationPage />} />
         <Route

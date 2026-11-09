@@ -1,3 +1,4 @@
+using AiGateway.Channels;
 using AiGateway.Application.Interfaces;
 using AiGateway.Infrastructure.Qdrant;
 using AiGateway.Infrastructure.Qdrant.Services;
@@ -31,6 +32,11 @@ builder.Services.AddCors(options =>
 });
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<OrganizationScope>();
+builder.Services.AddScoped<LocalKnowledgeRetriever>();
+builder.Services.AddScoped<IChannelAgent,LocalExtractiveChannelAgent>();
+builder.Services.AddScoped<ChannelService>();
+builder.Services.AddSingleton<IOutboundMessageSender,SimulatorSender>();
+builder.Services.AddHostedService<ChannelWorker>();
 builder.Services.AddScoped<OrganizationWorkspaceService>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<OrganizationInvitationService>();

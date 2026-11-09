@@ -113,7 +113,7 @@ try{
     Console.WriteLine("PASS: real v7->v8 preservation/idempotency/backup/restore/late DDL rollback; hashed one-use/expiry/revocation/issuer-version capabilities, owner-only operations, consent, no reactivation/downgrade/group grants, concurrent consumption and atomic ownership transfer. No external services.");
 }finally{SqliteConnection.ClearAllPools();Directory.Delete(root,true);}
 
-sealed class V7Context(DbContextOptions<PortalDbContext> options):PortalDbContext(options){protected override void OnModelCreating(ModelBuilder model){base.OnModelCreating(model);model.Ignore<OrganizationInvitation>();}}
+sealed class V7Context(DbContextOptions<PortalDbContext> options):PortalDbContext(options){protected override void OnModelCreating(ModelBuilder model){base.OnModelCreating(model);model.Ignore<AiGateway.Channels.MessageDeliveryEvent>();model.Ignore<AiGateway.Channels.ChannelMessage>();model.Ignore<AiGateway.Channels.ChannelConversation>();model.Ignore<AiGateway.Channels.ChannelContact>();model.Ignore<AiGateway.Channels.ChannelConnection>();model.Ignore<OrganizationInvitation>();}}
 sealed class TestClock:TimeProvider{
     private DateTimeOffset current=new(2026,11,8,12,0,0,TimeSpan.Zero);
     public override DateTimeOffset GetUtcNow()=>current;

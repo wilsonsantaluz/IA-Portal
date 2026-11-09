@@ -1,3 +1,4 @@
+using AiGateway.Channels;
 using AiGateway.Security;
 
 
@@ -8,6 +9,11 @@ namespace Portal.AI.Gateway.Infrastructure;
 
 public class PortalDbContext : DbContext
 {
+    public DbSet<ChannelConnection> ChannelConnections => Set<ChannelConnection>();
+    public DbSet<ChannelContact> ChannelContacts => Set<ChannelContact>();
+    public DbSet<ChannelConversation> ChannelConversations => Set<ChannelConversation>();
+    public DbSet<ChannelMessage> ChannelMessages => Set<ChannelMessage>();
+    public DbSet<MessageDeliveryEvent> MessageDeliveryEvents => Set<MessageDeliveryEvent>();
     private readonly OrganizationScope? _scope;
     public PortalDbContext(DbContextOptions<PortalDbContext> options, OrganizationScope? scope = null) : base(options) { _scope = scope; }
     // Explicit startup/test maintenance only; HTTP DI always supplies a scope (initially deny).
@@ -32,7 +38,7 @@ public class PortalDbContext : DbContext
             {
                 var property = entry.Property(nameof(IOrganizationEntity.OrganizationId));
                 if (entry.State == EntityState.Added) {
-                    if (entry.Entity is OrganizationAiDefault or OrganizationAiPreference or OrganizationInvitation && (int)property.CurrentValue! != 0 && (int)property.CurrentValue! != OrganizationId)
+                    if (entry.Entity is OrganizationAiDefault or OrganizationAiPreference or OrganizationInvitation or ChannelConnection or ChannelContact or ChannelConversation or ChannelMessage or MessageDeliveryEvent && (int)property.CurrentValue! != 0 && (int)property.CurrentValue! != OrganizationId)
                         throw new ChatException(403, "Acesso entre organizacoes negado.");
                     property.CurrentValue = OrganizationId;
                 }
@@ -65,6 +71,7 @@ public class PortalDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
 
+        ChannelMapping.Configure(modelBuilder,this);
         modelBuilder.Entity<AiProviderSetting>(e => { e.ToTable("AiProviderSettings"); e.HasKey(x => x.Id); e.Property(x => x.Version).IsConcurrencyToken(); });
         modelBuilder.Entity<AiUserPreference>(e => { e.ToTable("AiUserPreferences"); e.HasKey(x => x.UserId); e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict); });
         modelBuilder.Entity<AiSystemDefault>(e => { e.ToTable("AiSystemDefault"); e.HasKey(x => x.Id); e.Property(x => x.Version).IsConcurrencyToken(); });

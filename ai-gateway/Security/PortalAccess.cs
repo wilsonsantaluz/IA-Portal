@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
@@ -8,6 +8,7 @@ namespace AiGateway.Security;
 
 public static class PortalAccess
 {
+    public const string Channels = "channels.manage";
     public const string Organizations = "organizations.manage";
     public const string CreateOrganization = "organizations.create";
     public const string Connectors = "connectors.manage";
@@ -21,6 +22,7 @@ public static class PortalAccess
     public const string Administration = "access.manage";
     public static readonly (string Key, string Screen, string Description)[] Catalog =
     [
+        (Channels, "Canais", "Administrar canais e conversas externas da organização"),
         (Organizations, "Organizações", "Configurar a organização e seu modelo padrão"),
         (CreateOrganization, "Organizações", "Criar organizações na instalação"),
         (Connectors, "Data Connectors", "Gerenciar conectores e fontes autorizadas da organizacao"),
