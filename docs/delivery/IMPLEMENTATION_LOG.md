@@ -830,3 +830,36 @@ Full file inventory, commands and local operation: CHANNELS_REPORT.md and
 specific Embedded Signup/Coexistence/history, general agents/human manual inbox,
 full erasure, public ingress/abuse controls and distributed operations. Existing
 containers, .env and SQLite were not modified; no OCI change, deploy or paid resource.
+
+## 2026-11-08 — Explicitly authorized OCI Micro minimal deployment
+
+User requested frontend/API/SQLite/textual retrieval/external LLM deployment on
+the existing1GB Micro VM, then explicitly approved the local DeepSeek credential
+and supplied santaluz.ddns.net. Created infra/oci-micro-minimal from the clean
+published service branch. No main merge or local database/.env replacement.
+
+Built linux/amd64 images off-VM; added opt-in backend resource gates/health,
+login/API rate limits and global two-chat cap, minimal UI controls, standalone
+Compose validation and dedicated VM scripts. Public Caddy HTTPS issued/verified;
+API binds host loopback, OCI/firewalld expose80/443 only in addition to the
+owner-approved public SSH rule. Data/config/certificates persist privately.
+
+DNF preparation demonstrated a memory limit and SSH became unresponsive; controlled
+OCI soft reset recovered it. Installed official static Docker29.9.3 instead of
+repeating package metadata processing. Dedicated systemd socket/service, capped
+containers, no OCR/ML/vector/Trino/Ollama services. No new paid resource/VM/volume.
+
+PASS: builds/typecheck, MinimalHosting/BusinessChat tests, existing real temporary
+organization/full Atlas smoke, actual minimal-container login/KB/gates429, public
+HTTPS/login/KB/24 reads at concurrency3, real grounded DeepSeek answer and title,
+idempotent replay, persistence after controlled API restart, real Chrome dark/light
+minimal UI. Eight samples: API177.9–193MiB, Caddy34.29–71.19MiB, host available
+369–404MiB, no OOM/automatic restart. Test SSE chunk assertion was corrected to
+check persisted assembled output; no extra inference was needed for the replay.
+
+Full files/commands, image IDs, protected login location, recovery and limits:
+[MICRO_DEPLOYMENT.md](../../infra/oracle/MICRO_DEPLOYMENT.md). New cloud SQLite is
+independent of the local installation. No new migration; existing001–009 initialize
+the new DB. Long-duration load, full post-install host reboot, off-VM recovery and
+production/privacy/SLO hardening remain unverified. No extra component should be
+added based solely on the short demonstration measurements.

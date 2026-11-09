@@ -1,5 +1,9 @@
 # Self-hosting
 
+For the separately authorized 1GB OCI demonstration deployment, see
+[the minimal deployment report](../infra/oracle/MICRO_DEPLOYMENT.md). It uses a
+standalone two-container profile; do not mix it into the standard Compose stack.
+
 IA-Portal currently supports a single-node local Docker Compose installation
 with SQLite. No Oracle resource, PostgreSQL database, paid service or commercial
 edition is required. AI inference requires either a configured external provider

@@ -1,5 +1,10 @@
 # IA-Portal na OCI — provisionamento Always Free
 
+**Atualização em 08/11/2026:** após autorização posterior, a VM Micro criada pelo
+proprietário recebeu a implantação mínima. Operação, acesso, medições e limites:
+[MICRO_DEPLOYMENT.md](MICRO_DEPLOYMENT.md). O histórico abaixo descreve a etapa
+anterior de provisionamento A1 e não substitui esse relatório.
+
 Esta etapa prepara **uma VM**, sem instalar ou publicar o IA-Portal. O padrão do
 script é `DryRun`: apenas consultas OCI e arquivos locais. Não altera rede,
 conta, `.env`, bancos, VCNs ou recursos existentes. Não usa Terraform, scheduler,

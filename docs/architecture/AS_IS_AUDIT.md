@@ -287,3 +287,16 @@ Accessible official pricing/sample references and unresolved account-specific
 contracts are recorded in service/WHATSAPP_RESEARCH.md. Local simulated delivery
 and signed reception are validated, not real Cloud sending/onboarding/Coexistence.
 See delivery/CHANNELS_REPORT.md for exact tests and pending security/operational work.
+
+## 2026-11-08 — Minimal cloud hosting audit
+
+Reviewed the full Compose dependencies, Dockerfiles, proxy, lazy textual/vector
+services, database initialization and chat/OCR/data routes before preparing the
+owner-requested1GB deployment. Full Compose unconditionally starts OCR/ML; Atlas
+adds a2GiB-limited Trino. A standalone two-container profile was therefore needed.
+Existing textual retrieval/SQLite/provider adapters were reused. Minimal runtime
+gates are after normal authentication/authorization; full-mode behavior remains.
+New health/rate/concurrency controls and hidden unsupported UI actions were tested.
+Actual deployment/secret authorization, resource observations and remaining gates
+are recorded in ../../infra/oracle/MICRO_DEPLOYMENT.md. No local data was copied
+to the cloud. This later deployment was explicitly authorized by the owner.
