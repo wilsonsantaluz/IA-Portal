@@ -1019,3 +1019,30 @@ do not claim authenticated dashboard validation. This optional card is not mount
 in the current browser-channel page, so no local container update is required.
 
 Validation: `npm run typecheck --prefix front` passed.
+# 2026-11-09 — Local Windows HTTPS edge preparation
+
+Owner authorized moving the public hostname to this local host and configuring
+HTTPS. Created clean branch `infra/local-https`; no uncommitted user changes.
+Added native Caddy reverse proxy, pinned official Windows installer with SHA512
+verification and private runtime ACLs, validation-first DNS/start script, owned-
+process stop script, and DNS/TLS tests. This preserves loopback Docker bindings,
+all Compose overrides, API authorization and current SQLite. No migration or
+application code change.
+
+PASS: Windows Caddy2.11.9 installed outside Git with published checksum match;
+real Caddyfile validation; stale-A/missing-and-foreign-AAAA/CGNAT guards and no-
+listener dry-run; loopback TLS with local CA trusted only in test SSL context;
+actual portal HTML, security header, anonymous API401 and error-log redaction.
+The smoke stops its own process and never installs a Windows trusted root. The
+initial checksum parser expected SHA256/text; corrected to the release's actual
+SHA512/byte-content format before extraction. A DNS mock scope issue was corrected
+and the valid fixture now explicitly asserts an empty blocker list.
+
+Public validation reports the selected hostname still targets Oracle IPv4 and
+has no AAAA. Public Caddy has not been started, no public certificate requested,
+no firewall/modem/DNS/Oracle resources changed and no auto-start task installed.
+The owner must update AAAA to the current non-temporary local global IPv6 and
+permit TCP80/443 at the modem. Actual public TLS and Meta callback remain pending.
+No backend/frontend build is claimed for this edge-only change. Existing local
+containers and the separately authorized OCI retry runner were preserved.
+See [local HTTPS operation](../../infra/local/README.md).
