@@ -55,7 +55,7 @@ export default function ChatInput({
           },
         }}
       >
-        <Tooltip title="Analisar PDF ou imagem">
+        {import.meta.env.VITE_MINIMAL_HOSTING !== "true" && <Tooltip title="Analisar PDF ou imagem">
           <IconButton component="label" disabled={loading} aria-label="Analisar PDF ou imagem" size="small" sx={{ mb: 0.25 }}>
             <AttachFileRounded fontSize="small" />
             <input type="file" hidden accept="application/pdf,image/png,image/jpeg" disabled={loading}
@@ -65,7 +65,7 @@ export default function ChatInput({
                 if (file) onUpload(file);
               }} />
           </IconButton>
-        </Tooltip>
+        </Tooltip>}
         <TextField
           fullWidth
           multiline

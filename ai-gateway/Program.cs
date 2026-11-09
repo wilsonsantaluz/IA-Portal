@@ -17,9 +17,23 @@ using AiGateway.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using System.Security.Claims;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.HttpOverrides;
 
 
 var builder = WebApplication.CreateBuilder(args);
+var minimalHosting=builder.Configuration.GetValue<bool>("Hosting:Minimal");
+if(minimalHosting && builder.Configuration.GetValue<bool>("Chat:UseAdvancedRag"))
+    throw new InvalidOperationException("Hosting:Minimal requer Chat:UseAdvancedRag=false.");
+if(minimalHosting) builder.Services.AddRateLimiter(options=>{
+    options.RejectionStatusCode=429;
+    options.GlobalLimiter=PartitionedRateLimiter.Create<HttpContext,string>(context=>{
+        var login=context.Request.Path.Equals(new PathString("/api/auth/login"));
+        var key=(context.Connection.RemoteIpAddress?.ToString() ?? "unknown")+(login?":login":":api");
+        return RateLimitPartition.GetFixedWindowLimiter(key,_=>new FixedWindowRateLimiterOptions{
+            PermitLimit=login?10:128,Window=TimeSpan.FromMinutes(1),QueueLimit=0,AutoReplenishment=true});
+    });
+});
 var connectorFile = builder.Configuration["TRINO_CONNECTORS_FILE"];
 if (!string.IsNullOrWhiteSpace(connectorFile)) builder.Configuration.AddJsonFile(Path.GetFullPath(connectorFile,builder.Environment.ContentRootPath),optional:false,reloadOnChange:false);
 
@@ -191,10 +205,16 @@ await using (var scope = app.Services.CreateAsyncScope())
 }
 
 
-app.UseSwagger();
-app.UseSwaggerUI();
-app.UseCors("AllowAll");
+if(!minimalHosting) { app.UseSwagger(); app.UseSwaggerUI(); app.UseCors("AllowAll"); }
+if(minimalHosting)app.UseForwardedHeaders(new ForwardedHeadersOptions{
+    ForwardedHeaders=ForwardedHeaders.XForwardedFor|ForwardedHeaders.XForwardedProto
+}); // Default trusted proxies are loopback only; the gateway itself binds to loopback.
 app.UseAuthentication();
 app.UseAuthorization();
+if(minimalHosting)app.UseRateLimiter();
+app.UseMiddleware<AiGateway.Infrastructure.MinimalHostingMiddleware>();
+app.MapGet("/health/live",()=>Results.Ok(new{status="ok"})).AllowAnonymous();
+app.MapGet("/health/ready",async (PortalDbContext db,CancellationToken ct)=>
+    await db.Database.CanConnectAsync(ct)?Results.Ok(new{status="ready"}):Results.StatusCode(503)).AllowAnonymous();
 app.MapControllers();
 app.Run();

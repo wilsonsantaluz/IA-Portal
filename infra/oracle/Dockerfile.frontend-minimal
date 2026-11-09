@@ -1,0 +1,6 @@
+ARG FRONTEND_ASSETS_IMAGE=ia-portal/frontend:micro-20261108
+FROM ${FRONTEND_ASSETS_IMAGE} AS assets
+FROM caddy:2.11.9-alpine
+ENV PORTAL_SITE=:80
+COPY --from=assets /usr/share/nginx/html /srv
+COPY infra/oracle/Caddyfile /etc/caddy/Caddyfile

@@ -1,0 +1,37 @@
+{
+    admin off
+    servers {
+        max_header_size 32KB
+    }
+}
+
+{$PORTAL_SITE} {
+    encode gzip
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy same-origin
+        -Server
+    }
+    request_body {
+        max_size 1MB
+    }
+    handle /api/* {
+        reverse_proxy {$API_UPSTREAM:ai-gateway:8080} {
+            flush_interval -1
+        }
+    }
+    handle /health/* {
+        reverse_proxy {$API_UPSTREAM:ai-gateway:8080}
+    }
+    handle /assets/* {
+        root * /srv
+        header Cache-Control "public, max-age=2592000, immutable"
+        file_server
+    }
+    handle {
+        root * /srv
+        header Cache-Control "no-cache"
+        try_files {path} /index.html
+        file_server
+    }
+}

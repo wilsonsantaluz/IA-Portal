@@ -2,6 +2,8 @@
 # 1) Build da aplicação (usa Node 22)
 # =======================================================
 FROM node:22-alpine AS build
+ARG VITE_MINIMAL_HOSTING=false
+ENV VITE_MINIMAL_HOSTING=$VITE_MINIMAL_HOSTING
 
 WORKDIR /app
 

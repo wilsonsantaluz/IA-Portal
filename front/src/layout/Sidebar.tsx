@@ -116,6 +116,7 @@ export default function Sidebar({
         )}
         <List component="div" disablePadding>
           {destinations
+            .filter(item => import.meta.env.VITE_MINIMAL_HOSTING !== "true" || item.to !== "/data-connectors")
             .filter((item) => item.permission === "" || hasPermission(item.permission) || !!item.alternatePermission && hasPermission(item.alternatePermission))
             .map((item) => (
               <Tooltip

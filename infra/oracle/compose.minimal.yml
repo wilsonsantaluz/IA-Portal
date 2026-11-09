@@ -1,0 +1,46 @@
+# Standalone profile; do not combine with the standard/Atlas Compose files.
+services:
+  ai-gateway:
+    image: ${GATEWAY_IMAGE:?Set the prebuilt gateway image tag}
+    env_file:
+      - ${RUNTIME_ENV_FILE:?Set the private runtime.env path outside Git}
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      Hosting__Minimal: "true"
+      Chat__UseAdvancedRag: "false"
+      ConnectionStrings__PortalConnection: Data Source=/app/data/portal.db;Foreign Keys=True
+      SQLITE_BACKUP_DIRECTORY: /app/data/backups
+      DOTNET_GCServer: "0"
+      DOTNET_GCHeapHardLimit: "0x0A000000"
+      OPENAI_ENABLED: "false"
+      OLLAMA_ENABLED: "false"
+      TRINO_CONNECTORS_FILE: ""
+      Demo__Atlas__SeedKnowledge: "false"
+    volumes: [portal_data:/app/data]
+    mem_limit: 384m
+    memswap_limit: 640m
+    pids_limit: 128
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    logging:
+      driver: json-file
+      options: {max-size: 5m, max-file: "2"}
+  portal-front:
+    image: ${FRONTEND_IMAGE:?Set the prebuilt minimal frontend image tag}
+    environment:
+      PORTAL_SITE: ${PORTAL_SITE:-:80}
+    depends_on: [ai-gateway]
+    ports:
+      - "127.0.0.1:${PORTAL_PORT:-9080}:80"
+    volumes: [caddy_data:/data, caddy_config:/config]
+    mem_limit: 96m
+    pids_limit: 32
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: {max-size: 5m, max-file: "2"}
+volumes:
+  portal_data:
+  caddy_data:
+  caddy_config:
