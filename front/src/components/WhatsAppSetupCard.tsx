@@ -19,7 +19,8 @@ export default function WhatsAppSetupCard() {
         <li><Typography variant="body2">Cadastre na Meta um callback HTTPS público e autorize o número para esta organização no servidor. Localhost não pode receber os webhooks da Meta.</Typography></li>
       </Box>
       <Stack direction={{ xs: "column", sm: "row" }} gap={1}>
-        <Button component={Link} href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer">Abrir painel da Meta</Button>
+        <Button component={Link} href="https://developers.facebook.com/async/registration/" target="_blank" rel="noopener noreferrer">Cadastrar desenvolvedor na Meta</Button>
+        <Button component={Link} href="https://developers.facebook.com/apps" target="_blank" rel="noopener noreferrer">Abrir painel de aplicativos</Button>
         <Button disabled={busy} onClick={() => void load()}>Verificar configuração local</Button>
       </Stack>
       {error && <Alert severity="error">{error}</Alert>}

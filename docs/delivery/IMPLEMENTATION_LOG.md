@@ -1008,3 +1008,14 @@ Remaining gates: user QR pairing, real inbound/outbound/ack verification, paired
 restart/reconnect and soak tests; media/groups/history import, external LLM agent,
 distributed workers and production per-session container/sandbox hardening are
 outside this increment. [Operating guide](../service/WHATSAPP_BROWSER.md).
+# 2026-11-09 — Meta registration entry-point clarification
+
+Read the user-supplied Cloud API Get Started guide. Corrected the optional Meta
+setup card and guide to separate developer registration (`/async/registration/`)
+from app management (`/apps`). The previous dashboard link was insufficient as
+registration guidance. No credentials, Meta account actions, cloud changes or
+browser-bridge behavior changes. Live documentation checks were login/429 gated;
+do not claim authenticated dashboard validation. This optional card is not mounted
+in the current browser-channel page, so no local container update is required.
+
+Validation: `npm run typecheck --prefix front` passed.

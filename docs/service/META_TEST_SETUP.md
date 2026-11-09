@@ -7,7 +7,17 @@ Embedded Signup and Coexistence are not implemented by this increment**.
 
 ## What is needed from Meta
 
-1. Sign in/register at [Meta for Developers](https://developers.facebook.com/apps/).
+Registration and app management are separate entry points. The owner-supplied
+Cloud API Get Started guide distinguishes them; the app dashboard is not the
+registration URL. The [getting-started guide](https://developers.facebook.com/documentation/business-messaging/whatsapp/get-started)
+describes the WhatsApp use case, API Setup, test phone number ID and Messaging
+account ID. Follow the actual dashboard labels when it uses Messaging account
+instead of WABA. The supplied sample API version is an example, not an automatic
+version upgrade. Automated checks returned a login gate/429; authenticated
+screens were not independently inspected.
+
+1. Complete [developer registration](https://developers.facebook.com/async/registration/)
+   first, if needed. Then open the [Meta App Dashboard](https://developers.facebook.com/apps).
    Create an app with the WhatsApp use case/product and follow its setup wizard.
    Associate the business portfolio when requested. Dashboard labels and eligibility
    requirements can vary; account registration/terms/verification must be performed
