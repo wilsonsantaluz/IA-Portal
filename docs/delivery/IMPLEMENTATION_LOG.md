@@ -796,3 +796,37 @@ model allowlists and encrypted/vault-backed credentials. Email-bound onboarding,
 recovery/MFA, audit retention, quotas/CI and production hardening remain pending.
 Existing containers/SQLite were not reset or upgraded; .env was not modified.
 The separately authorized OCI retry runner was left alone; no remote changes.
+
+## 2026-11-08 — IA-Portal Service channel MVP
+
+Branch feature/service-whatsapp from fetched origin/main a9ec52c, clean baseline.
+Read the attached request, AGENTS and delivery docs; inspected existing identity,
+tenant filters, conversations, RAG, providers, React and Compose before edits.
+Official Meta research encountered429/login gates, explicitly documented with
+primary references. No eligibility, free allowance or live integration is claimed.
+
+Implemented scoped multi-number channels, connection-local contacts/history,
+durable deduplicated inbox/outbox, constrained extractive agent using the shared
+chat textual retriever, source hashes, opt-in simulator, handoff, 24-hour window,
+per-number/organization caps, content redaction retention and bounded transient
+retry. Official-envelope signed text reception is operator-bound to WABA/phone/
+organization; unsupported app echoes/history cannot trigger replies. Cloud
+auto-send is rejected until a later reviewed real sender/onboarding increment.
+
+Migration009 adds five tables/indexes, preserving prior schema checksums/data.
+Temporary v8 upgrade/repeat/backup/restore and late-DDL rollback passed. PASS:
+gateway build; Channels plus existing Workspace/Invitations/Organizations/
+AtlasKnowledge/Connectors/Providers/ChatSessions/ChatTitles/Usage/BusinessChat/
+SeedSmoke; actual channel/JWT/webhook/worker smoke; organization and full local
+Atlas smoke; frontend typecheck/build; channels browser themes/mobile/axe and
+Atlas chart/Mermaid/security regression. Existing 11 compiler and chunk-size
+warnings remain. No real Meta/LLM/ARM64/native OCR/vector tests in this delivery.
+
+Initial browser checkbox timing checks were changed to await persisted controlled
+state rather than assume synchronous API updates. Historical fixtures exclude
+new tables before testing old migrations. No authorization bypass or live reset.
+Full file inventory, commands and local operation: CHANNELS_REPORT.md and
+../service/README.md. Pending: live send/reconciliation/status/pricing, account-
+specific Embedded Signup/Coexistence/history, general agents/human manual inbox,
+full erasure, public ingress/abuse controls and distributed operations. Existing
+containers, .env and SQLite were not modified; no OCI change, deploy or paid resource.

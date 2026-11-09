@@ -17,7 +17,7 @@ commercial fork or payment gateway in this plan's first delivery.
 | Knowledge lifecycle | Planned | Libraries, version history, index jobs, deletion/retention, per-document ACL |
 | Extensible data access | Planned | Adapter contracts exercised by a real PostgreSQL/SQL Server/REST source, read-only grants and SSRF controls |
 | Agents | Planned | Configurable/versioned agents with reviewed tools, budgets and audit events; preserve existing conversations |
-| Official channel integrations | Planned | WhatsApp Business Platform webhook adapter with identity binding; no browser automation |
+| Official channel integrations | First local vertical | Scoped channels, signed text webhook, authorized extractive agent and simulated delivery; live Cloud sender, Embedded Signup and Coexistence pending; see `service/README.md` |
 | SaaS operations | Planned | Tenant provisioning, entitlements/limits, trustworthy usage ledger, monitoring and recovery; payment provider selected separately |
 | CI and supply chain | Planned | Required API/frontend/tests, dependency/secret scanning, reviewed ARM64 image builds; no tracked workflow existed at audit time |
 

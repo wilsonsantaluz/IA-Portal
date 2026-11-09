@@ -188,3 +188,20 @@ or email delivery exists. Links are not recipient-address-bound. See
 [test/file report](../delivery/INVITATIONS_REPORT.md). The running installation was
 not migrated during these tests. Independent tenant credentials/model allowlists,
 verified onboarding, durable audit/quotas and public-hosting hardening remain open.
+
+## Follow-up: IA-Portal Service local channel MVP (2026-11-08)
+
+Baseline `a9ec52c` includes organizations and invitations. A new gateway module now
+provides scoped external channels/contacts/history, explicit document grants,
+shared local textual retrieval, a constrained extractive agent, opt-in simulated
+delivery, handoff, caps and content retention. Signed official-envelope text
+webhooks use operator-owned WABA/phone routing. No external contact is mapped to
+a portal user and existing user-owned web histories remain independent.
+
+Migration009 is additive. Local .NET/API/browser tests cover preservation,
+concurrency and tenant isolation. Live Cloud sending, provider pricing/status
+ingestion, Embedded Signup, Coexistence/history sync, general agents, full erasure
+and production channel operations remain pending. No new Python application
+service or ARM64 validation was introduced. See [architecture](../service/ARCHITECTURE.md),
+[official research limits](../service/WHATSAPP_RESEARCH.md) and
+[delivery report](../delivery/CHANNELS_REPORT.md). The running database was not migrated.

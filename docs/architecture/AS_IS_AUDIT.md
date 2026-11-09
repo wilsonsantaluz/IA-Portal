@@ -265,3 +265,25 @@ smoke. No global account lookup, email delivery or tenant credential editor is
 claimed. See [the report](../delivery/INVITATIONS_REPORT.md). The user subsequently
 authorized/restarted the independent OCI retry runner; this follow-up leaves it
 alone and makes no remote OCI changes or live application/database upgrades.
+
+## 2026-11-08 — Channel integration audit and local vertical
+
+Initial tree clean; fetched origin/main at a9ec52c and created
+feature/service-whatsapp. Existing organization/invitation functionality was
+present. Reviewed JWT/database permission refresh, OrganizationScope/EF guards,
+user-owned chat repository, LocalChatContextService, VectorChatContextService,
+KnowledgeBaseRagService, model adapters, migration runner, React router/MUI shell
+and Compose. OCR/ML remain .NET services; Python is scripting/test tooling.
+
+No existing channel/contact/agent adapter existed. Reused local textual selection
+through LocalKnowledgeRetriever in both web chat and the constrained channel
+agent. New external history avoids relaxing private web session ownership.
+Five tenant-bound tables are added in v9; assignment is inline per connection,
+not a second general agent framework. No old Delphi/TInject/private material or
+browser automation was imported.
+
+Primary Meta research was attempted; some developer endpoints returned429/login.
+Accessible official pricing/sample references and unresolved account-specific
+contracts are recorded in service/WHATSAPP_RESEARCH.md. Local simulated delivery
+and signed reception are validated, not real Cloud sending/onboarding/Coexistence.
+See delivery/CHANNELS_REPORT.md for exact tests and pending security/operational work.

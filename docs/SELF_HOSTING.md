@@ -33,7 +33,7 @@ docker compose build ai-gateway portal-front
 docker compose up -d --no-deps ai-gateway portal-front
 ```
 
-These commands apply pending migrations through 008 at gateway startup with a pre-upgrade backup.
+These commands apply pending migrations through 009 at gateway startup with a pre-upgrade backup.
 They were not run against the existing installation during this increment.
 
 Open `http://127.0.0.1:9080`. A fresh installation creates the default organization
@@ -98,6 +98,10 @@ upgrade. Never use previous one-off authorization to erase local data as permiss
 to erase a different installation.
 
 ## Optional services and architecture limits
+
+- IA-Portal Service channels: [local simulator and reception-only Cloud webhook](service/README.md).
+  No new service or credentials are needed for simulation. Live sending/onboarding
+  remains blocked/pending; no new port or public ingress is enabled by this module.
 
 - Atlas: follow [the demo guide](demo/ATLAS_LOCAL.md); all data is synthetic.
 - Trino is optional. Approved organization profiles must use read-only credentials,

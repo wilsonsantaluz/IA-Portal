@@ -18,7 +18,7 @@ flowchart LR
     Connectors -. optional .-> Trino[Restricted Trino]
     Conversations --> Models[Approved LLM adapters]
     Conversations -. planned .-> Agents[Agent definitions and authorized tools]
-    Channels[Planned channel adapters] -. validated identity .-> API
+    Channels[Web chat and local channel adapters] --> API
     Operations[Planned SaaS operations] -. quotas and provisioning .-> API
 ```
 
@@ -35,7 +35,7 @@ already exist; do not introduce a Python service just to match a diagram.
 | Knowledge | Tenant rows, public versioned template import, text retrieval and optional vector revalidation | Multiple libraries, document history, per-document ACL, retention/index-job lifecycle |
 | Data Connectors | Tenant-approved Trino profiles and group grants, fixed read-only plans | Capability-based adapters for PostgreSQL, SQL Server and REST; tenant vault references |
 | Conversations / AI Agents | User-owned history, model routing, titles, usage, tenant model defaults/preferences | Agent definitions, versioned instructions and authorized tool schemas; no arbitrary SQL runner |
-| Channels | Existing web chat | Verified WhatsApp Business Platform webhook/signature adapter, identity binding, consent, replay protection; no WhatsApp Web/Chromium/Selenium/injected scripts |
+| Channels | Existing web chat, scoped external history, signed reception and opt-in extractive simulation | Live Cloud sender/status reconciliation, Embedded Signup, account-eligible Coexistence; no WhatsApp Web/browser automation |
 | SaaS Operations | Usage events and optional price estimates | Entitlement checks before work reservation, budgets, idempotent usage ledger, billing/provisioning/monitoring ports |
 
 Do not add unused interface trees as evidence of a completed integration. Future
