@@ -863,3 +863,34 @@ independent of the local installation. No new migration; existing001–009 initi
 the new DB. Long-duration load, full post-install host reboot, off-VM recovery and
 production/privacy/SLO hardening remain unverified. No extra component should be
 added based solely on the short demonstration measurements.
+
+## 2026-11-09 — Full-stack capacity attempt and Micro memory recovery
+
+User requested connectors/Qdrant/full stack. Clean branch
+infra/oci-full-capacity-trial from the minimal delivery; no application code or
+schema changes. Public portal/SSH already timed out before remote expansion.
+Requested controlled OCI soft reboot; recovered existing containers/data.
+
+Found confirmed448MiB crashkernel reservation, leaving498MiB usable RAM. Stopped/
+disabled kdump, freed the reservation and set crashkernel=0 in installed boot
+entries. RAM returned to946MiB immediately. Crash diagnostics are intentionally
+unavailable on this Micro; default boot setting verified, not yet reboot-tested.
+
+Local disposable real-model RAG OOM:768MiB and1536MiB caps both exit137/OOM=true.
+Embedding succeeded in the larger trial, retrieval/reranking did not complete.
+Trino512MiB: original query settings rejected; reduced query/headroom settings
+proceeded to plugin loading but also OOM. Existing full local Trino measured
+1.371GiB. Real isolated Qdrant collection/upsert/query passed around19–22MiB;
+this is not evidence that application RAG fits. No real LLM call/private data used.
+
+Created verified consistent on-VM SQLite/runtime snapshot, counts preserved and
+integrity/FKs ok. Public HTTPS page/assets/readiness200; API/web healthy, no
+automatic restart/OOM. Initial bootstrap-password authenticated smoke401; existing
+active account remains, no password reset/bypass or authenticated-pass claim.
+All disposable trial containers/network cleaned up; full local stack untouched.
+
+Complete cloud deployment is blocked by memory and was not declared done.
+Only recovery/backup helpers and a reproducible local capacity probe were added.
+No paid/new cloud resource, replacement model, extra VM service or migration.
+Full evidence, limits and next environment:
+[FULL_CAPACITY_TRIAL.md](../../infra/oracle/FULL_CAPACITY_TRIAL.md).

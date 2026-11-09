@@ -300,3 +300,19 @@ New health/rate/concurrency controls and hidden unsupported UI actions were test
 Actual deployment/secret authorization, resource observations and remaining gates
 are recorded in ../../infra/oracle/MICRO_DEPLOYMENT.md. No local data was copied
 to the cloud. This later deployment was explicitly authorized by the owner.
+
+## 2026-11-09 — Full-stack capacity audit
+
+Inspected full Compose/Atlas/RAG/model manifests and the actual existing containers
+before expanding the Micro. The public portal and SSH were already unavailable.
+Recovery exposed448MiB crashkernel reservation, repaired to recover946MiB RAM.
+Actual disposable Linux native-RAG trials OOM at768MiB and1536MiB; Trino with
+reduced query allocations still OOM at512MiB. Qdrant alone passed a tiny synthetic
+query but is not equivalent to the full RAG pipeline. No model/dimension or
+application code was silently changed to make the capacity claim pass.
+
+The complete cloud stack was not installed. Minimal HTTPS/data were recovered,
+verified consistent backup made and original accounts/passwords preserved. See
+[the capacity/recovery report](../../infra/oracle/FULL_CAPACITY_TRIAL.md) for exact
+evidence, failed authenticated-bootstrap recheck, diagnostics tradeoff and next
+infrastructure gate. No paid resources or unrequested cloud shape changes.

@@ -1,5 +1,9 @@
 # Minimal OCI Micro deployment
 
+**2026-11-09 follow-up:** the full-stack attempt and repair of a448MiB kernel crash
+reservation are recorded in [FULL_CAPACITY_TRIAL.md](FULL_CAPACITY_TRIAL.md).
+The complete RAG/Trino stack did not fit; the minimal deployment was preserved.
+
 Deployment validated on **2026-11-08 (America/Sao_Paulo)**, after the owner explicitly
 authorized the minimal deployment, use of the existing DeepSeek credential and
 the domain `santaluz.ddns.net`. Earlier no-deploy instructions applied to previous
