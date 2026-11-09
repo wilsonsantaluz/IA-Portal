@@ -16,7 +16,7 @@ public sealed class LocalExtractiveChannelAgent(LocalKnowledgeRetriever retrieva
             contentHash=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(d.Content)))}).ToArray();
         // Documents are quoted evidence, never executable instructions or tool authorizations.
         var text=documents.Count==0?"Não encontrei evidências nos documentos autorizados. Solicite atendimento humano.":
-            "[Resposta simulada — agente extrativo, sem LLM]\n"+string.Join("\n",documents.Take(3).Select(d=>$"[{d.Id}] {d.Title}: {d.Content[..Math.Min(d.Content.Length,700)]}"));
+            "[Resposta documental — agente extrativo, sem LLM]\n"+string.Join("\n",documents.Take(3).Select(d=>$"[{d.Id}] {d.Title}: {d.Content[..Math.Min(d.Content.Length,700)]}"));
         return new(text,JsonSerializer.Serialize(sources));
     }
 }

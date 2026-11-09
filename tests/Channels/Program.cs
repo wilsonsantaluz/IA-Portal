@@ -83,6 +83,29 @@ try{
   await Service(other).Process(default);Check((await other.ChannelMessages.SingleAsync(m=>m.Direction=="outbound")).Text.Contains("FOREIGN_SECRET"),"Independent authorized second-tenant evidence");
   other.ChannelContacts.Add(new(){Id=Guid.NewGuid(),OrganizationId=1,ConnectionId=foreign.Id,ExternalId="cross-write"});await Denied(()=>other.SaveChangesAsync(),403);
  }
+ config["BrowserBridge:Enabled"]="true";
+ Guid browserId,manualId,conversationId;
+ await using(var db=Scoped(path,1)){
+  var s=Service(db);await s.Create(new("Browser test","whatsapp-browser","","",[1]),default);
+  var c=await db.ChannelConnections.SingleAsync(x=>x.Provider=="whatsapp-browser");browserId=c.Id;
+  Check(c.ExternalAccountId=="org:1"&&c.ExternalPhoneNumberId==c.Id.ToString("N")&&!c.AutoReply,"Browser server IDs/default off");
+  await s.Receive(c.Id,new("browser-in","5511999999999@c.us","garantia",clock.GetUtcNow().UtcDateTime),default);
+  await s.Process(default);var conv=await db.ChannelConversations.SingleAsync(x=>x.ConnectionId==c.Id);conversationId=conv.Id;
+  await Denied(()=>s.ManualReply(conv.Id,new("manual",Guid.NewGuid()),default),409);
+  await s.Handoff(conv.Id,new(conv.Version,true),default);manualId=Guid.NewGuid();
+  await s.ManualReply(conv.Id,new("manual",manualId),default);await s.ManualReply(conv.Id,new("manual",manualId),default);
+  Check(await db.ChannelMessages.CountAsync(x=>x.Id==manualId)==1,"Idempotent manual outbox");
+  await Denied(()=>s.ManualReply(conv.Id,new("altered",manualId),default),409);
+  await s.Update(c.Id,new(c.Version,true,true,true,30,100),default);await s.Process(default);
+  Check((await db.ChannelMessages.SingleAsync(x=>x.Id==manualId)).State=="queued","Browser not sent by simulator");
+  await s.Handoff(conv.Id,new(conv.Version,false),default);
+  await s.Receive(c.Id,new("browser-auto","5511999999999@c.us","garantia",clock.GetUtcNow().UtcDateTime),default);await s.Process(default);
+  Check(await db.ChannelMessages.AnyAsync(x=>x.ConnectionId==c.Id&&x.Category!="manual"&&x.Direction=="outbound"&&x.State=="queued"),"Browser automatic durable outbox");
+ }
+ await using(var db=Scoped(path,2)){
+  await Denied(()=>Service(db).Connection(browserId,default),404);
+  await Denied(()=>Service(db).ManualReply(conversationId,new("foreign",Guid.NewGuid()),default),404);
+ }
  await using(var inspect=new PortalDbContext(Options(path))){var target=await inspect.ChannelConnections.FirstAsync(c=>c.OrganizationId==2);var concurrent=new InboundChannelMessage("concurrent","same-contact","garantia",clock.GetUtcNow().UtcDateTime);
   var results=await Task.WhenAll(Enumerable.Range(0,2).Select(_=>Task.Run(async()=>{await using var db=Scoped(path,2);return await Service(db).Receive(target.Id,concurrent,default);})));Check(results.Count(x=>x)==1,"Concurrent inbox deduplication");}
  var raw=Encoding.UTF8.GetBytes("{\"synthetic\":true}");var secret="synthetic-app-secret";var signature="sha256="+Convert.ToHexString(HMACSHA256.HashData(Encoding.UTF8.GetBytes(secret),raw));

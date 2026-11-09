@@ -330,3 +330,22 @@ The existing local SQLite was stillv7. Consistent backup/fingerprints preceded
 the two-service rebuild; v8/v9 applied and identities/content/history matched
 afterward. Full Compose overrides, running Trino/OCR/ML and local `.env` preserved.
 See [test setup/local operation](../service/META_TEST_SETUP.md).
+# Server-side browser channel increment — 2026-11-09
+
+The existing channel model already scopes connections, contacts, conversations,
+messages and delivery events by validated organization identity. The new
+`whatsapp-browser` provider reuses these tables and the documentary agent; no
+portal schema change is necessary. Organization IDs and connection keys are
+generated/validated by the gateway, not supplied as browser routing authority.
+
+An optional Node/Chromium process now owns per-connection LocalAuth profiles and
+a separate durable inbox/outbox journal. No public bridge port or browser debug
+endpoint is published. The existing Canais page exposes QR/status/lifecycle,
+opt-in automatic documentary responses and human-handoff manual responses.
+Cloud API remains optional. Actual local Chromium generated a WhatsApp Web QR;
+no account was paired and no live message exchange has been validated.
+
+This remains an experimental single-node integration: shared-container Chromium
+uses no-sandbox, profiles need private/encrypted host storage, unofficial Web
+compatibility can change, and paired reconnection/soak tests are pending. See
+[the implementation and operating guide](../service/WHATSAPP_BROWSER.md).

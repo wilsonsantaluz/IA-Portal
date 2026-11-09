@@ -1,5 +1,11 @@
 # IA-Portal Service — channel MVP
 
+**Current direction:** [server-side browser bridge](WHATSAPP_BROWSER.md) supports
+organization-scoped QR pairing and text channels locally. The Meta setup below
+is retained as an optional receive-only adapter, not a required SaaS onboarding
+path. See the browser guide for precise validation and remaining paired-account
+tests; real messaging must not be inferred from a successful unpaired QR test.
+
 **Local update2026-11-09:** the channel module is now running in the existing local
 installation with preserved data, migrations7→9 and a safe Meta setup guide/status
 card. Start with [META_TEST_SETUP.md](META_TEST_SETUP.md) for the chosen test-number

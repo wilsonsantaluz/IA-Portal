@@ -6,7 +6,7 @@ using Portal.AI.Gateway.Infrastructure;
 namespace AiGateway.Channels;
 
 public sealed record ChannelCreate([Required,StringLength(100,MinimumLength=2)] string DisplayName,
-    [Required] string Provider,[Required,StringLength(80)] string ExternalAccountId,[Required,StringLength(80)] string ExternalPhoneNumberId,int[] KnowledgeIds);
+    [Required] string Provider,[Required(AllowEmptyStrings=true),StringLength(80)] string ExternalAccountId,[Required(AllowEmptyStrings=true),StringLength(80)] string ExternalPhoneNumberId,int[] KnowledgeIds);
 public sealed record ChannelPolicy(int Version,bool IsEnabled,bool AutoReply,bool AgentEnabled,int RetentionDays,int MonthlyLimit);
 public sealed record HandoffRequest(int Version,bool HumanHandoff);
 public sealed class SimulatorSender : IOutboundMessageSender {
@@ -20,12 +20,14 @@ public sealed class ChannelService(PortalDbContext db,IChannelAgent agent,TimePr
     public async Task<ChannelConnection> Connection(Guid id,CancellationToken ct)=>
         await db.ChannelConnections.SingleOrDefaultAsync(x=>x.Id==id,ct) ?? throw new ChatException(404,"Canal não encontrado.");
     public async Task<object> Create(ChannelCreate input,CancellationToken ct) {
-        if(input.Provider is not ("simulator" or "whatsapp-cloud") || input.KnowledgeIds is null || input.KnowledgeIds.Length>50
-            || !ValidId(input.ExternalAccountId) || !ValidId(input.ExternalPhoneNumberId))throw new ChatException(400,"Configuração de canal inválida.");
+        if(input.Provider is not ("simulator" or "whatsapp-cloud" or "whatsapp-browser") || input.KnowledgeIds is null || input.KnowledgeIds.Length>50
+            || (input.Provider!="whatsapp-browser"&&(!ValidId(input.ExternalAccountId) || !ValidId(input.ExternalPhoneNumberId))))throw new ChatException(400,"Configuração de canal inválida.");
+        if(input.Provider=="whatsapp-browser"&&!config.GetValue<bool>("BrowserBridge:Enabled"))throw new ChatException(503,"Conector de navegador desabilitado.");
         var ids=input.KnowledgeIds.Distinct().ToArray();
         if(await db.KnowledgeBaseItems.CountAsync(x=>ids.Contains(x.Id)&&x.IsActive,ct)!=ids.Length)throw new ChatException(400,"Documentos não autorizados.");
         var item=new ChannelConnection{Id=Guid.NewGuid(),OrganizationId=db.OrganizationId,DisplayName=input.DisplayName.Trim(),Provider=input.Provider,
             ExternalAccountId=input.ExternalAccountId,ExternalPhoneNumberId=input.ExternalPhoneNumberId,KnowledgeIdsJson=JsonSerializer.Serialize(ids)};
+        if(item.Provider=="whatsapp-browser"){item.ExternalAccountId="org:"+db.OrganizationId;item.ExternalPhoneNumberId=item.Id.ToString("N");}
         db.ChannelConnections.Add(item);
         try{await db.SaveChangesAsync(ct);}catch(DbUpdateException){throw new ChatException(409,"Identificação de canal indisponível.");}
         logger.LogInformation("ChannelCreated Organization={Organization} Channel={Channel}",db.OrganizationId,item.Id);
@@ -35,20 +37,21 @@ public sealed class ChannelService(PortalDbContext db,IChannelAgent agent,TimePr
     // Provider message IDs are opaque (wamid/base64 may contain '.', '/', '+' or '=').
     static bool ValidMessageId(string? s)=>s is {Length:>0 and <=200} && s.All(c=>c is >= '!' and <= '~');
     static object View(ChannelConnection x)=>new{x.Id,x.DisplayName,x.Provider,x.ExternalAccountId,x.ExternalPhoneNumberId,x.IsEnabled,x.AutoReply,x.AgentEnabled,x.AgentId,x.RetentionDays,x.MonthlyLimit,x.Version,
-        knowledgeIds=JsonSerializer.Deserialize<int[]>(x.KnowledgeIdsJson),status=!x.IsEnabled?"disabled":x.Provider=="simulator"?"simulated":"receive-only; live onboarding not verified"};
+        knowledgeIds=JsonSerializer.Deserialize<int[]>(x.KnowledgeIdsJson),status=!x.IsEnabled?"disabled":x.Provider=="simulator"?"simulated":x.Provider=="whatsapp-browser"?"browser":"receive-only; live onboarding not verified"};
     public async Task<object> List(CancellationToken ct)=>(await db.ChannelConnections.AsNoTracking().OrderBy(x=>x.DisplayName).ToListAsync(ct)).Select(View);
     public async Task Update(Guid id,ChannelPolicy input,CancellationToken ct) {
         await using var tx=await db.Database.BeginTransactionAsync(ct);var c=await Connection(id,ct);
         if(c.Version!=input.Version)throw new ChatException(409,"Canal alterado; atualize a página.");
         if(input.RetentionDays is <1 or >365 || input.MonthlyLimit is <0 or >10000)throw new ChatException(400,"Limites inválidos.");
-        if(input.AutoReply && c.Provider!="simulator")throw new ChatException(409,"Envio real indisponível neste incremento. Use o simulador.");
+        if(input.AutoReply && c.Provider!="simulator"&&!(c.Provider=="whatsapp-browser"&&config.GetValue<bool>("BrowserBridge:Enabled")))throw new ChatException(409,"Envio real indisponível neste canal.");
         c.IsEnabled=input.IsEnabled;c.AutoReply=input.AutoReply;c.AgentEnabled=input.AgentEnabled;c.RetentionDays=input.RetentionDays;c.MonthlyLimit=input.MonthlyLimit;c.Version++;
         await Save(ct);await tx.CommitAsync(ct);
         logger.LogInformation("ChannelPolicyChanged Organization={Organization} Channel={Channel} AutoReply={AutoReply}",db.OrganizationId,id,c.AutoReply);
     }
     async Task Save(CancellationToken ct){try{await db.SaveChangesAsync(ct);}catch(DbUpdateConcurrencyException){throw new ChatException(409,"Registro alterado; atualize a página.");}}
     public async Task<bool> Receive(Guid connectionId,InboundChannelMessage input,CancellationToken ct) {
-        if(!ValidMessageId(input.ExternalId)||!ValidId(input.ContactId)||string.IsNullOrWhiteSpace(input.Text)||input.Text.Length>4000
+        if(string.IsNullOrEmpty(input.ContactId))throw new ChatException(400,"Contato inválido.");
+        if(!ValidMessageId(input.ExternalId)||(!ValidId(input.ContactId)&&!System.Text.RegularExpressions.Regex.IsMatch(input.ContactId??"",@"^\d{5,30}@(c\.us|lid)$"))||string.IsNullOrWhiteSpace(input.Text)||input.Text.Length>4000
             || input.Timestamp>Now.AddMinutes(5)||input.Timestamp<Now.AddDays(-365))throw new ChatException(400,"Mensagem inválida.");
         await using var tx=await db.Database.BeginTransactionAsync(ct);var c=await Connection(connectionId,ct);
         if(!c.IsEnabled)throw new ChatException(409,"Canal desativado.");
@@ -83,17 +86,33 @@ public sealed class ChannelService(PortalDbContext db,IChannelAgent agent,TimePr
         var c=await Connection(id,ct);var month=new DateTime(Now.Year,Now.Month,1,0,0,0,DateTimeKind.Utc);
         return new{inbound=await db.ChannelMessages.CountAsync(x=>x.ConnectionId==id&&x.Direction=="inbound"&&x.CreatedAt>=month,ct),
             outbound=await db.ChannelMessages.CountAsync(x=>x.ConnectionId==id&&x.Direction=="outbound"&&x.CreatedAt>=month,ct),c.MonthlyLimit,
-            metaCost=(decimal?)null,llmCost=(decimal?)null,infrastructureCost=(decimal?)null,mode="extractive simulation; no LLM call"};
+            metaCost=(decimal?)null,llmCost=(decimal?)null,infrastructureCost=(decimal?)null,mode=c.Provider=="simulator"?"simulated transport; extractive agent, no LLM":"extractive agent; no LLM call"};
     }
-    // One bounded transaction; the only sender enabled here is deterministic and side-effect-free.
-    // Do not add remote sends inside this transaction: real sends need ambiguity reconciliation.
+    public async Task<object> ManualReply(Guid conversationId,ManualChannelReply input,CancellationToken ct) {
+        if(input.RequestId==Guid.Empty||string.IsNullOrWhiteSpace(input.Text))throw new ChatException(400,"Resposta inválida.");
+        await using var tx=await db.Database.BeginTransactionAsync(ct);
+        var conv=await db.ChannelConversations.SingleOrDefaultAsync(x=>x.Id==conversationId,ct)??throw new ChatException(404,"Conversa não encontrada.");
+        var c=await Connection(conv.ConnectionId,ct);
+        if(c.Provider!="whatsapp-browser"||!c.IsEnabled||!conv.HumanHandoff||conv.LastInboundAt<=Now.AddHours(-24))throw new ChatException(409,"Ative atendimento humano em um canal habilitado com mensagem recebida nas últimas 24 horas.");
+        var existing=await db.ChannelMessages.SingleOrDefaultAsync(x=>x.Id==input.RequestId,ct);
+        if(existing is not null){if(existing.ConversationId!=conv.Id||existing.Category!="manual"||existing.Text!=input.Text.Trim())throw new ChatException(409,"Identificador já utilizado.");return new{existing.Id,existing.State};}
+        var month=new DateTime(Now.Year,Now.Month,1,0,0,0,DateTimeKind.Utc);
+        var limit=Math.Clamp(config.GetValue<int?>("Channels:OrganizationLimits:"+db.OrganizationId)??1000,0,100000);
+        if(await db.ChannelMessages.CountAsync(x=>x.ConnectionId==c.Id&&x.Direction=="outbound"&&x.CreatedAt>=month,ct)>=c.MonthlyLimit
+            ||await db.ChannelMessages.CountAsync(x=>x.Direction=="outbound"&&x.CreatedAt>=month,ct)>=limit)throw new ChatException(409,"Limite de respostas atingido.");
+        var item=new ChannelMessage{Id=input.RequestId,OrganizationId=db.OrganizationId,ConnectionId=c.Id,ConversationId=conv.Id,
+            ExternalId="manual:"+input.RequestId.ToString("N"),Direction="outbound",Category="manual",State="queued",Text=input.Text.Trim(),CreatedAt=Now,NextAttemptAt=Now};
+        db.ChannelMessages.Add(item);await Save(ct);await tx.CommitAsync(ct);return new{item.Id,item.State};
+    }
+    // One bounded transaction; only simulator delivery happens here. Browser delivery uses
+    // BrowserChannelPump after commit, with a durable idempotency journal on the bridge.
     public async Task Process(CancellationToken ct) {
         await using var tx=await db.Database.BeginTransactionAsync(ct);var now=Now;
         var inputs=await db.ChannelMessages.Where(x=>x.Direction=="inbound"&&x.State=="pending").OrderBy(x=>x.CreatedAt).Take(20).ToListAsync(ct);
         foreach(var input in inputs) {
             var c=await Connection(input.ConnectionId,ct);var conversation=await db.ChannelConversations.SingleAsync(x=>x.Id==input.ConversationId,ct);
             input.State="processed";
-            if(!c.IsEnabled||!c.AutoReply||!c.AgentEnabled||conversation.HumanHandoff||c.Provider!="simulator"||c.AgentId!="local-extractive-v1"||conversation.LastInboundAt<=now.AddHours(-24)){input.State="held";continue;}
+            if(!c.IsEnabled||!c.AutoReply||!c.AgentEnabled||conversation.HumanHandoff||(c.Provider!="simulator"&&!(c.Provider=="whatsapp-browser"&&config.GetValue<bool>("BrowserBridge:Enabled")))||c.AgentId!="local-extractive-v1"||conversation.LastInboundAt<=now.AddHours(-24)){input.State="held";continue;}
             var month=new DateTime(now.Year,now.Month,1,0,0,0,DateTimeKind.Utc);
             var count=await db.ChannelMessages.CountAsync(x=>x.ConnectionId==c.Id&&x.Direction=="outbound"&&x.CreatedAt>=month,ct)
                 +db.ChangeTracker.Entries<ChannelMessage>().Count(x=>x.State==EntityState.Added&&x.Entity.ConnectionId==c.Id&&x.Entity.Direction=="outbound");
@@ -106,7 +125,8 @@ public sealed class ChannelService(PortalDbContext db,IChannelAgent agent,TimePr
                 ExternalId="reply:"+input.Id.ToString("N"),Direction="outbound",State="queued",CreatedAt=now,NextAttemptAt=now,Text=answer.Text,SourcesJson=answer.SourcesJson});
         }
         await Save(ct);
-        var outputs=await db.ChannelMessages.Where(x=>x.Direction=="outbound"&&x.State=="queued"&&x.NextAttemptAt<=now).Take(20).ToListAsync(ct);
+        var outputs=await db.ChannelMessages.Where(x=>x.Direction=="outbound"&&x.State=="queued"&&x.NextAttemptAt<=now
+            &&db.ChannelConnections.Any(c=>c.Id==x.ConnectionId&&c.Provider=="simulator")).Take(20).ToListAsync(ct);
         foreach(var output in outputs){
             var c=await Connection(output.ConnectionId,ct);var conv=await db.ChannelConversations.SingleAsync(x=>x.Id==output.ConversationId,ct);
             if(!c.IsEnabled||!c.AutoReply||!c.AgentEnabled||conv.HumanHandoff||conv.LastInboundAt<=now.AddHours(-24)||c.Provider!=sender.Name){output.State="held";continue;}

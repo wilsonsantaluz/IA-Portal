@@ -935,3 +935,76 @@ No Meta account created, token generated, tunnel started, real message sent or c
 deployment changed. Live Cloud sending/Embedded Signup/Coexistence still pending;
 missing app assets, private secrets and publicly routed callback block actual
 receipt verification. See ../service/META_TEST_SETUP.md for next concrete steps.
+# 2026-11-09 — Server-side WhatsApp Web bridge, local validation
+
+User explicitly changed direction from Meta onboarding to a server-side browser
+bridge and authorized implementation and sizing tests on the local 24-GB host.
+Started from clean `feature/whatsapp-local-setup` in dedicated branch
+`feature/whatsapp-browser-bridge`. No Oracle, DNS, cloud deployment, `.env`, license
+or existing volume changes. The separately authorized A1 retry runner was left
+running, not duplicated.
+
+Reused organization-scoped channel entities, authorized document retrieval,
+extractive agent, history, handoff, caps and retention. Added optional authenticated
+Node/Chromium bridge, durable inbox/outbox, profile persistence, private QR,
+connection states, reconnect/backoff/heartbeat and pause/logout. One account cannot
+be bound to multiple portal connections. No arbitrary script/host input is exposed.
+Added manual responses requiring handoff and opt-in automatic documentary replies.
+Remote side effects occur after portal commit. Stable UUIDs deduplicate dispatch;
+ambiguous delivery is shown as unknown and not automatically resent.
+
+PASS, executed:
+
+- `npm test --prefix whatsapp-bridge`: 4 tests, lifecycle, QR expiry, tenant/account
+  separation, duplicate inbox/outbox, restart, ambiguity, stale events and heartbeat.
+- `npm audit --prefix whatsapp-bridge`: 0 known vulnerabilities after locked
+  dependency overrides; patched Puppeteer also passed actual QR validation.
+- `dotnet run --project tests/Channels --no-restore`: migration9 idempotency,
+  backup/restore/rollback, existing channel tests, browser IDs/default-off,
+  manual handoff/idempotency, automatic outbox and foreign-tenant denial.
+- `python scripts/smoke_channels.py`: actual JWT/HTTP/SQLite/worker, synthetic
+  bridge routing and inbox acknowledgment, manual and automatic documentary
+  output, unknown-send non-replay, tenant/Member denial; no real message sent.
+- `python scripts/smoke_organizations.py`: organization/invitation authorization,
+  isolation and lifecycle regression checks passed.
+- `python scripts/smoke_local.py --atlas`: baseline sessions/usage/providers/
+  settings/tenant/connectors/hybrid chat/SQLite passed with HTTP doubles, not
+  external inference or actual Trino analytics.
+- `npm run typecheck --prefix front` and production frontend Docker build passed.
+- Docker builds for gateway/frontend/bridge passed; gateway compile warnings and
+  frontend chunk-size warnings remain. No claim of warning-free build.
+- `node tests/ui/channels.cjs`: API fixtures, simulator regression, browser
+  QR/pause/manual reply, light/dark/mobile and axe checks passed.
+- `node tests/ui/browser-channels-live.cjs`: real local login, one explicit test
+  channel, automatic replies off, real Chromium opened WhatsApp Web and generated
+  a QR. No QR screenshot/trace/token was saved, no phone was paired.
+- `node tests/ui/channels-live.cjs`: actual updated local page/login/light/dark
+  passed; screenshots remain ignored artifacts. Actual private bridge returned
+  401 for missing/wrong secrets and no-store for authorized status.
+
+Preservation: consistent private backup in
+`C:\oci\ia-portal\local-browser-backups` before updating. After updating only
+gateway/frontend and adding bridge, fingerprints of users/password hashes,
+KB and chat history match exactly (1 user/10 documents/1 session/2 messages),
+schema9->9, integrity/FKs passed. New private session volume is separate.
+Trino/OCR/ML containers were not recreated; existing Trino health was unhealthy
+during inspection and was not diagnosed/repaired as part of this channel task.
+
+Sizing: host reports about 24 GB RAM, Docker 11.55 GiB budget. A first unpaired QR
+session read 684.9 MiB. Three later samples at 18:50 UTC measured bridge 626.3–647.7MiB
+(2.08–47.50% CPU, transient activity) and gateway 130.7–136.1MiB. Samples are in
+ignored `artifacts/whatsapp-browser-resources.csv`, produced by
+`python scripts/measure_browser_bridge.py --samples 3 --interval 5`.
+This is not a paired-session/load/100-customer sizing result.
+
+Initial validation issues corrected: Windows-generated dependency lock omitted
+Linux optional dependencies (regenerated lock under the same Linux Node image);
+HTTP fixture initially lacked chunked request parsing; an early UI run stalled
+under build/memory pressure and was rerun successfully against a static frontend
+fixture container. That fixture and the temporary Vite process were stopped;
+the updated local stack remains running. No force-fix/downgrade was used.
+
+Remaining gates: user QR pairing, real inbound/outbound/ack verification, paired
+restart/reconnect and soak tests; media/groups/history import, external LLM agent,
+distributed workers and production per-session container/sandbox hardening are
+outside this increment. [Operating guide](../service/WHATSAPP_BROWSER.md).

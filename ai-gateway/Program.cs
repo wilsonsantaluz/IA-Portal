@@ -51,6 +51,10 @@ builder.Services.AddScoped<IChannelAgent,LocalExtractiveChannelAgent>();
 builder.Services.AddScoped<ChannelService>();
 builder.Services.AddSingleton<IOutboundMessageSender,SimulatorSender>();
 builder.Services.AddHostedService<ChannelWorker>();
+builder.Services.AddScoped<BrowserBridge>();
+builder.Services.AddScoped<BrowserChannelPump>();
+builder.Services.AddHttpClient("browser-bridge",c=>c.Timeout=TimeSpan.FromSeconds(15))
+    .ConfigurePrimaryHttpMessageHandler(()=>new HttpClientHandler{AllowAutoRedirect=false,UseProxy=false});
 builder.Services.AddScoped<OrganizationWorkspaceService>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<OrganizationInvitationService>();
