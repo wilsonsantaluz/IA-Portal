@@ -1046,3 +1046,48 @@ permit TCP80/443 at the modem. Actual public TLS and Meta callback remain pendin
 No backend/frontend build is claimed for this edge-only change. Existing local
 containers and the separately authorized OCI retry runner were preserved.
 See [local HTTPS operation](../../infra/local/README.md).
+# 2026-11-09 — Oracle HTTPS to local workstation through reverse SSH
+
+Owner explicitly authorized the existing VM as HTTPS ingress to this workstation,
+superseding earlier no-remote-change restrictions for this bounded task. Started
+clean branch `infra/ssh-local-edge`. Implemented persistent hidden reverse SSH
+runner, strict known-host verification, loopback-only19080/19089 forwards,
+keepalive/ExitOnForwardFailure, singleton mutex and identity-checked stop. Added
+reversible Caddy cutover helper and a bounded authenticated verification worker.
+No modem/DNS changes, extra VM, shape change or paid service/resource.
+
+VM was initially OCI RUNNING but SSH banner/HTTPS timed out. Owner approved one
+SOFTRESET through the clarification tool. Waited for the OCI graceful shutdown
+window without submitting another reset. On recovery, verified the ED25519 host
+key against full console history captured through authenticated OCI API before
+enrolling known_hosts. Never disabled host verification or copied private keys.
+
+Actual tunnel established and remote loopback binds checked; Caddy switched to
+forward the entire frontend/API to Windows, with health forwarded separately.
+Original web `ia-portal-web-vm-20261110T012417Z` and original cloud API/database
+preserved; old API stopped only after public/local equivalence and authorization
+checks. Certificate volumes reused. No automatic fallback to the old database.
+
+PASS: PowerShell validation/loopback/host/keepalive/invalid-host/PID-stop checks;
+duplicate runner denial; Bash syntax and isolated non-loopback/unreachable-tunnel
+denial, successful/idempotent cutover, launch/HTTPS failure rollback once;
+actual Caddy validation; frontend Docker build and Nginx syntax; wrong webhook
+verification401 in both slash forms with no synthetic token in Nginx/gateway logs.
+The new Cloud edge filters request URI/headers in error logs. Local webhook
+access/error logging is suppressed; backend default logging is Error.
+
+PASS public normal TLS/readiness, exact local/public frontend HTML hash, local
+JWT/organization equivalence through public HTTPS, anonymous API401, and actual
+Chrome public login/Canais/light/dark using local credentials without model/Meta
+calls. Private callback origin updated and applied to local gateway while preserving
+all Compose overrides. Actual public verification challenge200 passed; token/URL
+query contents omitted. Existing Cloud receive config remains incomplete without
+a fresh App Secret, and real Cloud sending is still unimplemented.
+
+No application schema/.NET changes or database migrations; no .NET rebuild claimed.
+Existing data/users/channels and local Docker volumes preserved. One PowerShell validation
+test initially used a non-public exception type and was corrected; stop/relaunch
+of the owned runner exercised actual singleton recovery. Completion worker phase
+is complete and exited; tunnel runner and original OCI capacity runner stay active.
+No scheduled task installed, so workstation reboot/logon needs Docker/runner
+startup. See [operation and rollback](../../infra/oracle/LOCAL_TUNNEL.md).

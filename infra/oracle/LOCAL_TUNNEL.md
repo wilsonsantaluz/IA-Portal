@@ -1,5 +1,10 @@
 # Oracle HTTPS edge to the local Windows portal
 
+**Activated and verified on2026-11-09 (America/Sao_Paulo).** The existing public
+hostname now serves the workstation's frontend/API through the reverse tunnel.
+The old cloud API and original web container are stopped and preserved. Earlier
+recovery observations below describe the preparation, not the final active state.
+
 The public domain stays pointed at the existing Oracle Micro IPv4. Its Caddy
 keeps TLS termination and certificate renewal. A workstation-initiated SSH reverse
 tunnel forwards all frontend/API requests to the existing local stack. No modem
@@ -122,3 +127,33 @@ checks anonymous401, and only then stops the old cloud API. No messages or LLM
 calls are generated. Credentials are read from a private local file, never arguments
 containing secret values. A lock prevents duplicate workers. Safe phase/status is
 written to `activation-status.json`; default waiting window is30minutes.
+
+## Completed recovery and public checks
+
+The authorized soft reboot completed. Strict SSH initially rejected the host
+because this workstation had no recorded host key. Its ED25519 fingerprint was
+verified against the **full console history retrieved through authenticated OCI
+API**, then enrolled in the user's known_hosts. No host checking was disabled.
+The serial capture was kept privately outside Git; no private key was transferred.
+
+Actual remote listeners19080/19089 were confirmed exclusively on127.0.0.1;
+sshd reported `GatewayPorts no` and `AllowTcpForwarding yes`. Activation succeeded
+and preserved the old web as `ia-portal-web-vm-20261110T012417Z` (UTC timestamp),
+with `/opt/ia-portal/edge/previous-web-container` recording that name. The old
+`ia-portal-api` stopped cleanly with exit0; all its data and certificate bind
+directories remain intact. The active `ia-portal-web` is only the HTTPS edge.
+
+PASS actual public TLS/readiness, byte-identical local/public frontend HTML,
+local JWT accepted publicly with matching organizations, anonymous API401, and
+real Chrome login/Canais/light-dark with local credentials. After updating the
+private callback origin and recreating only the local gateway, the public webhook
+returned the exact verification challenge200 with the private token omitted from
+tool output. Cloud receive configuration is still incomplete (fresh App Secret),
+and Cloud outbound sending remains unimplemented. The Meta console subscription
+and real message receipt were not performed by this infrastructure change.
+
+The persistent Windows tunnel runner remains active with15-second reconnect;
+the bounded completion worker finished successfully and exited. The independent
+15-minute OCI capacity runner was preserved. No DNS/modem changes or new compute
+resources were needed. Only the tunnel/edge, local frontend logging and private
+gateway callback origin changed; no database migration or reset occurred.
