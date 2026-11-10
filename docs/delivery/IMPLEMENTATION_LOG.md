@@ -1166,3 +1166,25 @@ No .NET/frontend business-code changes or builds claimed for this startup-only
 change. No DB migration, credential reset, cloud restart, paid resource or model
 call. Docker Desktop still requires user login; the PC must stay powered/awake.
 Details and maintenance commands: [Windows startup](../../infra/local/WINDOWS_AUTOSTART.md).
+# 2026-11-10 — GPU compatibility diagnosis without changing live inference
+
+User asked whether WSL/Docker could use the workstation GPU. Clean branch
+`infra/gpu-diagnostics`. Inspected actual adapters, driver/WSL and inference code:
+MX4502GiB/driver581.80; WSL2.5.9.0/kernel6.6.87.2. Gateway uses CPU ONNX package
+and default sessions; chat currently uses textual retrieval/external LLM, OCR
+Tesseract and ML simple .NET arithmetic. No CUDA provider is selected in these
+services. GPU exposure alone would not offload general CPU/RAM/DB operations.
+
+Added reproducible isolated CUDA driver probe and operating findings. Pulled
+python:3.12-slim, then ran the probe with --gpus all, --network none and only the
+read-only script mount. PASS actual allocation/JIT/kernel/synchronization/copyback:
+GeForce MX450,2047MiB,SM7.5,41.0->42.0. Resources freed on exit; no model downloads
+or private mount/API call. This proves Docker GPU compute access, not ONNX model
+compatibility, inference speed or sustained utilization.
+
+No live container, driver, WSL configuration, .env, data, provider or advanced-RAG
+mode changed. Existing CUDA-consuming application inference is not claimed. No
+application build/tests required or claimed for this standalone diagnostic; the
+actual kernel result is the executed validation. Further CUDA inference work must
+select compatible runtime libraries and measure the2GiB budget with real models.
+See [GPU findings](../../infra/local/GPU.md).
