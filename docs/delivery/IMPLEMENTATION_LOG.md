@@ -1122,3 +1122,15 @@ finished complete; existing SSH/provisioning runners preserved. Old cloud API an
 web backup remain stopped/intact. No DNS/modem/.env/schema/user/database changes.
 No application build/tests claimed for this OS-only correction. Detailed evidence,
 operation and limitations: [DNF cache incident](../../infra/oracle/DNF_CACHE_INCIDENT.md).
+# 2026-11-09 — Owner-authorized removal of stopped cloud app containers
+
+Verified both `ia-portal-api` and `ia-portal-web-vm-20261110T012417Z` were stopped
+before removal, and verified the remaining web carries the local-tunnel edge label.
+Removed exactly those two containers without force/volume/image pruning. Preserved
+the active HTTPS proxy, original database/certificate directories and images.
+Moved the historical rollback marker to `previous-web-container.removed`; recovery
+now needs container recreation rather than restarting the deleted backup.
+Actual public HTTPS readiness200 passed. No application code, schema or build
+changes. Stopped containers were not consuming RAM; the active required proxy
+was around34MiB. Two initial shell/line-ending attempts exited before mutation;
+the successful SSH stdin used LF bytes and rechecked state before removal.

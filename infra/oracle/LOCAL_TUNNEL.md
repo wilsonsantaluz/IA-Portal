@@ -5,6 +5,16 @@ hostname now serves the workstation's frontend/API through the reverse tunnel.
 The old cloud API and original web container are stopped and preserved. Earlier
 recovery observations below describe the preparation, not the final active state.
 
+**Subsequent owner-authorized cleanup:** removed the two stopped legacy containers
+`ia-portal-api` and `ia-portal-web-vm-20261110T012417Z`. Only the active HTTPS edge
+`ia-portal-web` remains on the VM. Database/certificate directories and images were
+preserved; the old-container marker is now `previous-web-container.removed`.
+Container-name rollback described historically below is no longer available:
+restore would require deliberately recreating the old containers from the retained
+images/configuration and data. Public readiness200 passed after removal. Stopped
+containers did not consume RAM; removal cleans their container metadata/writable
+layers, not active memory. The required edge was using about34MiB at inspection.
+
 The public domain stays pointed at the existing Oracle Micro IPv4. Its Caddy
 keeps TLS termination and certificate renewal. A workstation-initiated SSH reverse
 tunnel forwards all frontend/API requests to the existing local stack. No modem
