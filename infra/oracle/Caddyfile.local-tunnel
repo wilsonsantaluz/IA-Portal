@@ -1,0 +1,36 @@
+{
+	admin off
+	persist_config off
+	log default {
+		format filter {
+			wrap json
+			fields {
+				request>uri delete
+				request>headers delete
+			}
+		}
+	}
+	servers {
+		max_header_size 32KB
+	}
+}
+
+{$PORTAL_SITE} {
+	encode gzip
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy same-origin
+		-Server
+	}
+	request_body {
+		max_size 21MB
+	}
+	handle /health/* {
+		reverse_proxy 127.0.0.1:19089
+	}
+	handle {
+		reverse_proxy 127.0.0.1:19080 {
+			flush_interval -1
+		}
+	}
+}
