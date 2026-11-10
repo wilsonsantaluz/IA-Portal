@@ -1,6 +1,7 @@
 # Opt-in only: docker compose -f docker-compose.yml -f docker-compose.atlas.yml up --build
 services:
   atlas-trino:
+    restart: unless-stopped
     image: trinodb/trino:484@sha256:2704eb53935af5e582d63d6033e9bf99d20c325e9b0e30b1016ef59a4773979f
     ports:
       - "127.0.0.1:18081:8080"

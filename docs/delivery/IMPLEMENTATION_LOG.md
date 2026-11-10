@@ -1134,3 +1134,35 @@ Actual public HTTPS readiness200 passed. No application code, schema or build
 changes. Stopped containers were not consuming RAM; the active required proxy
 was around34MiB. Two initial shell/line-ending attempts exited before mutation;
 the successful SSH stdin used LF bytes and rechecked state before removal.
+# 2026-11-10 — Persistent Windows logon startup
+
+Owner authorized automatic recovery after workstation restart. Started clean
+`infra/windows-autostart`. Existing Oracle edge already had unless-stopped and
+enabled Docker systemd; verified read-only. Locally gateway/frontend/OCR/ML/Atlas
+Trino lacked durable restart policies. Added unless-stopped to base/Atlas Compose
+and applied it to all six existing running containers with docker update; no
+recreation, data reset, private-env changes or optional RAG activation.
+
+Registered current-user interactive limited-privilege task IA-Portal-ReverseTunnel,
+logon trigger, hidden PowerShell, unlimited duration, IgnoreNew, task-failure retry.
+No password stored and no Windows automatic login enabled. Docker Desktop registry
+startup was disabled; the task explicitly starts the existing installed executable
+if missing, waits for gateway readiness, then runs the original strict SSH loop.
+Installed public bootstrap/runner/stop scripts outside Git under local AppData so
+changing branches does not remove startup files. No SSH key contents copied.
+
+PASS actual task registration, canonical username->SID ownership validation,
+idempotent re-registration, current-user task execution, installed runner PID/SSH
+child, task Running/267009, public normal TLS/readiness200. A repeated start was
+ignored without duplicate runner. During action replacement, Scheduler terminated
+the parent while leaving its SSH child; stopped that verified old PID/start time
+and corrected the helper's terminated-parent race/path validation. Existing
+reverse-tunnel safety tests passed afterward. Foreign tasks are refused by marker
+and owner checks. Combined Compose and PowerShell syntax checks passed; all six
+running container restart policies verified. No machine/Docker reboot was performed
+and cold-start Docker launch remains to be verified at the next actual logon.
+
+No .NET/frontend business-code changes or builds claimed for this startup-only
+change. No DB migration, credential reset, cloud restart, paid resource or model
+call. Docker Desktop still requires user login; the PC must stay powered/awake.
+Details and maintenance commands: [Windows startup](../../infra/local/WINDOWS_AUTOSTART.md).

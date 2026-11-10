@@ -11,7 +11,13 @@ function Owned($id,$started,$path){
 $parent=Get-Process -Id $state.ProcessId -ErrorAction SilentlyContinue
 if($parent){
     $cmd=Get-CimInstance Win32_Process -Filter "ProcessId=$($state.ProcessId)"
-    if($parent.StartTime.ToUniversalTime().ToString('o') -ne $state.StartedUtc -or !$cmd.CommandLine.Contains($state.Script)){throw 'Runner identity mismatch.'}
+    if(!$cmd -or $parent.HasExited){$parent=$null}
+    else{
+        $started=$parent.StartTime
+        if(!$started -or !$cmd.CommandLine -or $started.ToUniversalTime().ToString('o') -ne $state.StartedUtc -or $state.Script -isnot [string] -or ![IO.Path]::IsPathRooted($state.Script)){throw 'Runner identity mismatch.'}
+        $launcher=Join-Path (Split-Path -Parent $state.Script) 'autostart-local-portal.ps1'
+        if(!$cmd.CommandLine.Contains($state.Script) -and !$cmd.CommandLine.Contains($launcher)){throw 'Runner identity mismatch.'}
+    }
 }
 $child=Owned $state.SshProcessId $state.SshStartedUtc $state.SshExecutable
 if($parent){Stop-Process -Id $parent.Id}

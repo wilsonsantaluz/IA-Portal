@@ -1,5 +1,6 @@
 services:
   qdrant:
+    restart: unless-stopped
     image: qdrant/qdrant:v1.20.0
     profiles: [rag]
     ports:
@@ -7,6 +8,7 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
   ai-gateway:
+    restart: unless-stopped
     build: ./ai-gateway
     depends_on: [ml-service, ocr-service]
     environment:
@@ -51,14 +53,17 @@ services:
       - ./models:/app/models:ro
       - portal_data:/app/data
   ml-service:
+    restart: unless-stopped
     build: ./ml-service
     environment:
       ASPNETCORE_URLS: http://+:9081
   ocr-service:
+    restart: unless-stopped
     build: ./ocr-service
     environment:
       ASPNETCORE_URLS: http://+:8080
   portal-front:
+    restart: unless-stopped
     build: ./front
     depends_on: [ai-gateway]
     ports:

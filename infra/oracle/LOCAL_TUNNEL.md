@@ -56,8 +56,10 @@ child, error file and bounded-information operation messages. Connection attempt
 retry every15 seconds; keepalive detects broken connections. While the local
 gateway is unavailable the runner waits instead of reporting successful forwarding.
 SSH process existence alone does not prove tunnel health: check both forwarded
-HTTP endpoints from the VM. No scheduled task is installed; restart the runner
-after workstation reboot/logon. The workstation must remain powered on and awake.
+HTTP endpoints from the VM. The2026-11-10 update installed a current-user logon
+task that starts Docker Desktop if needed and then the runner. See
+[Windows startup](../local/WINDOWS_AUTOSTART.md). The workstation must remain
+powered on and awake; Docker Desktop still requires user login.
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File infra/local/stop-reverse-tunnel.ps1
