@@ -1,5 +1,8 @@
 # Micro VM memory pressure from automatic DNF metadata cache
 
+**Recovered and guard applied on2026-11-09 (America/Sao_Paulo).** Public HTTPS
+again serves the local workstation through the existing SSH tunnel.
+
 Incident:2026-11-09 (America/Sao_Paulo). The public domain continued resolving to
 the expected Oracle IPv4 and the workstation gateway returned ready200, while
 the VM's SSH banner and HTTPS timed out. OCI lifecycle RUNNING did not establish
@@ -63,3 +66,23 @@ idempotent application, operator override preservation and refusal for a package
 upgrade unit. Python recovery worker syntax passed. Runtime correction and public
 recovery must be confirmed from the real worker/VM; successful mocks alone do not
 establish restored availability.
+
+## Actual recovery result
+
+One incident-specific SOFTRESET was submitted after owner approval. SSH recovered,
+the worker applied the guard and exited with phase `complete`. Actual properties:
+`ActiveState=inactive`, timer `disabled`, `MemoryMax=268435456`,
+`MemorySwapMax=67108864`, `CPUQuotaPerSecUSec=200ms`, `RuntimeMaxUSec=2min`.
+The original unit/timer state was saved before applying the dedicated override.
+
+Normal public TLS, readiness200, exact public/local frontend HTML hash and
+anonymous API401 passed. Three short post-recovery samples reported312–320MiB
+available guest memory and Caddy14–30MiB within its96MiB limit. The cache service
+stayed inactive during these samples. This is short validation, not a long-running
+availability guarantee.
+
+Only the HTTPS edge runs on the VM; the old API remains stopped and preserved.
+The tunnel runner and separate provisioning runner were left active. No changes
+to DNS, modem, local database, user credentials, app schema or frontend/backend
+code were required for this incident. No .NET/frontend build is claimed; only
+the Bash/Python guard tests and actual infrastructure/HTTP checks were executed.

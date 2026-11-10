@@ -1091,3 +1091,34 @@ of the owned runner exercised actual singleton recovery. Completion worker phase
 is complete and exited; tunnel runner and original OCI capacity runner stay active.
 No scheduled task installed, so workstation reboot/logon needs Docker/runner
 startup. See [operation and rollback](../../infra/oracle/LOCAL_TUNNEL.md).
+# 2026-11-09 — Recurrent Micro DNF metadata cache OOM recovery
+
+User reported apparent DNS/public outage. DNS still resolved the expected Oracle
+IPv4, local gateway ready200, remote SSH banner/HTTPS timed out while OCI remained
+RUNNING. Monitoring showed memory54%->95%/CPU spike before missing samples.
+Authenticated serial-console history showed recurring global OOM kills of dnf in
+dnf-makecache.service using about696–736MiB anonymous RSS on a945MiB guest. No
+general Oracle outage or DNS fault was inferred. Queued read-only OCI agent command
+remained ACCEPTED and was not used as proof of live guest health.
+
+Created clean `fix/oracle-dnf-cache-memory`. Owner explicitly approved limiting
+the cache job and another soft restart if necessary. One SOFTRESET submitted for
+this incident. A bounded singleton Windows worker waited for strict SSH recovery,
+copied only the public guard script, applied it via sudo, and verified service
+properties and public HTTP. No forced/reset loop, extra VM or storage change.
+
+Guard validates the unit is makecache, preserves original state privately,
+disables only its timer, and caps cache RAM256MiB/swap64MiB/CPU20%/runtime120s.
+Other update/install units and packages remain untouched. The helper does not
+kill arbitrary dnf/rpm processes. Operator overrides cause refusal, not overwrite.
+Actual service inactive, timer disabled, memory caps/CPU/runtime confirmed.
+
+PASS Bash container tests: dry-run no mutations, precise cache target, backup and
+idempotency, override preservation and package-upgrade unit rejection. Python
+worker syntax passed. Actual normal public TLS/readiness200, exact frontend hash
+against local, anonymous API401 and three post-recovery memory samples passed.
+Guest available312–320MiB/Caddy14–30MiB; short sampling only. Recovery worker
+finished complete; existing SSH/provisioning runners preserved. Old cloud API and
+web backup remain stopped/intact. No DNS/modem/.env/schema/user/database changes.
+No application build/tests claimed for this OS-only correction. Detailed evidence,
+operation and limitations: [DNF cache incident](../../infra/oracle/DNF_CACHE_INCIDENT.md).
