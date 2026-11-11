@@ -83,12 +83,41 @@ try{
   await Service(other).Process(default);Check((await other.ChannelMessages.SingleAsync(m=>m.Direction=="outbound")).Text.Contains("FOREIGN_SECRET"),"Independent authorized second-tenant evidence");
   other.ChannelContacts.Add(new(){Id=Guid.NewGuid(),OrganizationId=1,ConnectionId=foreign.Id,ExternalId="cross-write"});await Denied(()=>other.SaveChangesAsync(),403);
  }
+ config["BrowserBridge:Enabled"]="true";
+ Guid browserId,manualId,conversationId;
+ await using(var db=Scoped(path,1)){
+  var s=Service(db);await s.Create(new("Browser test","whatsapp-browser","","",[1]),default);
+  var c=await db.ChannelConnections.SingleAsync(x=>x.Provider=="whatsapp-browser");browserId=c.Id;
+  Check(c.ExternalAccountId=="org:1"&&c.ExternalPhoneNumberId==c.Id.ToString("N")&&!c.AutoReply,"Browser server IDs/default off");
+  await s.Receive(c.Id,new("browser-in","5511999999999@c.us","garantia",clock.GetUtcNow().UtcDateTime),default);
+  await s.Process(default);var conv=await db.ChannelConversations.SingleAsync(x=>x.ConnectionId==c.Id);conversationId=conv.Id;
+  await Denied(()=>s.ManualReply(conv.Id,new("manual",Guid.NewGuid()),default),409);
+  await s.Handoff(conv.Id,new(conv.Version,true),default);manualId=Guid.NewGuid();
+  await s.ManualReply(conv.Id,new("manual",manualId),default);await s.ManualReply(conv.Id,new("manual",manualId),default);
+  Check(await db.ChannelMessages.CountAsync(x=>x.Id==manualId)==1,"Idempotent manual outbox");
+  await Denied(()=>s.ManualReply(conv.Id,new("altered",manualId),default),409);
+  await s.Update(c.Id,new(c.Version,true,true,true,30,100),default);await s.Process(default);
+  Check((await db.ChannelMessages.SingleAsync(x=>x.Id==manualId)).State=="queued","Browser not sent by simulator");
+  await s.Handoff(conv.Id,new(conv.Version,false),default);
+  await s.Receive(c.Id,new("browser-auto","5511999999999@c.us","garantia",clock.GetUtcNow().UtcDateTime),default);await s.Process(default);
+  Check(await db.ChannelMessages.AnyAsync(x=>x.ConnectionId==c.Id&&x.Category!="manual"&&x.Direction=="outbound"&&x.State=="queued"),"Browser automatic durable outbox");
+ }
+ await using(var db=Scoped(path,2)){
+  await Denied(()=>Service(db).Connection(browserId,default),404);
+  await Denied(()=>Service(db).ManualReply(conversationId,new("foreign",Guid.NewGuid()),default),404);
+ }
  await using(var inspect=new PortalDbContext(Options(path))){var target=await inspect.ChannelConnections.FirstAsync(c=>c.OrganizationId==2);var concurrent=new InboundChannelMessage("concurrent","same-contact","garantia",clock.GetUtcNow().UtcDateTime);
   var results=await Task.WhenAll(Enumerable.Range(0,2).Select(_=>Task.Run(async()=>{await using var db=Scoped(path,2);return await Service(db).Receive(target.Id,concurrent,default);})));Check(results.Count(x=>x)==1,"Concurrent inbox deduplication");}
  var raw=Encoding.UTF8.GetBytes("{\"synthetic\":true}");var secret="synthetic-app-secret";var signature="sha256="+Convert.ToHexString(HMACSHA256.HashData(Encoding.UTF8.GetBytes(secret),raw));
  Check(WhatsAppSignature.Verify(raw,signature,secret),"Valid signature");Check(!WhatsAppSignature.Verify(raw,signature,"wrong")&&!WhatsAppSignature.Verify(raw,"sha256=bad",secret)&&!WhatsAppSignature.Verify(raw,signature,null),"Invalid signature");
- Console.WriteLine("PASS: v8->v9 migration/idempotency/backup/restore/late-DDL rollback; tenant read/write isolation, authorized retrieval, duplicate/number-scoped contacts, opt-in, handoff, disabled agent, 24h, quota, bounded backoff and tombstone retention; signature verification. No external calls.");
+ config["WhatsApp:AppId"]="55555";config["WhatsApp:AppSecret"]="synthetic-signing-secret";config["WhatsApp:VerifyToken"]="synthetic-verification-secret";config["WhatsApp:AccessToken"]="synthetic-access-secret";
+ config["WhatsApp:PublicBaseUrl"]="https://webhook.example.test/";config["WhatsApp:Routes:12345:AccountId"]="98765";config["WhatsApp:Routes:12345:OrganizationId"]="1";
+ var setup=WhatsAppSetup.Read(config,1);Check(setup.ReceiveConfigurationReady&&!setup.LiveSendingAvailable&&setup.AuthorizedNumbers.Count==1,"Explicit receive-only metadata");
+ var serialized=JsonSerializer.Serialize(setup);Check(!serialized.Contains("synthetic-signing-secret")&&!serialized.Contains("synthetic-verification-secret")&&!serialized.Contains("synthetic-access-secret"),"No credential response");
+ Check(WhatsAppSetup.Read(config,2).AuthorizedNumbers.Count==0&&!WhatsAppSetup.Read(config,2).ReceiveConfigurationReady,"No cross-tenant route discovery");
+ foreach(var invalid in new[]{"http://webhook.example.test/","https://localhost/","https://webhook.example.test/?token=hidden","https://user:pass@webhook.example.test/","https://webhook.example.test/private"}){config["WhatsApp:PublicBaseUrl"]=invalid;Check(WhatsAppSetup.Read(config,1).WebhookUrl is null,"Unsafe callback metadata rejected");}
+ Console.WriteLine("PASS: v8->v9 migration/idempotency/backup/restore/late-DDL rollback; tenant read/write isolation, authorized retrieval, duplicate/number-scoped contacts, opt-in, handoff, disabled agent, 24h, quota, bounded backoff/tombstones/signatures; credential-free scoped setup metadata. No external calls.");
 }finally{Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();Directory.Delete(root,true);}
-sealed class V8Context(DbContextOptions<PortalDbContext> options):PortalDbContext(options){protected override void OnModelCreating(ModelBuilder m){base.OnModelCreating(m);m.Ignore<MessageDeliveryEvent>();m.Ignore<ChannelMessage>();m.Ignore<ChannelConversation>();m.Ignore<ChannelContact>();m.Ignore<ChannelConnection>();}}
+sealed class V8Context(DbContextOptions<PortalDbContext> options):PortalDbContext(options){protected override void OnModelCreating(ModelBuilder m){base.OnModelCreating(m);m.Ignore<SignupRequest>();m.Ignore<ActionAuditEvent>();m.Ignore<MessageDeliveryEvent>();m.Ignore<ChannelMessage>();m.Ignore<ChannelConversation>();m.Ignore<ChannelContact>();m.Ignore<ChannelConnection>();}}
 sealed class Clock:TimeProvider{DateTimeOffset now=new(2026,11,8,12,0,0,TimeSpan.Zero);public override DateTimeOffset GetUtcNow()=>now;public void Advance(TimeSpan value)=>now+=value;}
 sealed class RetrySender:IOutboundMessageSender{public bool Fail;public string Name=>"simulator";public Task<ChannelSendResult> Send(ChannelConnection c,ChannelMessage m,CancellationToken ct)=>Fail?throw new ChannelTransientException():Task.FromResult(new ChannelSendResult("simulated:"+m.Id.ToString("N")));}

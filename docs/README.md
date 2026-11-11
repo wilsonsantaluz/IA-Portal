@@ -52,3 +52,8 @@ Atlas BI: [execucao local e migracao](demo/ATLAS_LOCAL.md),
 [chat hibrido e visualizacoes](demo/ATLAS_CHAT.md). Implementacao demonstrativa
 com dados inteiramente sinteticos e isolamento por organizacao; consulte o diario
 para distinguir testes de Trino real, doubles de LLM/OCR e fixtures de navegador.
+
+Cadastro público Atlas e grupo de colaboração sem exclusão:
+[configuração, permissões e limites](features/PUBLIC_ATLAS_SIGNUP.md).
+
+Log de ações e autenticação: [pesquisa administrativa, escopo e operação](features/ACTION_AUDIT.md).

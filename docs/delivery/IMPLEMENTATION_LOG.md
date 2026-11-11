@@ -830,3 +830,657 @@ Full file inventory, commands and local operation: CHANNELS_REPORT.md and
 specific Embedded Signup/Coexistence/history, general agents/human manual inbox,
 full erasure, public ingress/abuse controls and distributed operations. Existing
 containers, .env and SQLite were not modified; no OCI change, deploy or paid resource.
+
+## 2026-11-08 — Explicitly authorized OCI Micro minimal deployment
+
+User requested frontend/API/SQLite/textual retrieval/external LLM deployment on
+the existing1GB Micro VM, then explicitly approved the local DeepSeek credential
+and supplied santaluz.ddns.net. Created infra/oci-micro-minimal from the clean
+published service branch. No main merge or local database/.env replacement.
+
+Built linux/amd64 images off-VM; added opt-in backend resource gates/health,
+login/API rate limits and global two-chat cap, minimal UI controls, standalone
+Compose validation and dedicated VM scripts. Public Caddy HTTPS issued/verified;
+API binds host loopback, OCI/firewalld expose80/443 only in addition to the
+owner-approved public SSH rule. Data/config/certificates persist privately.
+
+DNF preparation demonstrated a memory limit and SSH became unresponsive; controlled
+OCI soft reset recovered it. Installed official static Docker29.9.3 instead of
+repeating package metadata processing. Dedicated systemd socket/service, capped
+containers, no OCR/ML/vector/Trino/Ollama services. No new paid resource/VM/volume.
+
+PASS: builds/typecheck, MinimalHosting/BusinessChat tests, existing real temporary
+organization/full Atlas smoke, actual minimal-container login/KB/gates429, public
+HTTPS/login/KB/24 reads at concurrency3, real grounded DeepSeek answer and title,
+idempotent replay, persistence after controlled API restart, real Chrome dark/light
+minimal UI. Eight samples: API177.9–193MiB, Caddy34.29–71.19MiB, host available
+369–404MiB, no OOM/automatic restart. Test SSE chunk assertion was corrected to
+check persisted assembled output; no extra inference was needed for the replay.
+
+Full files/commands, image IDs, protected login location, recovery and limits:
+[MICRO_DEPLOYMENT.md](../../infra/oracle/MICRO_DEPLOYMENT.md). New cloud SQLite is
+independent of the local installation. No new migration; existing001–009 initialize
+the new DB. Long-duration load, full post-install host reboot, off-VM recovery and
+production/privacy/SLO hardening remain unverified. No extra component should be
+added based solely on the short demonstration measurements.
+
+## 2026-11-09 — Full-stack capacity attempt and Micro memory recovery
+
+User requested connectors/Qdrant/full stack. Clean branch
+infra/oci-full-capacity-trial from the minimal delivery; no application code or
+schema changes. Public portal/SSH already timed out before remote expansion.
+Requested controlled OCI soft reboot; recovered existing containers/data.
+
+Found confirmed448MiB crashkernel reservation, leaving498MiB usable RAM. Stopped/
+disabled kdump, freed the reservation and set crashkernel=0 in installed boot
+entries. RAM returned to946MiB immediately. Crash diagnostics are intentionally
+unavailable on this Micro; default boot setting verified, not yet reboot-tested.
+
+Local disposable real-model RAG OOM:768MiB and1536MiB caps both exit137/OOM=true.
+Embedding succeeded in the larger trial, retrieval/reranking did not complete.
+Trino512MiB: original query settings rejected; reduced query/headroom settings
+proceeded to plugin loading but also OOM. Existing full local Trino measured
+1.371GiB. Real isolated Qdrant collection/upsert/query passed around19–22MiB;
+this is not evidence that application RAG fits. No real LLM call/private data used.
+
+Created verified consistent on-VM SQLite/runtime snapshot, counts preserved and
+integrity/FKs ok. Public HTTPS page/assets/readiness200; API/web healthy, no
+automatic restart/OOM. Initial bootstrap-password authenticated smoke401; existing
+active account remains, no password reset/bypass or authenticated-pass claim.
+All disposable trial containers/network cleaned up; full local stack untouched.
+
+Complete cloud deployment is blocked by memory and was not declared done.
+Only recovery/backup helpers and a reproducible local capacity probe were added.
+No paid/new cloud resource, replacement model, extra VM service or migration.
+Full evidence, limits and next environment:
+[FULL_CAPACITY_TRIAL.md](../../infra/oracle/FULL_CAPACITY_TRIAL.md).
+
+## 2026-11-09 — Authorized A1 retry interval change
+
+User changed capacity retries from30 to15minutes. Added validated
+`-IntervalMinutes` (15–1440, default15), dynamic interval logging and updated the
+existing timing test. PASS:74 offline assertions, no test OCI calls/sleeps.
+Restarted only the verified sleeping provisioning process, preserving the lock
+directory/journal, same2OCPU/12GB target, image, subnet and public key. The new
+hidden runner explicitly uses15minutes; no concurrent OCI launch was interrupted
+and no second provisioning runner was intentionally left active. Existing
+capacity timestamp still determines the remaining wait after restart.
+
+## 2026-11-09 — WhatsApp Meta test setup and actual local update
+
+User requested continuing WhatsApp, updating local runtime and explaining Meta
+registration/frontend parameters; selected the Meta test number. Clean baseline,
+new feature/whatsapp-local-setup branch. Read AGENTS/service docs and inspected
+current channel code/Compose/RBAC before editing. Meta developer guide remained
+login-gated; primary reference links and account-specific limitations documented.
+
+Added GET api/channels/whatsapp/setup: permission-protected, tenant-scoped approved
+numbers, public IDs/callback and secret-presence booleans only. Unsafe callback
+origins rejected; no secrets serialized or global configuration returned. New
+WhatsAppSetupCard in existing page explains app/test-number setup and current
+receive-only limitation. Optional Compose overlay/private blank env example prepared,
+validated synthetically, not applied with fake/real Meta credentials.
+
+Actual local build/up replaced only gateway/frontend. Verified consistent backup
+and previous image IDs first. Existing schema7→9; fingerprints of users/password
+hashes/KB/history match (1/10/1/2), integrity/FKs ok. Trino/OCR/ML remained running.
+PASS: gateway/frontend image builds/typecheck, Channels unit/migration tests,
+real temporary signed-webhook/worker smoke plus safe setup metadata401/403/scoping/
+non-disclosure, existing organization/full Atlas smokes, channels browser fixtures
+themes/mobile/axe and real updated local browser login/setup card/light/dark.
+An initial live browser assertion used a PowerShell-piped accented string and was
+rerun from a UTF-8 test file successfully. No password reset/local .env edit.
+
+No Meta account created, token generated, tunnel started, real message sent or cloud
+deployment changed. Live Cloud sending/Embedded Signup/Coexistence still pending;
+missing app assets, private secrets and publicly routed callback block actual
+receipt verification. See ../service/META_TEST_SETUP.md for next concrete steps.
+# 2026-11-09 — Server-side WhatsApp Web bridge, local validation
+
+User explicitly changed direction from Meta onboarding to a server-side browser
+bridge and authorized implementation and sizing tests on the local 24-GB host.
+Started from clean `feature/whatsapp-local-setup` in dedicated branch
+`feature/whatsapp-browser-bridge`. No Oracle, DNS, cloud deployment, `.env`, license
+or existing volume changes. The separately authorized A1 retry runner was left
+running, not duplicated.
+
+Reused organization-scoped channel entities, authorized document retrieval,
+extractive agent, history, handoff, caps and retention. Added optional authenticated
+Node/Chromium bridge, durable inbox/outbox, profile persistence, private QR,
+connection states, reconnect/backoff/heartbeat and pause/logout. One account cannot
+be bound to multiple portal connections. No arbitrary script/host input is exposed.
+Added manual responses requiring handoff and opt-in automatic documentary replies.
+Remote side effects occur after portal commit. Stable UUIDs deduplicate dispatch;
+ambiguous delivery is shown as unknown and not automatically resent.
+
+PASS, executed:
+
+- `npm test --prefix whatsapp-bridge`: 4 tests, lifecycle, QR expiry, tenant/account
+  separation, duplicate inbox/outbox, restart, ambiguity, stale events and heartbeat.
+- `npm audit --prefix whatsapp-bridge`: 0 known vulnerabilities after locked
+  dependency overrides; patched Puppeteer also passed actual QR validation.
+- `dotnet run --project tests/Channels --no-restore`: migration9 idempotency,
+  backup/restore/rollback, existing channel tests, browser IDs/default-off,
+  manual handoff/idempotency, automatic outbox and foreign-tenant denial.
+- `python scripts/smoke_channels.py`: actual JWT/HTTP/SQLite/worker, synthetic
+  bridge routing and inbox acknowledgment, manual and automatic documentary
+  output, unknown-send non-replay, tenant/Member denial; no real message sent.
+- `python scripts/smoke_organizations.py`: organization/invitation authorization,
+  isolation and lifecycle regression checks passed.
+- `python scripts/smoke_local.py --atlas`: baseline sessions/usage/providers/
+  settings/tenant/connectors/hybrid chat/SQLite passed with HTTP doubles, not
+  external inference or actual Trino analytics.
+- `npm run typecheck --prefix front` and production frontend Docker build passed.
+- Docker builds for gateway/frontend/bridge passed; gateway compile warnings and
+  frontend chunk-size warnings remain. No claim of warning-free build.
+- `node tests/ui/channels.cjs`: API fixtures, simulator regression, browser
+  QR/pause/manual reply, light/dark/mobile and axe checks passed.
+- `node tests/ui/browser-channels-live.cjs`: real local login, one explicit test
+  channel, automatic replies off, real Chromium opened WhatsApp Web and generated
+  a QR. No QR screenshot/trace/token was saved, no phone was paired.
+- `node tests/ui/channels-live.cjs`: actual updated local page/login/light/dark
+  passed; screenshots remain ignored artifacts. Actual private bridge returned
+  401 for missing/wrong secrets and no-store for authorized status.
+
+Preservation: consistent private backup in
+`C:\oci\ia-portal\local-browser-backups` before updating. After updating only
+gateway/frontend and adding bridge, fingerprints of users/password hashes,
+KB and chat history match exactly (1 user/10 documents/1 session/2 messages),
+schema9->9, integrity/FKs passed. New private session volume is separate.
+Trino/OCR/ML containers were not recreated; existing Trino health was unhealthy
+during inspection and was not diagnosed/repaired as part of this channel task.
+
+Sizing: host reports about 24 GB RAM, Docker 11.55 GiB budget. A first unpaired QR
+session read 684.9 MiB. Three later samples at 18:50 UTC measured bridge 626.3–647.7MiB
+(2.08–47.50% CPU, transient activity) and gateway 130.7–136.1MiB. Samples are in
+ignored `artifacts/whatsapp-browser-resources.csv`, produced by
+`python scripts/measure_browser_bridge.py --samples 3 --interval 5`.
+This is not a paired-session/load/100-customer sizing result.
+
+Initial validation issues corrected: Windows-generated dependency lock omitted
+Linux optional dependencies (regenerated lock under the same Linux Node image);
+HTTP fixture initially lacked chunked request parsing; an early UI run stalled
+under build/memory pressure and was rerun successfully against a static frontend
+fixture container. That fixture and the temporary Vite process were stopped;
+the updated local stack remains running. No force-fix/downgrade was used.
+
+Remaining gates: user QR pairing, real inbound/outbound/ack verification, paired
+restart/reconnect and soak tests; media/groups/history import, external LLM agent,
+distributed workers and production per-session container/sandbox hardening are
+outside this increment. [Operating guide](../service/WHATSAPP_BROWSER.md).
+# 2026-11-09 — Meta registration entry-point clarification
+
+Read the user-supplied Cloud API Get Started guide. Corrected the optional Meta
+setup card and guide to separate developer registration (`/async/registration/`)
+from app management (`/apps`). The previous dashboard link was insufficient as
+registration guidance. No credentials, Meta account actions, cloud changes or
+browser-bridge behavior changes. Live documentation checks were login/429 gated;
+do not claim authenticated dashboard validation. This optional card is not mounted
+in the current browser-channel page, so no local container update is required.
+
+Validation: `npm run typecheck --prefix front` passed.
+# 2026-11-09 — Local Windows HTTPS edge preparation
+
+Owner authorized moving the public hostname to this local host and configuring
+HTTPS. Created clean branch `infra/local-https`; no uncommitted user changes.
+Added native Caddy reverse proxy, pinned official Windows installer with SHA512
+verification and private runtime ACLs, validation-first DNS/start script, owned-
+process stop script, and DNS/TLS tests. This preserves loopback Docker bindings,
+all Compose overrides, API authorization and current SQLite. No migration or
+application code change.
+
+PASS: Windows Caddy2.11.9 installed outside Git with published checksum match;
+real Caddyfile validation; stale-A/missing-and-foreign-AAAA/CGNAT guards and no-
+listener dry-run; loopback TLS with local CA trusted only in test SSL context;
+actual portal HTML, security header, anonymous API401 and error-log redaction.
+The smoke stops its own process and never installs a Windows trusted root. The
+initial checksum parser expected SHA256/text; corrected to the release's actual
+SHA512/byte-content format before extraction. A DNS mock scope issue was corrected
+and the valid fixture now explicitly asserts an empty blocker list.
+
+Public validation reports the selected hostname still targets Oracle IPv4 and
+has no AAAA. Public Caddy has not been started, no public certificate requested,
+no firewall/modem/DNS/Oracle resources changed and no auto-start task installed.
+The owner must update AAAA to the current non-temporary local global IPv6 and
+permit TCP80/443 at the modem. Actual public TLS and Meta callback remain pending.
+No backend/frontend build is claimed for this edge-only change. Existing local
+containers and the separately authorized OCI retry runner were preserved.
+See [local HTTPS operation](../../infra/local/README.md).
+# 2026-11-09 — Oracle HTTPS to local workstation through reverse SSH
+
+Owner explicitly authorized the existing VM as HTTPS ingress to this workstation,
+superseding earlier no-remote-change restrictions for this bounded task. Started
+clean branch `infra/ssh-local-edge`. Implemented persistent hidden reverse SSH
+runner, strict known-host verification, loopback-only19080/19089 forwards,
+keepalive/ExitOnForwardFailure, singleton mutex and identity-checked stop. Added
+reversible Caddy cutover helper and a bounded authenticated verification worker.
+No modem/DNS changes, extra VM, shape change or paid service/resource.
+
+VM was initially OCI RUNNING but SSH banner/HTTPS timed out. Owner approved one
+SOFTRESET through the clarification tool. Waited for the OCI graceful shutdown
+window without submitting another reset. On recovery, verified the ED25519 host
+key against full console history captured through authenticated OCI API before
+enrolling known_hosts. Never disabled host verification or copied private keys.
+
+Actual tunnel established and remote loopback binds checked; Caddy switched to
+forward the entire frontend/API to Windows, with health forwarded separately.
+Original web `ia-portal-web-vm-20261110T012417Z` and original cloud API/database
+preserved; old API stopped only after public/local equivalence and authorization
+checks. Certificate volumes reused. No automatic fallback to the old database.
+
+PASS: PowerShell validation/loopback/host/keepalive/invalid-host/PID-stop checks;
+duplicate runner denial; Bash syntax and isolated non-loopback/unreachable-tunnel
+denial, successful/idempotent cutover, launch/HTTPS failure rollback once;
+actual Caddy validation; frontend Docker build and Nginx syntax; wrong webhook
+verification401 in both slash forms with no synthetic token in Nginx/gateway logs.
+The new Cloud edge filters request URI/headers in error logs. Local webhook
+access/error logging is suppressed; backend default logging is Error.
+
+PASS public normal TLS/readiness, exact local/public frontend HTML hash, local
+JWT/organization equivalence through public HTTPS, anonymous API401, and actual
+Chrome public login/Canais/light/dark using local credentials without model/Meta
+calls. Private callback origin updated and applied to local gateway while preserving
+all Compose overrides. Actual public verification challenge200 passed; token/URL
+query contents omitted. Existing Cloud receive config remains incomplete without
+a fresh App Secret, and real Cloud sending is still unimplemented.
+
+No application schema/.NET changes or database migrations; no .NET rebuild claimed.
+Existing data/users/channels and local Docker volumes preserved. One PowerShell validation
+test initially used a non-public exception type and was corrected; stop/relaunch
+of the owned runner exercised actual singleton recovery. Completion worker phase
+is complete and exited; tunnel runner and original OCI capacity runner stay active.
+No scheduled task installed, so workstation reboot/logon needs Docker/runner
+startup. See [operation and rollback](../../infra/oracle/LOCAL_TUNNEL.md).
+# 2026-11-09 — Recurrent Micro DNF metadata cache OOM recovery
+
+User reported apparent DNS/public outage. DNS still resolved the expected Oracle
+IPv4, local gateway ready200, remote SSH banner/HTTPS timed out while OCI remained
+RUNNING. Monitoring showed memory54%->95%/CPU spike before missing samples.
+Authenticated serial-console history showed recurring global OOM kills of dnf in
+dnf-makecache.service using about696–736MiB anonymous RSS on a945MiB guest. No
+general Oracle outage or DNS fault was inferred. Queued read-only OCI agent command
+remained ACCEPTED and was not used as proof of live guest health.
+
+Created clean `fix/oracle-dnf-cache-memory`. Owner explicitly approved limiting
+the cache job and another soft restart if necessary. One SOFTRESET submitted for
+this incident. A bounded singleton Windows worker waited for strict SSH recovery,
+copied only the public guard script, applied it via sudo, and verified service
+properties and public HTTP. No forced/reset loop, extra VM or storage change.
+
+Guard validates the unit is makecache, preserves original state privately,
+disables only its timer, and caps cache RAM256MiB/swap64MiB/CPU20%/runtime120s.
+Other update/install units and packages remain untouched. The helper does not
+kill arbitrary dnf/rpm processes. Operator overrides cause refusal, not overwrite.
+Actual service inactive, timer disabled, memory caps/CPU/runtime confirmed.
+
+PASS Bash container tests: dry-run no mutations, precise cache target, backup and
+idempotency, override preservation and package-upgrade unit rejection. Python
+worker syntax passed. Actual normal public TLS/readiness200, exact frontend hash
+against local, anonymous API401 and three post-recovery memory samples passed.
+Guest available312–320MiB/Caddy14–30MiB; short sampling only. Recovery worker
+finished complete; existing SSH/provisioning runners preserved. Old cloud API and
+web backup remain stopped/intact. No DNS/modem/.env/schema/user/database changes.
+No application build/tests claimed for this OS-only correction. Detailed evidence,
+operation and limitations: [DNF cache incident](../../infra/oracle/DNF_CACHE_INCIDENT.md).
+# 2026-11-09 — Owner-authorized removal of stopped cloud app containers
+
+Verified both `ia-portal-api` and `ia-portal-web-vm-20261110T012417Z` were stopped
+before removal, and verified the remaining web carries the local-tunnel edge label.
+Removed exactly those two containers without force/volume/image pruning. Preserved
+the active HTTPS proxy, original database/certificate directories and images.
+Moved the historical rollback marker to `previous-web-container.removed`; recovery
+now needs container recreation rather than restarting the deleted backup.
+Actual public HTTPS readiness200 passed. No application code, schema or build
+changes. Stopped containers were not consuming RAM; the active required proxy
+was around34MiB. Two initial shell/line-ending attempts exited before mutation;
+the successful SSH stdin used LF bytes and rechecked state before removal.
+# 2026-11-10 — Persistent Windows logon startup
+
+Owner authorized automatic recovery after workstation restart. Started clean
+`infra/windows-autostart`. Existing Oracle edge already had unless-stopped and
+enabled Docker systemd; verified read-only. Locally gateway/frontend/OCR/ML/Atlas
+Trino lacked durable restart policies. Added unless-stopped to base/Atlas Compose
+and applied it to all six existing running containers with docker update; no
+recreation, data reset, private-env changes or optional RAG activation.
+
+Registered current-user interactive limited-privilege task IA-Portal-ReverseTunnel,
+logon trigger, hidden PowerShell, unlimited duration, IgnoreNew, task-failure retry.
+No password stored and no Windows automatic login enabled. Docker Desktop registry
+startup was disabled; the task explicitly starts the existing installed executable
+if missing, waits for gateway readiness, then runs the original strict SSH loop.
+Installed public bootstrap/runner/stop scripts outside Git under local AppData so
+changing branches does not remove startup files. No SSH key contents copied.
+
+PASS actual task registration, canonical username->SID ownership validation,
+idempotent re-registration, current-user task execution, installed runner PID/SSH
+child, task Running/267009, public normal TLS/readiness200. A repeated start was
+ignored without duplicate runner. During action replacement, Scheduler terminated
+the parent while leaving its SSH child; stopped that verified old PID/start time
+and corrected the helper's terminated-parent race/path validation. Existing
+reverse-tunnel safety tests passed afterward. Foreign tasks are refused by marker
+and owner checks. Combined Compose and PowerShell syntax checks passed; all six
+running container restart policies verified. No machine/Docker reboot was performed
+and cold-start Docker launch remains to be verified at the next actual logon.
+
+No .NET/frontend business-code changes or builds claimed for this startup-only
+change. No DB migration, credential reset, cloud restart, paid resource or model
+call. Docker Desktop still requires user login; the PC must stay powered/awake.
+Details and maintenance commands: [Windows startup](../../infra/local/WINDOWS_AUTOSTART.md).
+# 2026-11-10 — GPU compatibility diagnosis without changing live inference
+
+User asked whether WSL/Docker could use the workstation GPU. Clean branch
+`infra/gpu-diagnostics`. Inspected actual adapters, driver/WSL and inference code:
+MX4502GiB/driver581.80; WSL2.5.9.0/kernel6.6.87.2. Gateway uses CPU ONNX package
+and default sessions; chat currently uses textual retrieval/external LLM, OCR
+Tesseract and ML simple .NET arithmetic. No CUDA provider is selected in these
+services. GPU exposure alone would not offload general CPU/RAM/DB operations.
+
+Added reproducible isolated CUDA driver probe and operating findings. Pulled
+python:3.12-slim, then ran the probe with --gpus all, --network none and only the
+read-only script mount. PASS actual allocation/JIT/kernel/synchronization/copyback:
+GeForce MX450,2047MiB,SM7.5,41.0->42.0. Resources freed on exit; no model downloads
+or private mount/API call. This proves Docker GPU compute access, not ONNX model
+compatibility, inference speed or sustained utilization.
+
+No live container, driver, WSL configuration, .env, data, provider or advanced-RAG
+mode changed. Existing CUDA-consuming application inference is not claimed. No
+application build/tests required or claimed for this standalone diagnostic; the
+actual kernel result is the executed validation. Further CUDA inference work must
+select compatible runtime libraries and measure the2GiB budget with real models.
+See [GPU findings](../../infra/local/GPU.md).
+
+## 11/11/2026 — Cadastro público Atlas e colaboração sem exclusão
+
+Branch `feature/atlas-public-signup`, origem `infra/gpu-diagnostics`, árvore limpa
+antes das edições. Pedido inicial de Admin foi corrigido pelo proprietário para
+consulta, criação e edição sem exclusão. Implementados:
+
+- Grupo Atlas — Colaboração: chat, KB, edição, dashboard e dados demonstrativos
+  concedidos; sem usuários/grupos, configurações, desativação ou reindexação geral.
+- `kb.edit` no catálogo/política/controller/UI, mantendo `kb.manage` anterior.
+  Payload de upsert não permite contornar a restrição via IsActive.
+- Cadastro opt-in, SMTP STARTTLS, confirmação explícita com validade de 30 minutos,
+  conta/membership criadas somente após confirmação. Token somente como hash no
+  SQLite; senha com BCrypt; SMTP por variável privada. Reuso/conta existente não
+  altera privilégios ou reativa contas. Limitadores de POST e status separados.
+- Migração aditiva v10, backup anterior, checksums e transação; fixtures antigas
+  ajustadas para não incluir a tabela nova em esquemas de versões anteriores.
+- Tela pt-BR usando identidade/temas atuais, link no login, fragmento removido e
+  confirmação sem consumo automático. Corrigida navegação na mesma aba detectada
+  por Chromium. `.env.example` e Compose contêm apenas opções sem credenciais.
+
+Comandos/resultados efetivos:
+
+- `dotnet build ai-gateway --no-restore -v quiet`: PASS, 0 erros; 12 avisos em
+  arquivos anteriores à entrega (nulabilidade, métodos async, variáveis/atributos).
+- `dotnet run --project tests/Signup --no-restore`: PASS. Banco temporário,
+  migração v9→v10, idempotência/preservação, backup/restauração, falha de DDL com
+  rollback, ausência de conta antes de confirmar, senha/token não literais,
+  cooldown, grupos/fontes, expiração/replay, cadastro desligado e falha SMTP double.
+- `python scripts/smoke_signup.py`: PASS. Gateway real isolado, login/confirmação,
+  destino injetado ignorado, create/edit permitidos, IsActive forjado neutralizado,
+  toggle/reindex/admin bloqueados, isolamento de organização/conversa e 429.
+- `dotnet run --project tests/Invitations --no-restore`, `tests/Workspace`,
+  `tests/Channels`, `tests/Organizations`, `tests/Usage`, `tests/Connectors`:
+  PASS em todos (mesmo comando com cada caminho de projeto).
+- `npm run typecheck` e `npm run build` em `front`: PASS. Vite avisa sobre chunks
+  acima de 500 kB; sem alteração de dependências do produto.
+- `node tests/ui/signup.cjs`, com Playwright instalado em diretório ignorado e
+  Chrome local: PASS, formulário, confirmação explícita em React StrictMode,
+  remoção do fragmento, temas claro/escuro e 390px, sem erros JS.
+  Capturas em `artifacts/signup-ui/confirm-{dark,light,mobile}.png` (fora do Git).
+- `docker compose config --quiet` e `git diff --check`: PASS.
+
+Ocorrências corrigidas durante validação: fixture v7 inicialmente incluía a nova
+tabela, teste HTTP inicialmente não tinha modelo habilitado e mantinha conexão
+SQLite aberta no cleanup do Windows; seletores de campos obrigatórios e navegação
+de fragmento no navegador foram corrigidos. Testes citados acima passaram após
+as correções; nenhuma falha foi tratada como validação positiva.
+
+Limites: SMTP real, entrega Gmail, túnel/Oracle e atualização dos containers não
+executados. Falta URL HTTPS pública e senha de app configurada pelo operador no
+ambiente local; a senha de conta fornecida na conversa não foi usada nem gravada.
+Nenhuma leitura de `.env`, alteração na base viva, deploy, commit ou merge.
+Sem chamadas LLM ou mensagens reais. Os testes de navegador usam fixtures HTTP;
+os testes HTTP usam token semeado sintético, não prova de entrega de e-mail.
+Rate limiting é local/em memória; proxies podem compartilhar limite por IP;
+recuperação de senha/CAPTCHA não incluídos. Para ativação e preview, veja
+[cadastro Atlas](../features/PUBLIC_ATLAS_SIGNUP.md).
+
+## 11/11/2026 — Chat com somente Ollama na instalação local
+
+Pedido do proprietário: deixar apenas Ollama disponível no chat. Alteração
+operacional pelas APIs autenticadas/versionadas existentes, sem modificar código,
+reconstruir containers ou aplicar as alterações pendentes do cadastro Atlas.
+O ambiente em execução aponta para `https://ollama.com/` (Cloud); consulta local
+a `127.0.0.1:11434/api/tags` não respondeu. Nenhum modelo local foi instalado.
+
+Metadados reais do endpoint configurado confirmaram os modelos disponíveis.
+Ollama habilitado com essa lista, padrão `gpt-oss:20b`; DeepSeek e OpenAI
+desabilitados. Padrão global, padrões das organizações administráveis pela conta
+atual e preferências dessa conta foram atualizados para Ollama. Configuração
+persistida no SQLite via APIs, sem manipular diretamente tabelas, credenciais,
+mensagens ou históricos. Snapshot dos ajustes anteriores de provedores/padrão
+global em `artifacts/ollama-only/previous-provider-settings.json`, fora do Git;
+não contém chaves ou tokens. Credenciais preexistentes usadas só em memória,
+sem leitura/impressão de `.env` e sem logs de autenticação.
+
+PASS: teste de metadados pela API do gateway retornou sucesso; listagem de
+provedores selecionáveis retornou somente `ollama`; tentativa de selecionar
+DeepSeek pela API de preferências retornou 409. Não houve inferência real,
+chamada a modelos pagos ou criação de conversas de teste. Builds/tests de código
+não repetidos nesta alteração exclusivamente operacional. Conversas/preferências
+de outros usuários previamente vinculadas a provedor desabilitado não foram
+migradas silenciosamente: selecionar Ollama explicitamente no fluxo existente.
+Administradores da instalação ainda podem reabilitar provedores pela configuração.
+
+## 11/11/2026 — Aviso de uso do Ollama na tela de login
+
+Pedido: informar os visitantes sobre acesso gratuito à demonstração e limites do
+Ollama. Acrescentado Alert informativo em `front/src/pages/LoginPage.tsx`, antes
+do formulário, em pt-BR: demonstração gratuita, chat exclusivamente com Ollama
+Cloud e orientação de aguardar/tentar mais tarde quando o limite for atingido.
+Preservadas as alterações pendentes do cadastro Atlas e o shell existente.
+
+Validação: `npm run typecheck` e `npm run build` em `front` PASS; build mantém o
+aviso de chunks grandes. `docker compose build portal-front` PASS (typecheck/build
+também dentro da imagem); `docker compose up -d --no-deps portal-front` PASS.
+Atualizado apenas o container do frontend; gateway/SQLite/SMTP não reconstruídos
+ou migrados nesta atualização. Compose avisou sobre bridge órfã por ausência do
+override na chamada; nenhum container órfão foi removido.
+
+Chromium real contra `http://127.0.0.1:9080/login`: PASS, aviso e botão Entrar
+visíveis; viewport 390px sem overflow horizontal. Capturas ignoradas em
+`artifacts/login-ollama/{desktop,mobile}.png`. Primeira verificação teve seletor
+com acentos alterados pela codificação do shell; repetição com regex ASCII passou.
+`git diff --check` PASS. Não repetidos testes .NET por se tratar de texto/frontend.
+Não houve verificação da URL externa Oracle nem teste de login autenticado nesta
+alteração. Sem commit/merge.
+
+## 11/11/2026 — Origem pública para confirmação de cadastro
+
+O proprietário informou `https://santaluz.ddns.net`. Configurada como
+`PORTAL_PUBLIC_URL` no `.env` privado e configurado o remetente SMTP informado
+anteriormente; nenhuma senha foi inserida ou exposta. Verificação de presença
+de configuração constatou ausência de `SMTP_APP_PASSWORD`, inclusive no gateway
+em execução. Cadastro mantido desligado; backend não foi reconstruído/recriado.
+
+PASS: GET HTTPS de `/login` no domínio público retornou 200 com HTML do portal,
+com validação normal de certificado; `docker compose config --quiet` aceitou a
+configuração; `git check-ignore .env` confirmou exclusão do Git. Isso confirma
+acesso público à tela, não entrega SMTP nem confirmação real de e-mail.
+Pendente: operador configurar senha de app Google diretamente em
+`SMTP_APP_PASSWORD` no ambiente privado para concluir ativação/teste de envio.
+
+## 11/11/2026 — Ativação pública do cadastro Atlas
+
+Após o operador informar que terminou, verificada presença de senha de app no
+ambiente privado (nenhum valor impresso). PASS: autenticação real em
+`smtp.gmail.com:587` com STARTTLS e certificado validado, sem enviar mensagem.
+Habilitado `ATLAS_PUBLIC_SIGNUP=true` e mantida origem pública informada.
+
+`docker compose` com todos os arquivos/overrides da instalação: build do
+`ai-gateway` PASS, incluindo restore/publish .NET Release, com avisos anteriores.
+Imagem anterior etiquetada `ia-portal-ai-gateway:pre-signup-20261111` para retenção.
+Validação inicial detectou variável do bridge ausente no terminal; recuperadas
+em memória as variáveis WhatsApp do container existente, sem imprimir/persistir
+novas cópias de segredos. Comparação da configuração resolvida confirmou que
+todas as opções anteriores do gateway foram preservadas; acrescentadas apenas
+opções Signup/SMTP. Nenhuma reconfiguração/removal do bridge ou Trino.
+
+Atualizado somente gateway por `up -d --no-deps ai-gateway`, com os mesmos
+volumes/overrides; readiness PASS. Reload do nginx no frontend para atualizar
+resolução do upstream. Migração v10 aplicada pelo startup; confirmado um arquivo
+`pre-chat-v10-*` no volume privado de backups, criado antes da evolução do schema.
+Sem apagar/recriar banco ou volume. Rollback exige também cópia pré-v10, conforme
+guia, pois a imagem anterior não aceita ledger 10.
+
+PASS em verificação real local e pública: `/api/auth/signup/status` habilitado;
+cadastro inválido rejeitado com 400; login existente funciona; provedores
+selecionáveis continuam somente Ollama. Chromium contra HTTPS público confirmou
+botão de cadastro no login, navegação e formulário; captura ignorada em
+`artifacts/signup-public/form.png`. `git diff --check` PASS. Testes isolados de
+cadastro/migração já registrados nesta entrega não foram repetidos, sem mudança
+de código desde sua aprovação.
+
+Limite: nenhum e-mail real foi enviado e nenhuma conta foi criada pelos checks
+desta ativação. Autenticação SMTP real não prova entrega na caixa de entrada;
+primeiro cadastro válido deverá confirmar recebimento/link e concluir o fluxo.
+Sem exposição de senha, tokens ou informações de contas em relatórios; sem
+commit/merge.
+
+## 11/11/2026 — Nome do aplicativo no cadastro
+
+Correção solicitada pelo proprietário: nome do produto IA-Portal; Atlas é a base
+demonstrativa. Ajustados botão no login, título e descrição do cadastro, corpo
+do e-mail e mensagem de confirmação. Fixture de navegador atualizada para o
+novo texto. Identificadores internos, permissões e dados da Atlas preservados.
+
+`docker compose build ai-gateway portal-front`: PASS, incluindo typecheck/build
+Vite e restore/publish .NET Release; mantidos avisos prévios de compilação/chunks.
+Publicados gateway/frontend usando os mesmos overrides/volumes, com comparação
+da configuração resolvida confirmando ambiente inalterado. Readiness PASS.
+Chromium real em HTTPS público confirmou “Criar conta no IA-Portal” no login e
+“Crie sua conta no IA-Portal” no cadastro; status permaneceu habilitado.
+`git diff --check`: PASS. Sem novo schema, envio real, teste de entrega ou testes
+unitários adicionais nesta alteração de textos. Sem commit/merge.
+
+## 11/11/2026 — Log de ações e refinamento visual do login
+
+Pedidos: histórico pesquisável por administradores, incluindo login; concluir e
+atualizar a stack local; refinar o login mantendo layout/temas. Branch
+`feature/action-audit`, criada a partir da branch de cadastro com suas alterações
+pendentes preservadas. Inspeção e escopo comunicados antes das edições.
+
+Implementados middleware e tabela append-only de auditoria, migração v11 com
+backup/checksum/validação de colunas/índices/triggers, permissão `audit.read`, API
+de pesquisa e tela pt-BR `/audit`. Registra requisições `/api`, inclusive leituras,
+login correto/incorreto, saída, alterações, falhas e acessos recusados. IDs de
+documentos/sessões criados registrados explicitamente quando conhecidos. Template
+de rota em vez de URL bruta; sem corpo/query/segredos/conteúdo de conversa. Falhas
+SSE e diagnósticos negativos de conectividade recebem resultado de falha mesmo
+com HTTP 200. Identidade vem do login correto ou do contexto autenticado validado,
+nunca de IDs de cliente. API de saída apenas registra ação; não muda revogação JWT.
+
+Leitura limitada à organização; visão global e eventos sem autenticação apenas
+pela organização 1 com a permissão. Atlas — Colaboração não recebe acesso aos
+logs. Filtros de período/usuário/pesquisa/resultado e paginação por cursor,
+limites de período e tamanho; sem edição/exclusão de registros pela interface/API.
+Escrita independente com timeout e diagnóstico sanitizado em falha, preservando
+ações já concluídas. Limites de cobertura, retenção e durabilidade documentados em
+[ACTION_AUDIT](../features/ACTION_AUDIT.md).
+
+Login preserva duas colunas, marca aprovada, tokens, temas/default escuro e fluxos
+de autenticação, convite, cadastro e aviso Ollama. Usada a imagem de fundo
+fornecida/aprovada pelo proprietário, com CSS próprio, cartões translúcidos, animações leves, sombras e
+visibilidade de senha acessível; movimento reduzido respeitado. A referência
+externa foi aberta publicamente e inspecionada visualmente; nenhum código, asset,
+marca, dados ou regra de negócio da referência foi importado. Sem dependências
+novas de produto. Captura de referência somente em artifacts ignorados.
+
+Resultados locais antes do deploy:
+
+- `dotnet run --project tests/Audit --no-restore`: PASS (primeira execução sem
+  `--no-restore` restaurou o projeto). v10→v11, preservação/idempotência, backup
+  anterior/restauração, falha DDL e rollback, triggers append-only, escrita,
+  identidades, falhas HTTP/SSE/exceção, ausência de segredos e pesquisa/escopos.
+- `python scripts/smoke_audit.py`: PASS com gateway real e SQLite temporário.
+  Login correto/incorreto, saída, busca/cursor/limites, escopo, admin permitido,
+  membro 403, IDs forjados ignorados e segredos/queries/documento não persistidos.
+- `python scripts/smoke_signup.py`: PASS após inclusão do middleware.
+- `dotnet run --project tests/Signup --no-restore`, `tests/Invitations`,
+  `tests/Workspace`, `tests/Organizations`, `tests/Channels`, `tests/Usage`,
+  `tests/Providers`: PASS, usando o mesmo comando com cada caminho. Fixtures de
+  versões antigas ajustadas para omitir a tabela nova. Sem serviços externos.
+- `npm run typecheck` e `npm run build` em `front`: PASS. Mantido aviso de chunks
+  grandes; sem alteração de pacote/lockfile.
+- `node tests/ui/audit-login.cjs`: PASS, com Playwright/Chrome locais. Login nos
+  dois temas e mobile, modos animado/reduzido, mostrar/ocultar senha e erro de
+  credenciais; audit pesquisa/paginação/vazio, temas/mobile, menu/rota recusados
+  para viewer e requisição autenticada de logout antes da navegação.
+- `node tests/ui/signup.cjs`: PASS, mantendo confirmação explícita e formulário.
+- `git diff --check`: PASS.
+
+Falhas corrigidas na validação: namespace de RoutePatternFactory no teste;
+seletor exato de célula que também contém subtítulo; espera pelo breakpoint após
+resize do navegador (sem overflow persistente). Capturas em
+`artifacts/audit-login-ui/`, com identidades sintéticas e API fixtures.
+Nenhuma chamada SMTP/LLM real ou conta criada nesses testes.
+
+Antes da atualização, registrados somente contadores de documentos/memberships
+das organizações autorizadas em artifact ignorado, sem dados pessoais, e retida
+imagem do gateway como `ia-portal-ai-gateway:pre-audit-20261111`. Runtime/deploy e
+checks públicos são registrados abaixo após sua execução.
+
+Durante a entrega, apareceu o arquivo do proprietário
+`Portal de IA em Neon Futurista.png`; confirmado explicitamente seu uso no fundo.
+Fonte original preservada; cópia sem alteração de pixels em
+`front/public/images/login-neon-portal.png` (aprox. 1,7 MB). Sobreposição por CSS
+ajusta contraste nos dois temas, mantendo a marca aprovada no cabeçalho. Essa
+imagem substitui a ilustração geométrica inicial, conforme a escolha do proprietário.
+
+### Atualização local e verificação pública
+
+`docker compose build ai-gateway portal-front`: PASS (publish .NET Release e
+typecheck/build Vite dentro das imagens). Após aprovação da imagem de fundo,
+`docker compose build portal-front`: PASS novamente com o asset definitivo.
+Usados os mesmos arquivos/overrides/volumes da instalação. Variáveis privadas de
+WhatsApp recuperadas apenas em memória do container anterior; comparação da
+configuração resolvida confirmou ambiente do gateway inalterado. Atualizados por
+`up -d --no-deps ai-gateway` e depois `up -d --no-deps portal-front`; nginx
+recarregado após a troca de upstream. Nenhuma recriação de volume/banco.
+
+Readiness do gateway PASS. Startup aplicou v11; confirmado um backup
+`pre-chat-v11-*` no volume privado. Contadores de documentos e membros das
+organizações autorizadas coincidem com os anteriores. Login existente funciona,
+cadastro público permanece habilitado e somente Ollama permanece selecionável.
+Sem criação de conta, envio SMTP ou inferência LLM nestes checks.
+
+PASS em APIs reais: permissão administrativa, pesquisa, login correto e incorreto
+registrados, leitura anônima 401, escopos organização/instalação, resultado sem
+credenciais do ambiente/token. Tentativa incorreta de login usou identidade
+sintética sem conta. Nenhuma falha `ActionAuditAppendFailed` encontrada nos logs
+do novo gateway; conteúdo dos logs não foi impresso.
+
+PASS com Chromium em `https://santaluz.ddns.net`: login público, botão de cadastro,
+asset de fundo (200/tamanho esperado), temas claro/escuro e 390px sem overflow;
+busca real administrativa por Auth.Login; saída pelo botão, retorno ao formulário
+de login e confirmação de **novo** registro Auth.Logout por ID superior ao
+anterior. Apenas login público fotografado, em
+`artifacts/audit-login-public/login-{dark,light,mobile}.png`; nenhuma captura de
+metadados reais de usuários/logs privados. Screenshots de audit da suíte continuam
+usando somente fixtures sintéticas.
+
+Na verificação pública foram ajustados seletores de teste para a codificação do
+shell e o título repetido no header/conteúdo. Aguardar uma resposta de fetch
+keepalive depois da navegação não é confiável em Playwright; o check definitivo
+verificou emissão da requisição, tela de saída e novo registro persistido no
+servidor. Testes corrigidos passaram; não houve falha funcional de logout.
+
+Estado dos demais serviços preservado: WhatsApp/ML/OCR continuam em execução;
+Trino mantém `unhealthy` que já existia antes desta entrega, sem alteração ou
+afirmação de validação da análise de dados. Auditoria cobre operações das APIs a
+partir desta versão, não histórico anterior/cliques locais/todas as tarefas de
+workers. Sem retenção automática nem garantia de escrita em falha de disco/banco;
+consultar o guia para limites operacionais e rollback com backup pré-v11.
+`git diff --check`: PASS; sem commit, push ou merge.

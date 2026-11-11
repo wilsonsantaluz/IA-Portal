@@ -1,5 +1,10 @@
 # IA-Portal na OCI — provisionamento Always Free
 
+**Atualização em 08/11/2026:** após autorização posterior, a VM Micro criada pelo
+proprietário recebeu a implantação mínima. Operação, acesso, medições e limites:
+[MICRO_DEPLOYMENT.md](MICRO_DEPLOYMENT.md). O histórico abaixo descreve a etapa
+anterior de provisionamento A1 e não substitui esse relatório.
+
 Esta etapa prepara **uma VM**, sem instalar ou publicar o IA-Portal. O padrão do
 script é `DryRun`: apenas consultas OCI e arquivos locais. Não altera rede,
 conta, `.env`, bancos, VCNs ou recursos existentes. Não usa Terraform, scheduler,
@@ -181,7 +186,10 @@ redimensionada nem recriada. Para Provision, aguarda RUNNING até 20 minutos e
 confere subnet/IP da VNIC primária. Não executa SSH ou cloud-init de aplicação.
 
 Somente `ServiceError` OCI `InternalError`/500 com mensagem explícita
-`Out of [host] capacity` gera espera de 30 minutos. SDK/CLI retries desativados.
+`Out of [host] capacity` gera espera de 15 minutos, conforme alteração autorizada
+em 09/11/2026. O parâmetro `-IntervalMinutes` permite configurar de 15 a 1440
+minutos (padrão: 15). SDK/CLI retries desativados. Ao reiniciar, o journal mantém
+o intervalo restante desde a última tentativa; não é apagado para antecipar POSTs.
 Erros de autenticação, permissão, limite, quota, billing ou configuração não
 geram outra tentativa. Timeout/resposta vazia ambígua provoca até três leituras
 de reconciliação; se nenhuma confirmar VM, encerra com journal travado. Uma VM

@@ -40,6 +40,8 @@ public sealed class BusinessChatContextService(IServiceProvider services, IConfi
     {
         var ct = http.HttpContext?.RequestAborted ?? CancellationToken.None;
         var (intent,plan) = BusinessIntentClassifier.Classify(req.Pergunta);
+        if(config.GetValue<bool>("Hosting:Minimal") && intent!=BusinessIntent.Documents)
+            return Direct("Esta instalação mínima oferece consultas documentais. Dados financeiros e consultas SQL não estão habilitados; nenhum indicador foi calculado.");
         if (intent == BusinessIntent.Clarify)
             return Direct("Essa análise ainda não tem um plano validado. Posso mostrar aging na data de referência, os dez maiores saldos ou faturamento versus caixa. Especifique a análise; não vou estimar valores ausentes.");
         if (intent != BusinessIntent.Documents && (req.SourceId is null || req.ReferenceDate is null))

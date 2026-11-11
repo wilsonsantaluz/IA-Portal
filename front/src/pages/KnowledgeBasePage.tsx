@@ -40,7 +40,8 @@ interface KbItem {
 
 export default function KnowledgeBasePage() {
   const { hasPermission } = useAuth();
-  const canEdit = hasPermission("kb.manage");
+  const canManage = hasPermission("kb.manage");
+  const canEdit = canManage || hasPermission("kb.edit");
   const [items, setItems] = useState<KbItem[]>([]);
   const [sections, setSections] = useState<string[]>([]);
   const [pageSize, setPageSize] = useState(10);
@@ -248,7 +249,7 @@ export default function KnowledgeBasePage() {
             <EditIcon fontSize="small" />
           </IconButton>
 
-          <IconButton
+          {canManage && <IconButton
             size="small"
             color={params.row.isActive ? "error" : "success"}
             onClick={() => toggle(params.row.id)}
@@ -258,7 +259,7 @@ export default function KnowledgeBasePage() {
             ) : (
               <ToggleOnIcon fontSize="small" />
             )}
-          </IconButton>
+          </IconButton>}
         </Stack>
       ),
     },

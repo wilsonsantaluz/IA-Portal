@@ -16,7 +16,9 @@ public class ChatBotContoller(IChatRepository chats, ChatUsageService usage, IKn
     public async Task<IActionResult> List([FromQuery] int limit = 30, [FromQuery] string? cursor = null, [FromQuery] string? search = null, CancellationToken ct = default) => Ok(await chats.ListSessionsAsync(limit, cursor, search, ct));
     [HttpPost("sessions")]
     public async Task<IActionResult> Create(CancellationToken ct) {
-        var session = await chats.CreateSessionAsync(ct); return CreatedAtAction(nameof(Get), new { id = session.Id }, session);
+        var session = await chats.CreateSessionAsync(ct);
+        AiGateway.Infrastructure.Audit.ActionAuditContext.Resource(HttpContext,"session",session.Id);
+        return CreatedAtAction(nameof(Get), new { id = session.Id }, session);
     }
     [HttpGet("sessions/{id:guid}")]
     public async Task<IActionResult> Get(Guid id, CancellationToken ct) => Ok(await chats.GetSessionAsync(id, ct));

@@ -139,17 +139,17 @@ try {
     Assert-Throws { Invoke-Provision } 'read denied'
     Assert-True ($script:Launches -eq 0) 'Inventory authorization failure stops'
     Reset-Scenario; $script:ResultQueue=@($capacity,$accepted)
-    # Mock sleep advances journal time, preserving the production 30-minute policy.
+    # Mock sleep advances journal time, preserving the configured production policy.
     function Start-Sleep { param($Seconds)
         $script:Sleeps+=@($Seconds)
         $journalPath=Join-Path $StateDirectory 'journal.json'
         if (Test-Path -LiteralPath $journalPath) {
             $j=Get-Content -LiteralPath $journalPath -Raw | ConvertFrom-Json
-            $j.At=[DateTime]::UtcNow.AddSeconds(-1801).ToString('o');Save-Journal $j
+            $j.At=[DateTime]::UtcNow.AddSeconds(-($script:IntervalSeconds+1)).ToString('o');Save-Journal $j
         }
     }
     Assert-True ((Invoke-Provision).Status -eq 'Success') 'Capacity followed by success terminates'
-    Assert-True ($script:Launches -eq 2 -and $script:Sleeps[0] -eq 1800 -and $script:Reads -eq 2) '30 minute interval and fresh preflight before retry'
+    Assert-True ($script:Launches -eq 2 -and $script:Sleeps[0] -eq 900 -and $script:Reads -eq 2) '15 minute interval and fresh preflight before retry'
     Reset-Scenario; $script:ResultQueue=@((Error-Result 'QuotaExceeded' 400 'quota'))
     Assert-Throws { Invoke-Provision } 'Fatal OCI launch error'
     Assert-True ($script:Launches -eq 1 -and $script:Sleeps.Count -eq 0 -and $script:Reads -eq 1) 'Fatal error stops immediately without retry, sleep or new reads'

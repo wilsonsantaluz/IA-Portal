@@ -1,3 +1,5 @@
+import SignupPage from "./pages/SignupPage";
+import ActionAuditPage from "./pages/ActionAuditPage";
 import ChannelsPage from "./pages/ChannelsPage";
 import DataConnectorsPage from "./pages/DataConnectorsPage";
 import OrganizationsPage from "./pages/OrganizationsPage";
@@ -22,6 +24,7 @@ import UsagePage from "./pages/UsagePage";
 export default function App() {
   return (
     <Routes>
+      <Route path="/signup" element={<SignupPage />} />
       {/* LOGIN SEM LAYOUT */}
       <Route
         path="/login"
@@ -42,6 +45,7 @@ export default function App() {
         }
       >
         <Route index element={<HomeRoute />} />
+        <Route path="audit" element={<RequirePermission permission="audit.read"><ActionAuditPage /></RequirePermission>} />
         <Route path="channels" element={<RequirePermission permission="channels.manage"><ChannelsPage /></RequirePermission>} />
         <Route path="organizations" element={<OrganizationsPage />} />
         <Route path="invite" element={<AcceptInvitationPage />} />

@@ -18,8 +18,10 @@ public static class PortalAccess
     public const string Chat = "chat.access";
     public const string Dashboard = "dashboard.view";
     public const string Knowledge = "kb.view";
+    public const string EditKnowledgeContent = "kb.edit";
     public const string EditKnowledge = "kb.manage";
     public const string Administration = "access.manage";
+    public const string AuditRead = "audit.read";
     public static readonly (string Key, string Screen, string Description)[] Catalog =
     [
         (Channels, "Canais", "Administrar canais e conversas externas da organização"),
@@ -32,8 +34,10 @@ public static class PortalAccess
         (Chat, "Chat IA", "Conversar, consultar o próprio histórico e analisar documentos"),
         (Dashboard, "Dashboard", "Consultar indicadores de qualidade e avaliações"),
         (Knowledge, "Base de conhecimento", "Consultar conteúdos"),
+        (EditKnowledgeContent, "Base de conhecimento", "Criar e editar conteúdo, sem excluir, desativar ou reindexar a base"),
         (EditKnowledge, "Base de conhecimento", "Criar, editar, ativar e reindexar conteúdos (inclui consulta)"),
-        (Administration, "Usuários e grupos", "Administrar usuários, senhas, grupos e permissões")
+        (Administration, "Usuários e grupos", "Administrar usuários, senhas, grupos e permissões"),
+        (AuditRead, "Log de ações", "Consultar registros de ações e autenticação, respeitando o escopo da organização")
     ];
 
     public static int UserId(ClaimsPrincipal principal) => int.Parse(principal.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -69,7 +73,7 @@ public static class PortalAccess
         }
         // Provider configuration belongs to the installation, not individual tenants.
         if (organizationId != 1) permissions = permissions.Except([AiAdministration, CreateOrganization]).ToArray();
-        if (permissions.Contains(EditKnowledge) && !permissions.Contains(Knowledge)) permissions = [.. permissions, Knowledge];
+        if ((permissions.Contains(EditKnowledge) || permissions.Contains(EditKnowledgeContent)) && !permissions.Contains(Knowledge)) permissions = [.. permissions, Knowledge];
         return (roles, permissions);
     }
 }

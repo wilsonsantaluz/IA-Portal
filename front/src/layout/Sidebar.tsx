@@ -1,4 +1,5 @@
 import StorageOutlined from "@mui/icons-material/StorageOutlined";
+import HistoryOutlined from "@mui/icons-material/HistoryOutlined";
 import {
   Box,
   Divider,
@@ -57,6 +58,7 @@ const destinations: { to: string; label: string; icon: ReactNode; permission: st
     icon: <AdminPanelSettingsOutlined />,
     permission: "access.manage",
   },
+  { to: "/audit", label: "Log de ações", icon: <HistoryOutlined />, permission: "audit.read" },
   { to: "/settings/ai", label: "Inteligência Artificial", icon: <SettingsOutlined />, permission: "chat.access", alternatePermission: "ai.manage" },
 ];
 
@@ -116,6 +118,7 @@ export default function Sidebar({
         )}
         <List component="div" disablePadding>
           {destinations
+            .filter(item => import.meta.env.VITE_MINIMAL_HOSTING !== "true" || item.to !== "/data-connectors")
             .filter((item) => item.permission === "" || hasPermission(item.permission) || !!item.alternatePermission && hasPermission(item.alternatePermission))
             .map((item) => (
               <Tooltip

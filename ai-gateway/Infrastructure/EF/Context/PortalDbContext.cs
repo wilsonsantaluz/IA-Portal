@@ -27,6 +27,7 @@ public class PortalDbContext : DbContext
     public DbSet<OrganizationAiDefault> OrganizationAiDefaults => Set<OrganizationAiDefault>();
     public DbSet<OrganizationAiPreference> OrganizationAiPreferences => Set<OrganizationAiPreference>();
     public DbSet<OrganizationInvitation> OrganizationInvitations => Set<OrganizationInvitation>();
+    public DbSet<ActionAuditEvent> ActionAuditEvents => Set<ActionAuditEvent>();
 
     private void EnforceScope()
     {
@@ -60,6 +61,8 @@ public class PortalDbContext : DbContext
     public DbSet<KnowledgeBaseItem> KnowledgeBaseItems => Set<KnowledgeBaseItem>();
     public DbSet<ChatKbRating> ChatKbRatings => Set<ChatKbRating>();
 
+    public DbSet<SignupRequest> SignupRequests => Set<SignupRequest>();
+
     public DbSet<User> Users => Set<User>();
 
     public DbSet<Role> Roles => Set<Role>();
@@ -70,7 +73,16 @@ public class PortalDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<ActionAuditEvent>(e=>{
+            e.ToTable("ActionAuditEvents"); e.HasKey(x=>x.Id);
+            e.HasIndex(x=>x.CreatedAt);e.HasIndex(x=>new{x.OrganizationId,x.Id});e.HasIndex(x=>new{x.ActorUserId,x.Id});
+            e.HasQueryFilter(x=>IsSystem || x.OrganizationId==OrganizationId);
+        });
 
+        modelBuilder.Entity<SignupRequest>(e => {
+            e.ToTable("SignupRequests"); e.HasKey(x=>x.TokenHash);
+            e.HasIndex(x=>x.Email); e.HasIndex(x=>x.ExpiresAt);
+        });
         ChannelMapping.Configure(modelBuilder,this);
         modelBuilder.Entity<AiProviderSetting>(e => { e.ToTable("AiProviderSettings"); e.HasKey(x => x.Id); e.Property(x => x.Version).IsConcurrencyToken(); });
         modelBuilder.Entity<AiUserPreference>(e => { e.ToTable("AiUserPreferences"); e.HasKey(x => x.UserId); e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict); });

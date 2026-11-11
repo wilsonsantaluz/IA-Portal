@@ -79,6 +79,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("auth", JSON.stringify(data));
   }
   function logout() {
+    if (user?.token) {
+      const base = (import.meta.env.VITE_API_URL || "/").replace(/\/?$/, "/");
+      void fetch(base + "api/auth/logout", { method: "POST", keepalive: true,
+        headers: { Authorization: `Bearer ${user.token}`, "X-Organization-Id": String(user.organizationId) }
+      }).catch(() => { /* Local sign-out remains available while offline. */ });
+    }
     setUser(null);
     localStorage.removeItem("auth");
     localStorage.removeItem("portal_session_id");

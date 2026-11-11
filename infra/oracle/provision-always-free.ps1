@@ -10,6 +10,7 @@ param(
     [string]$AdminCidr,
     [string]$ImageId,
     [string]$StateDirectory = (Join-Path $env:LOCALAPPDATA 'IA-Portal/oci-always-free'),
+    [ValidateRange(15, 1440)][int]$IntervalMinutes = 15,
     [switch]$ProvisionApproved
 )
 Set-StrictMode -Version Latest
@@ -17,7 +18,7 @@ $ErrorActionPreference = 'Stop'
 $script:Region = 'sa-saopaulo-1'
 $script:Shape = 'VM.Standard.A1.Flex'
 $script:DisplayName = 'ia-portal-prod'
-$script:IntervalSeconds = 1800
+$script:IntervalSeconds = $IntervalMinutes * 60
 
 function Write-OperationLog([string]$Message) {
     # Only our controlled summaries, never CLI stdout/stderr, config, keys or metadata.
@@ -328,7 +329,7 @@ function Invoke-Provision {
             }
             if ($outcome -eq 'Capacity') {
                 $journal.Outcome = 'Capacity'; Save-Journal $journal
-                Write-OperationLog 'Explicit capacity exhaustion; next preflight/attempt in 30 minutes. Ctrl+C stops.'
+                Write-OperationLog ('Explicit capacity exhaustion; next preflight/attempt in {0} minutes. Ctrl+C stops.' -f $IntervalMinutes)
                 Start-Sleep -Seconds $script:IntervalSeconds
                 continue
             }

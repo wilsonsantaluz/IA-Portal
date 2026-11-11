@@ -17,9 +17,29 @@ using AiGateway.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using System.Security.Claims;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.HttpOverrides;
 
 
 var builder = WebApplication.CreateBuilder(args);
+var minimalHosting=builder.Configuration.GetValue<bool>("Hosting:Minimal");
+if(minimalHosting && builder.Configuration.GetValue<bool>("Chat:UseAdvancedRag"))
+    throw new InvalidOperationException("Hosting:Minimal requer Chat:UseAdvancedRag=false.");
+builder.Services.AddRateLimiter(options=>{
+    options.RejectionStatusCode=429;
+    options.AddPolicy("signup-status", context=>RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _=>new FixedWindowRateLimiterOptions {
+            PermitLimit=60,Window=TimeSpan.FromMinutes(1),QueueLimit=0,AutoReplenishment=true}));
+    options.AddPolicy("signup", context=>RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _=>new FixedWindowRateLimiterOptions {
+            PermitLimit=5,Window=TimeSpan.FromMinutes(10),QueueLimit=0,AutoReplenishment=true}));
+    if(minimalHosting) options.GlobalLimiter=PartitionedRateLimiter.Create<HttpContext,string>(context=>{
+        var login=context.Request.Path.Equals(new PathString("/api/auth/login"));
+        var key=(context.Connection.RemoteIpAddress?.ToString() ?? "unknown")+(login?":login":":api");
+        return RateLimitPartition.GetFixedWindowLimiter(key,_=>new FixedWindowRateLimiterOptions{
+            PermitLimit=login?10:128,Window=TimeSpan.FromMinutes(1),QueueLimit=0,AutoReplenishment=true});
+    });
+});
 var connectorFile = builder.Configuration["TRINO_CONNECTORS_FILE"];
 if (!string.IsNullOrWhiteSpace(connectorFile)) builder.Configuration.AddJsonFile(Path.GetFullPath(connectorFile,builder.Environment.ContentRootPath),optional:false,reloadOnChange:false);
 
@@ -37,9 +57,16 @@ builder.Services.AddScoped<IChannelAgent,LocalExtractiveChannelAgent>();
 builder.Services.AddScoped<ChannelService>();
 builder.Services.AddSingleton<IOutboundMessageSender,SimulatorSender>();
 builder.Services.AddHostedService<ChannelWorker>();
+builder.Services.AddScoped<BrowserBridge>();
+builder.Services.AddScoped<BrowserChannelPump>();
+builder.Services.AddHttpClient("browser-bridge",c=>c.Timeout=TimeSpan.FromSeconds(15))
+    .ConfigurePrimaryHttpMessageHandler(()=>new HttpClientHandler{AllowAutoRedirect=false,UseProxy=false});
 builder.Services.AddScoped<OrganizationWorkspaceService>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<OrganizationInvitationService>();
+builder.Services.AddScoped<AtlasSignupService>();
+builder.Services.AddScoped<ISignupMailer,SmtpSignupMailer>();
+builder.Services.AddSingleton<AiGateway.Infrastructure.Audit.ActionAuditWriter>();
 builder.Services.AddSingleton<ConnectorProfiles>();
 builder.Services.AddScoped<DataConnectorService>();
 builder.Services.AddHttpClient("trino-secure", c => c.Timeout = TimeSpan.FromSeconds(20)).ConfigurePrimaryHttpMessageHandler(ConnectorProfiles.Handler);
@@ -168,11 +195,15 @@ builder.Services.AddAuthorization(options =>
     options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().RequireClaim("perm", PortalAccess.Administration).Build();
     foreach (var permission in PortalAccess.Catalog)
         options.AddPolicy(permission.Key, policy => policy.RequireAuthenticatedUser().RequireClaim("perm", permission.Key));
+    options.AddPolicy(PortalAccess.EditKnowledgeContent,policy=>policy.RequireAuthenticatedUser()
+        .RequireAssertion(ctx=>ctx.User.HasClaim("perm",PortalAccess.EditKnowledgeContent) || ctx.User.HasClaim("perm",PortalAccess.EditKnowledge)));
 });
 
 
 
 var app =builder.Build();
+app.UseRouting();
+app.UseMiddleware<AiGateway.Infrastructure.Audit.ActionAuditMiddleware>();
 
 app.Use(async (context, next) =>
 {
@@ -191,10 +222,16 @@ await using (var scope = app.Services.CreateAsyncScope())
 }
 
 
-app.UseSwagger();
-app.UseSwaggerUI();
-app.UseCors("AllowAll");
+if(!minimalHosting) { app.UseSwagger(); app.UseSwaggerUI(); app.UseCors("AllowAll"); }
+if(minimalHosting)app.UseForwardedHeaders(new ForwardedHeadersOptions{
+    ForwardedHeaders=ForwardedHeaders.XForwardedFor|ForwardedHeaders.XForwardedProto
+}); // Default trusted proxies are loopback only; the gateway itself binds to loopback.
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
+app.UseMiddleware<AiGateway.Infrastructure.MinimalHostingMiddleware>();
+app.MapGet("/health/live",()=>Results.Ok(new{status="ok"})).AllowAnonymous();
+app.MapGet("/health/ready",async (PortalDbContext db,CancellationToken ct)=>
+    await db.Database.CanConnectAsync(ct)?Results.Ok(new{status="ready"}):Results.StatusCode(503)).AllowAnonymous();
 app.MapControllers();
 app.Run();

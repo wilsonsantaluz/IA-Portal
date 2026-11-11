@@ -22,8 +22,8 @@ public sealed class AiSettingsController(AiProviderCatalog catalog, IHttpClientF
     public async Task<IActionResult> Test(string id, CancellationToken ct)
     {
         var info = await catalog.Get(id, ct);
-        if (!info.Configured) return Ok(new { success = false, status = "not_configured", testedAt = DateTime.UtcNow });
-        if (info.ConfigurationError is not null) return Ok(new { success = false, status = "invalid_endpoint", testedAt = DateTime.UtcNow });
+        if (!info.Configured) { AiGateway.Infrastructure.Audit.ActionAuditContext.Failure(HttpContext); return Ok(new { success = false, status = "not_configured", testedAt = DateTime.UtcNow }); }
+        if (info.ConfigurationError is not null) { AiGateway.Infrastructure.Audit.ActionAuditContext.Failure(HttpContext); return Ok(new { success = false, status = "invalid_endpoint", testedAt = DateTime.UtcNow }); }
         // Metadata-only request: no inference, no model download, no prompt or chargeable title.
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct); timeout.CancelAfter(TimeSpan.FromSeconds(10));
         string status;
@@ -43,6 +43,7 @@ public sealed class AiSettingsController(AiProviderCatalog catalog, IHttpClientF
             }
         } catch (OperationCanceledException) { status = "timeout"; }
         catch { status = "unavailable"; }
+        if(status!="connected") AiGateway.Infrastructure.Audit.ActionAuditContext.Failure(HttpContext);
         return Ok(new { success = status == "connected", status, testedAt = DateTime.UtcNow });
     }
 }

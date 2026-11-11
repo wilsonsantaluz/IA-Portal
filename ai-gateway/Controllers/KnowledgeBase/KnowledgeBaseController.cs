@@ -62,7 +62,7 @@ public class KnowledgeBaseController : ControllerBase
 
  
     [HttpPost("save")]
-    [Authorize(Policy = PortalAccess.EditKnowledge)]
+    [Authorize(Policy = PortalAccess.EditKnowledgeContent)]
     public async Task<ActionResult> Save([FromBody] KnowledgeBaseItemDto dto, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(dto.KeyName))
@@ -91,6 +91,7 @@ public class KnowledgeBaseController : ControllerBase
             entity.IsActive = true;
 
         var saved = await _repo.SaveAsync(entity, ct);
+        AiGateway.Infrastructure.Audit.ActionAuditContext.Resource(HttpContext,"document",saved.Id);
 
         return Ok(new
         {
@@ -128,12 +129,18 @@ public class KnowledgeBaseController : ControllerBase
         });
     }
     [HttpPost("upsert")]
-    [Authorize(Policy = PortalAccess.EditKnowledge)]
+    [Authorize(Policy = PortalAccess.EditKnowledgeContent)]
     public async Task<ActionResult> Upsert([FromBody] UpsertKbItemRequest req, CancellationToken ct)
     {
         try
         {
+            // Content editors cannot deactivate/reactivate through the upsert payload.
+            if (!User.HasClaim("perm", PortalAccess.EditKnowledge))
+                req.IsActive = req.Id is > 0
+                    ? (await _repo.GetByIdAsync(req.Id.Value, ct) ?? throw new ChatException(404, "Documento não encontrado.")).IsActive
+                    : true;
             var id = await _knowledgeBaseService.UpsertAsync(req, ct);
+            AiGateway.Infrastructure.Audit.ActionAuditContext.Resource(HttpContext,"document",id);
             return Ok(new { id, message = "KB salva com sucesso" });
         }
         catch (ArgumentException ex)

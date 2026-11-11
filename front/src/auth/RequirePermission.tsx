@@ -8,6 +8,7 @@ export const screenRoutes = [
   ["access.manage", "/users"],
   ["usage.admin", "/usage"],
   ["ai.manage", "/settings/ai"],
+  ["audit.read", "/audit"],
 ];
 export function HomeRoute() {
   const { hasPermission } = useAuth();

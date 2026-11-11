@@ -1,0 +1,41 @@
+{
+	admin off
+	persist_config off
+	skip_install_trust
+	storage file_system {
+		root "{$PORTAL_TLS_STORAGE}"
+	}
+	acme_ca {$PORTAL_ACME_CA:https://acme-v02.api.letsencrypt.org/directory}
+	log default {
+		format filter {
+			wrap json
+			fields {
+				request>uri delete
+				request>headers delete
+			}
+		}
+	}
+	servers {
+		max_header_size 32KB
+		timeouts {
+			read_header 15s
+			read_body 60s
+		}
+	}
+}
+
+{$PORTAL_SITE} {
+	encode gzip
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy same-origin
+		-Server
+	}
+	request_body {
+		max_size 21MB
+	}
+	# No access log: webhook verification query strings may contain secrets.
+	reverse_proxy 127.0.0.1:9080 {
+		flush_interval -1
+	}
+}

@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+﻿import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import {
   Box,
@@ -8,6 +8,8 @@ import {
   Paper,
   Alert,
   Stack,
+  IconButton,
+  InputAdornment,
 } from "@mui/material";
 import AutoAwesomeOutlined from "@mui/icons-material/AutoAwesomeOutlined";
 import ArrowForwardRounded from "@mui/icons-material/ArrowForwardRounded";
@@ -16,14 +18,23 @@ import ForumOutlined from "@mui/icons-material/ForumOutlined";
 import InsightsOutlined from "@mui/icons-material/InsightsOutlined";
 import { useAuth } from "../auth/AuthProvider";
 import { useNavigate, useLocation } from "react-router-dom";
+import axios from "axios";
+import { Link } from "react-router-dom";
 import Brand from "../components/Brand";
 import ThemeToggle from "../components/ThemeToggle";
+import LoginVisual from "../components/LoginVisual";
+import VisibilityOutlined from "@mui/icons-material/VisibilityOutlined";
+import VisibilityOffOutlined from "@mui/icons-material/VisibilityOffOutlined";
+import "./login.css";
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [signupEnabled, setSignupEnabled] = useState(false);
+  useEffect(() => { axios.get((import.meta.env.VITE_API_URL || "/").replace(/\/?$/, "/") + "api/auth/signup/status").then(r => setSignupEnabled(r.data.enabled)).catch(() => {}); }, []);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   async function handleSubmit(e: FormEvent) {
@@ -44,6 +55,7 @@ export default function LoginPage() {
   }
   return (
     <Box
+      className="login-shell"
       sx={{
         minHeight: "100dvh",
         display: "grid",
@@ -51,22 +63,21 @@ export default function LoginPage() {
       }}
     >
       <Box
+        className="login-story"
         sx={{
           display: { xs: "none", md: "flex" },
-          p: { md: 5, lg: 8 },
+          p: { md: 4, lg: 5 },
           flexDirection: "column",
           justifyContent: "space-between",
           position: "relative",
           overflow: "hidden",
-          bgcolor: "var(--portal-sidebar)",
           borderRight: "1px solid",
           borderColor: "divider",
-          backgroundImage:
-            "radial-gradient(ellipse at 20% 40%, color-mix(in srgb, var(--portal-primary) 13%, transparent), transparent 65%), radial-gradient(ellipse at 100% 80%, color-mix(in srgb, var(--portal-cyan) 9%, transparent), transparent 55%)",
         }}
       >
         <Brand />
-        <Box className="portal-page" sx={{ my: 7, maxWidth: 480 }}>
+        <LoginVisual />
+        <Box className="portal-page login-story-card" sx={{ my: 3, maxWidth: 520, p: { md: 3, lg: 3.5 } }}>
           <Box
             sx={{
               display: "inline-flex",
@@ -77,14 +88,14 @@ export default function LoginPage() {
               borderRadius: "16px",
               color: "primary.main",
               boxShadow: "var(--portal-shadow)",
-              mb: 3,
+              mb: 2,
             }}
           >
             <AutoAwesomeOutlined />
           </Box>
           <Typography
             variant="h4"
-            fontSize={{ md: 38, lg: 48 }}
+            fontSize={{ md: 32, lg: 40 }}
             lineHeight={1.15}
           >
             Seu conhecimento.
@@ -102,7 +113,7 @@ export default function LoginPage() {
             Conecte ideias, explore documentos e transforme informação em ação
             com inteligência artificial.
           </Typography>
-          <Stack spacing={2} mt={5}>
+          <Stack spacing={1} mt={3}>
             {[
               { icon: <ForumOutlined />, label: "Conversas com mais contexto" },
               {
@@ -113,6 +124,7 @@ export default function LoginPage() {
             ].map((x) => (
               <Stack
                 key={x.label}
+                className="login-feature"
                 direction="row"
                 alignItems="center"
                 spacing={1.5}
@@ -130,11 +142,12 @@ export default function LoginPage() {
         </Typography>
       </Box>
       <Box
+        className="login-form-panel"
         sx={{
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          p: { xs: 3, md: 5 },
+          p: { xs: 2, sm: 4, md: 5 },
           position: "relative",
         }}
       >
@@ -142,8 +155,8 @@ export default function LoginPage() {
           <ThemeToggle />
         </Box>
         <Paper
-          className="portal-page"
-          sx={{ width: "100%", maxWidth: 410, bgcolor: "transparent", py: 6 }}
+          className="portal-page login-form-card"
+          sx={{ width: "100%", maxWidth: 460, px: { xs: 3, sm: 4 }, py: { xs: 4, sm: 4.5 }, my: { xs: 7, md: 4 } }}
         >
           <Box sx={{ display: { xs: "block", md: "none" }, mb: 5 }}>
             <Brand />
@@ -162,15 +175,21 @@ export default function LoginPage() {
           <Typography fontSize={14} color="text.secondary" mt={1} mb={3}>
             Entre com suas credenciais para continuar.
           </Typography>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            O acesso a esta demonstração é gratuito. O chat usa exclusivamente o
+            Ollama Cloud e está sujeito a limites de uso. Se o limite for atingido,
+            aguarde e tente novamente mais tarde.
+          </Alert>
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {error}
             </Alert>
           )}
+          {signupEnabled && <Button component={Link} to="/signup" sx={{ mb: 2 }}>Criar conta no IA-Portal</Button>}
           <Box component="form" onSubmit={handleSubmit}>
             <TextField
               fullWidth
-              label="Email"
+              label="E-mail"
               type="email"
               autoComplete="username"
               margin="normal"
@@ -182,7 +201,8 @@ export default function LoginPage() {
             <TextField
               fullWidth
               label="Senha"
-              type="password"
+              type={showPassword ? "text" : "password"}
+              InputProps={{ endAdornment: <InputAdornment position="end"><IconButton aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"} onClick={() => setShowPassword(value => !value)} edge="end">{showPassword ? <VisibilityOffOutlined /> : <VisibilityOutlined />}</IconButton></InputAdornment> }}
               autoComplete="current-password"
               margin="normal"
               value={password}

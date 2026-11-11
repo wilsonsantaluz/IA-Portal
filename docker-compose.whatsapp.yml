@@ -1,0 +1,12 @@
+# Optional receive-only Cloud API setup. Keep the existing Compose files/profiles.
+# Values come from a PRIVATE operator env file, never build arguments or React.
+services:
+  ai-gateway:
+    environment:
+      - WhatsApp__AppId=${WHATSAPP_APP_ID:?Set the Meta App ID}
+      - WhatsApp__AppSecret=${WHATSAPP_APP_SECRET:?Set the private app signing secret}
+      - WhatsApp__VerifyToken=${WHATSAPP_VERIFY_TOKEN:?Set a private verification token}
+      - WhatsApp__AccessToken=${WHATSAPP_ACCESS_TOKEN:-}
+      - WhatsApp__PublicBaseUrl=${WHATSAPP_PUBLIC_BASE_URL:?Set a public HTTPS origin}
+      - WhatsApp__Routes__${WHATSAPP_PHONE_NUMBER_ID:?Set Phone Number ID}__OrganizationId=${WHATSAPP_ORGANIZATION_ID:?Set the approved organization ID}
+      - WhatsApp__Routes__${WHATSAPP_PHONE_NUMBER_ID:?Set Phone Number ID}__AccountId=${WHATSAPP_WABA_ID:?Set the WABA ID}

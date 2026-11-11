@@ -287,3 +287,119 @@ Accessible official pricing/sample references and unresolved account-specific
 contracts are recorded in service/WHATSAPP_RESEARCH.md. Local simulated delivery
 and signed reception are validated, not real Cloud sending/onboarding/Coexistence.
 See delivery/CHANNELS_REPORT.md for exact tests and pending security/operational work.
+
+## 2026-11-08 — Minimal cloud hosting audit
+
+Reviewed the full Compose dependencies, Dockerfiles, proxy, lazy textual/vector
+services, database initialization and chat/OCR/data routes before preparing the
+owner-requested1GB deployment. Full Compose unconditionally starts OCR/ML; Atlas
+adds a2GiB-limited Trino. A standalone two-container profile was therefore needed.
+Existing textual retrieval/SQLite/provider adapters were reused. Minimal runtime
+gates are after normal authentication/authorization; full-mode behavior remains.
+New health/rate/concurrency controls and hidden unsupported UI actions were tested.
+Actual deployment/secret authorization, resource observations and remaining gates
+are recorded in ../../infra/oracle/MICRO_DEPLOYMENT.md. No local data was copied
+to the cloud. This later deployment was explicitly authorized by the owner.
+
+## 2026-11-09 — Full-stack capacity audit
+
+Inspected full Compose/Atlas/RAG/model manifests and the actual existing containers
+before expanding the Micro. The public portal and SSH were already unavailable.
+Recovery exposed448MiB crashkernel reservation, repaired to recover946MiB RAM.
+Actual disposable Linux native-RAG trials OOM at768MiB and1536MiB; Trino with
+reduced query allocations still OOM at512MiB. Qdrant alone passed a tiny synthetic
+query but is not equivalent to the full RAG pipeline. No model/dimension or
+application code was silently changed to make the capacity claim pass.
+
+The complete cloud stack was not installed. Minimal HTTPS/data were recovered,
+verified consistent backup made and original accounts/passwords preserved. See
+[the capacity/recovery report](../../infra/oracle/FULL_CAPACITY_TRIAL.md) for exact
+evidence, failed authenticated-bootstrap recheck, diagnostics tradeoff and next
+infrastructure gate. No paid resources or unrequested cloud shape changes.
+
+## 2026-11-09 — WhatsApp local setup and deployment
+
+Existing module inspection confirmed durable/signed reception and simulation,
+but no Cloud sender, token editor or Embedded Signup. Added only an explicit
+credential-free setup DTO/authorized route metadata and pt-BR guide in the current
+channel page. No credential persistence/new migration/framework. Readiness is
+configuration-only and cannot claim a verified Meta connection. The user selected
+the Meta test number; actual app/assets/secrets/callback remain pending.
+
+The existing local SQLite was stillv7. Consistent backup/fingerprints preceded
+the two-service rebuild; v8/v9 applied and identities/content/history matched
+afterward. Full Compose overrides, running Trino/OCR/ML and local `.env` preserved.
+See [test setup/local operation](../service/META_TEST_SETUP.md).
+# Server-side browser channel increment — 2026-11-09
+
+The existing channel model already scopes connections, contacts, conversations,
+messages and delivery events by validated organization identity. The new
+`whatsapp-browser` provider reuses these tables and the documentary agent; no
+portal schema change is necessary. Organization IDs and connection keys are
+generated/validated by the gateway, not supplied as browser routing authority.
+
+An optional Node/Chromium process now owns per-connection LocalAuth profiles and
+a separate durable inbox/outbox journal. No public bridge port or browser debug
+endpoint is published. The existing Canais page exposes QR/status/lifecycle,
+opt-in automatic documentary responses and human-handoff manual responses.
+Cloud API remains optional. Actual local Chromium generated a WhatsApp Web QR;
+no account was paired and no live message exchange has been validated.
+
+This remains an experimental single-node integration: shared-container Chromium
+uses no-sandbox, profiles need private/encrypted host storage, unofficial Web
+compatibility can change, and paired reconnection/soak tests are pending. See
+[the implementation and operating guide](../service/WHATSAPP_BROWSER.md).
+
+## Cadastro público Atlas — 11/11/2026
+
+Inspeção antes da alteração: frontend React 18/TypeScript/Vite, React Router 6,
+MUI e AuthProvider com JWT; login em `AuthController`, identidade e concessões
+revalidadas no backend por `PortalAccess` e `OrganizationScope`. Convites existentes
+exigiam contas já ativas e não enviavam e-mail. Não havia serviço SMTP nem cadastro
+público. A Atlas usa slug `atlas-demo`; a organização 1 concentra administração da
+instalação. `Viewer` só consultava KB e `Member` também concedia `kb.manage`, que
+permite desativação e reindexação; nenhum atendia colaboração sem essas operações.
+
+Entrega na branch `feature/atlas-public-signup`, criada com árvore limpa:
+`kb.edit` separa criação/edição de `kb.manage`, preservando as concessões anteriores.
+O grupo Atlas — Colaboração tem chat próprio, KB, edição, dashboard e data.query.
+O servidor resolve Atlas pelo slug; cadastro não aceita destino/permissões do
+cliente. Após confirmar e-mail, cria conta e membership Atlas/custom RBAC em uma
+transação. Apenas fontes Atlas habilitadas de categoria demo recebem concessão.
+Nenhum dado existente, `.env` ou banco em execução foi alterado.
+
+A migração v10 adiciona solicitações pendentes, BCrypt, hash SHA-256 de token e
+expiração, mantendo o mecanismo existente de backup/checksum/rollback. Inspecionados
+`save`, `upsert`, `toggle`, reindexação e rotas administrativas. `upsert` preserva
+IsActive para editores sem gestão; toggle/reindex/admin permanecem protegidos no
+servidor. Não existe exclusão de documentos no controller atual. Operações no
+próprio chat continuam, com isolamento das conversas alheias.
+
+Configuração SMTP exclusivamente no servidor; envio real pelo Gmail e implantação
+no túnel ainda não validados. Veja [operação e limites](../features/PUBLIC_ATLAS_SIGNUP.md)
+e resultados no diário. Não equivale a auditoria completa para exposição pública.
+
+## Log de ações e login refinado — 11/11/2026
+
+Inspeção: não havia tabela nem tela de auditoria. Serviços emitiam mensagens
+técnicas via ILogger; logout apenas removia dados do navegador. Autenticação JWT
+revalida usuário, versão e membership em cada requisição; `OrganizationScope` e
+`PortalAccess` são as fontes reais de identidade/escopo. Frontend mantém React,
+React Router, MUI e tema local persistido. Estado inicial continha alterações
+pendentes de cadastro Atlas, preservadas em `feature/action-audit` sem commit.
+
+Incremento: tabela append-only ActionAuditEvents (v11 com backup), middleware antes
+do handler de erros/autenticação/autorização para incluir falhas e negações,
+associação explícita de identidade após login correto, marcador de falha SSE e
+endpoint de saída. INSERT independente e limitado, sem corpos/query/segredos;
+pesquisa exige `audit.read` e filtro por organização. Apenas organização 1 com
+essa permissão consulta global/anonimamente identificados. Não há auditoria de
+conteúdo de conversas, alteração/exclusão de logs ou retenção automática.
+
+Login: preservados layout em duas colunas, marca aprovada, tokens, modos claro e
+escuro, autenticação, convite, cadastro e aviso Ollama. Imagem de fundo fornecida
+e aprovada pelo proprietário, camadas CSS próprias, transparências, sombra,
+animação suave e movimento reduzido; nenhum asset,
+código ou identidade da referência externa foi importado. Inspeção da referência
+limitada à página pública, sem autenticação. Ver [operação](../features/ACTION_AUDIT.md)
+e diário para testes/limites, implantação e evidências visuais.

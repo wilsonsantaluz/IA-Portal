@@ -1,0 +1,2 @@
+# These scripts are transferred from Windows and executed by Linux bash.
+infra/oracle/*.sh text eol=lf
