@@ -1188,3 +1188,299 @@ application build/tests required or claimed for this standalone diagnostic; the
 actual kernel result is the executed validation. Further CUDA inference work must
 select compatible runtime libraries and measure the2GiB budget with real models.
 See [GPU findings](../../infra/local/GPU.md).
+
+## 11/11/2026 — Cadastro público Atlas e colaboração sem exclusão
+
+Branch `feature/atlas-public-signup`, origem `infra/gpu-diagnostics`, árvore limpa
+antes das edições. Pedido inicial de Admin foi corrigido pelo proprietário para
+consulta, criação e edição sem exclusão. Implementados:
+
+- Grupo Atlas — Colaboração: chat, KB, edição, dashboard e dados demonstrativos
+  concedidos; sem usuários/grupos, configurações, desativação ou reindexação geral.
+- `kb.edit` no catálogo/política/controller/UI, mantendo `kb.manage` anterior.
+  Payload de upsert não permite contornar a restrição via IsActive.
+- Cadastro opt-in, SMTP STARTTLS, confirmação explícita com validade de 30 minutos,
+  conta/membership criadas somente após confirmação. Token somente como hash no
+  SQLite; senha com BCrypt; SMTP por variável privada. Reuso/conta existente não
+  altera privilégios ou reativa contas. Limitadores de POST e status separados.
+- Migração aditiva v10, backup anterior, checksums e transação; fixtures antigas
+  ajustadas para não incluir a tabela nova em esquemas de versões anteriores.
+- Tela pt-BR usando identidade/temas atuais, link no login, fragmento removido e
+  confirmação sem consumo automático. Corrigida navegação na mesma aba detectada
+  por Chromium. `.env.example` e Compose contêm apenas opções sem credenciais.
+
+Comandos/resultados efetivos:
+
+- `dotnet build ai-gateway --no-restore -v quiet`: PASS, 0 erros; 12 avisos em
+  arquivos anteriores à entrega (nulabilidade, métodos async, variáveis/atributos).
+- `dotnet run --project tests/Signup --no-restore`: PASS. Banco temporário,
+  migração v9→v10, idempotência/preservação, backup/restauração, falha de DDL com
+  rollback, ausência de conta antes de confirmar, senha/token não literais,
+  cooldown, grupos/fontes, expiração/replay, cadastro desligado e falha SMTP double.
+- `python scripts/smoke_signup.py`: PASS. Gateway real isolado, login/confirmação,
+  destino injetado ignorado, create/edit permitidos, IsActive forjado neutralizado,
+  toggle/reindex/admin bloqueados, isolamento de organização/conversa e 429.
+- `dotnet run --project tests/Invitations --no-restore`, `tests/Workspace`,
+  `tests/Channels`, `tests/Organizations`, `tests/Usage`, `tests/Connectors`:
+  PASS em todos (mesmo comando com cada caminho de projeto).
+- `npm run typecheck` e `npm run build` em `front`: PASS. Vite avisa sobre chunks
+  acima de 500 kB; sem alteração de dependências do produto.
+- `node tests/ui/signup.cjs`, com Playwright instalado em diretório ignorado e
+  Chrome local: PASS, formulário, confirmação explícita em React StrictMode,
+  remoção do fragmento, temas claro/escuro e 390px, sem erros JS.
+  Capturas em `artifacts/signup-ui/confirm-{dark,light,mobile}.png` (fora do Git).
+- `docker compose config --quiet` e `git diff --check`: PASS.
+
+Ocorrências corrigidas durante validação: fixture v7 inicialmente incluía a nova
+tabela, teste HTTP inicialmente não tinha modelo habilitado e mantinha conexão
+SQLite aberta no cleanup do Windows; seletores de campos obrigatórios e navegação
+de fragmento no navegador foram corrigidos. Testes citados acima passaram após
+as correções; nenhuma falha foi tratada como validação positiva.
+
+Limites: SMTP real, entrega Gmail, túnel/Oracle e atualização dos containers não
+executados. Falta URL HTTPS pública e senha de app configurada pelo operador no
+ambiente local; a senha de conta fornecida na conversa não foi usada nem gravada.
+Nenhuma leitura de `.env`, alteração na base viva, deploy, commit ou merge.
+Sem chamadas LLM ou mensagens reais. Os testes de navegador usam fixtures HTTP;
+os testes HTTP usam token semeado sintético, não prova de entrega de e-mail.
+Rate limiting é local/em memória; proxies podem compartilhar limite por IP;
+recuperação de senha/CAPTCHA não incluídos. Para ativação e preview, veja
+[cadastro Atlas](../features/PUBLIC_ATLAS_SIGNUP.md).
+
+## 11/11/2026 — Chat com somente Ollama na instalação local
+
+Pedido do proprietário: deixar apenas Ollama disponível no chat. Alteração
+operacional pelas APIs autenticadas/versionadas existentes, sem modificar código,
+reconstruir containers ou aplicar as alterações pendentes do cadastro Atlas.
+O ambiente em execução aponta para `https://ollama.com/` (Cloud); consulta local
+a `127.0.0.1:11434/api/tags` não respondeu. Nenhum modelo local foi instalado.
+
+Metadados reais do endpoint configurado confirmaram os modelos disponíveis.
+Ollama habilitado com essa lista, padrão `gpt-oss:20b`; DeepSeek e OpenAI
+desabilitados. Padrão global, padrões das organizações administráveis pela conta
+atual e preferências dessa conta foram atualizados para Ollama. Configuração
+persistida no SQLite via APIs, sem manipular diretamente tabelas, credenciais,
+mensagens ou históricos. Snapshot dos ajustes anteriores de provedores/padrão
+global em `artifacts/ollama-only/previous-provider-settings.json`, fora do Git;
+não contém chaves ou tokens. Credenciais preexistentes usadas só em memória,
+sem leitura/impressão de `.env` e sem logs de autenticação.
+
+PASS: teste de metadados pela API do gateway retornou sucesso; listagem de
+provedores selecionáveis retornou somente `ollama`; tentativa de selecionar
+DeepSeek pela API de preferências retornou 409. Não houve inferência real,
+chamada a modelos pagos ou criação de conversas de teste. Builds/tests de código
+não repetidos nesta alteração exclusivamente operacional. Conversas/preferências
+de outros usuários previamente vinculadas a provedor desabilitado não foram
+migradas silenciosamente: selecionar Ollama explicitamente no fluxo existente.
+Administradores da instalação ainda podem reabilitar provedores pela configuração.
+
+## 11/11/2026 — Aviso de uso do Ollama na tela de login
+
+Pedido: informar os visitantes sobre acesso gratuito à demonstração e limites do
+Ollama. Acrescentado Alert informativo em `front/src/pages/LoginPage.tsx`, antes
+do formulário, em pt-BR: demonstração gratuita, chat exclusivamente com Ollama
+Cloud e orientação de aguardar/tentar mais tarde quando o limite for atingido.
+Preservadas as alterações pendentes do cadastro Atlas e o shell existente.
+
+Validação: `npm run typecheck` e `npm run build` em `front` PASS; build mantém o
+aviso de chunks grandes. `docker compose build portal-front` PASS (typecheck/build
+também dentro da imagem); `docker compose up -d --no-deps portal-front` PASS.
+Atualizado apenas o container do frontend; gateway/SQLite/SMTP não reconstruídos
+ou migrados nesta atualização. Compose avisou sobre bridge órfã por ausência do
+override na chamada; nenhum container órfão foi removido.
+
+Chromium real contra `http://127.0.0.1:9080/login`: PASS, aviso e botão Entrar
+visíveis; viewport 390px sem overflow horizontal. Capturas ignoradas em
+`artifacts/login-ollama/{desktop,mobile}.png`. Primeira verificação teve seletor
+com acentos alterados pela codificação do shell; repetição com regex ASCII passou.
+`git diff --check` PASS. Não repetidos testes .NET por se tratar de texto/frontend.
+Não houve verificação da URL externa Oracle nem teste de login autenticado nesta
+alteração. Sem commit/merge.
+
+## 11/11/2026 — Origem pública para confirmação de cadastro
+
+O proprietário informou `https://santaluz.ddns.net`. Configurada como
+`PORTAL_PUBLIC_URL` no `.env` privado e configurado o remetente SMTP informado
+anteriormente; nenhuma senha foi inserida ou exposta. Verificação de presença
+de configuração constatou ausência de `SMTP_APP_PASSWORD`, inclusive no gateway
+em execução. Cadastro mantido desligado; backend não foi reconstruído/recriado.
+
+PASS: GET HTTPS de `/login` no domínio público retornou 200 com HTML do portal,
+com validação normal de certificado; `docker compose config --quiet` aceitou a
+configuração; `git check-ignore .env` confirmou exclusão do Git. Isso confirma
+acesso público à tela, não entrega SMTP nem confirmação real de e-mail.
+Pendente: operador configurar senha de app Google diretamente em
+`SMTP_APP_PASSWORD` no ambiente privado para concluir ativação/teste de envio.
+
+## 11/11/2026 — Ativação pública do cadastro Atlas
+
+Após o operador informar que terminou, verificada presença de senha de app no
+ambiente privado (nenhum valor impresso). PASS: autenticação real em
+`smtp.gmail.com:587` com STARTTLS e certificado validado, sem enviar mensagem.
+Habilitado `ATLAS_PUBLIC_SIGNUP=true` e mantida origem pública informada.
+
+`docker compose` com todos os arquivos/overrides da instalação: build do
+`ai-gateway` PASS, incluindo restore/publish .NET Release, com avisos anteriores.
+Imagem anterior etiquetada `ia-portal-ai-gateway:pre-signup-20261111` para retenção.
+Validação inicial detectou variável do bridge ausente no terminal; recuperadas
+em memória as variáveis WhatsApp do container existente, sem imprimir/persistir
+novas cópias de segredos. Comparação da configuração resolvida confirmou que
+todas as opções anteriores do gateway foram preservadas; acrescentadas apenas
+opções Signup/SMTP. Nenhuma reconfiguração/removal do bridge ou Trino.
+
+Atualizado somente gateway por `up -d --no-deps ai-gateway`, com os mesmos
+volumes/overrides; readiness PASS. Reload do nginx no frontend para atualizar
+resolução do upstream. Migração v10 aplicada pelo startup; confirmado um arquivo
+`pre-chat-v10-*` no volume privado de backups, criado antes da evolução do schema.
+Sem apagar/recriar banco ou volume. Rollback exige também cópia pré-v10, conforme
+guia, pois a imagem anterior não aceita ledger 10.
+
+PASS em verificação real local e pública: `/api/auth/signup/status` habilitado;
+cadastro inválido rejeitado com 400; login existente funciona; provedores
+selecionáveis continuam somente Ollama. Chromium contra HTTPS público confirmou
+botão de cadastro no login, navegação e formulário; captura ignorada em
+`artifacts/signup-public/form.png`. `git diff --check` PASS. Testes isolados de
+cadastro/migração já registrados nesta entrega não foram repetidos, sem mudança
+de código desde sua aprovação.
+
+Limite: nenhum e-mail real foi enviado e nenhuma conta foi criada pelos checks
+desta ativação. Autenticação SMTP real não prova entrega na caixa de entrada;
+primeiro cadastro válido deverá confirmar recebimento/link e concluir o fluxo.
+Sem exposição de senha, tokens ou informações de contas em relatórios; sem
+commit/merge.
+
+## 11/11/2026 — Nome do aplicativo no cadastro
+
+Correção solicitada pelo proprietário: nome do produto IA-Portal; Atlas é a base
+demonstrativa. Ajustados botão no login, título e descrição do cadastro, corpo
+do e-mail e mensagem de confirmação. Fixture de navegador atualizada para o
+novo texto. Identificadores internos, permissões e dados da Atlas preservados.
+
+`docker compose build ai-gateway portal-front`: PASS, incluindo typecheck/build
+Vite e restore/publish .NET Release; mantidos avisos prévios de compilação/chunks.
+Publicados gateway/frontend usando os mesmos overrides/volumes, com comparação
+da configuração resolvida confirmando ambiente inalterado. Readiness PASS.
+Chromium real em HTTPS público confirmou “Criar conta no IA-Portal” no login e
+“Crie sua conta no IA-Portal” no cadastro; status permaneceu habilitado.
+`git diff --check`: PASS. Sem novo schema, envio real, teste de entrega ou testes
+unitários adicionais nesta alteração de textos. Sem commit/merge.
+
+## 11/11/2026 — Log de ações e refinamento visual do login
+
+Pedidos: histórico pesquisável por administradores, incluindo login; concluir e
+atualizar a stack local; refinar o login mantendo layout/temas. Branch
+`feature/action-audit`, criada a partir da branch de cadastro com suas alterações
+pendentes preservadas. Inspeção e escopo comunicados antes das edições.
+
+Implementados middleware e tabela append-only de auditoria, migração v11 com
+backup/checksum/validação de colunas/índices/triggers, permissão `audit.read`, API
+de pesquisa e tela pt-BR `/audit`. Registra requisições `/api`, inclusive leituras,
+login correto/incorreto, saída, alterações, falhas e acessos recusados. IDs de
+documentos/sessões criados registrados explicitamente quando conhecidos. Template
+de rota em vez de URL bruta; sem corpo/query/segredos/conteúdo de conversa. Falhas
+SSE e diagnósticos negativos de conectividade recebem resultado de falha mesmo
+com HTTP 200. Identidade vem do login correto ou do contexto autenticado validado,
+nunca de IDs de cliente. API de saída apenas registra ação; não muda revogação JWT.
+
+Leitura limitada à organização; visão global e eventos sem autenticação apenas
+pela organização 1 com a permissão. Atlas — Colaboração não recebe acesso aos
+logs. Filtros de período/usuário/pesquisa/resultado e paginação por cursor,
+limites de período e tamanho; sem edição/exclusão de registros pela interface/API.
+Escrita independente com timeout e diagnóstico sanitizado em falha, preservando
+ações já concluídas. Limites de cobertura, retenção e durabilidade documentados em
+[ACTION_AUDIT](../features/ACTION_AUDIT.md).
+
+Login preserva duas colunas, marca aprovada, tokens, temas/default escuro e fluxos
+de autenticação, convite, cadastro e aviso Ollama. Usada a imagem de fundo
+fornecida/aprovada pelo proprietário, com CSS próprio, cartões translúcidos, animações leves, sombras e
+visibilidade de senha acessível; movimento reduzido respeitado. A referência
+externa foi aberta publicamente e inspecionada visualmente; nenhum código, asset,
+marca, dados ou regra de negócio da referência foi importado. Sem dependências
+novas de produto. Captura de referência somente em artifacts ignorados.
+
+Resultados locais antes do deploy:
+
+- `dotnet run --project tests/Audit --no-restore`: PASS (primeira execução sem
+  `--no-restore` restaurou o projeto). v10→v11, preservação/idempotência, backup
+  anterior/restauração, falha DDL e rollback, triggers append-only, escrita,
+  identidades, falhas HTTP/SSE/exceção, ausência de segredos e pesquisa/escopos.
+- `python scripts/smoke_audit.py`: PASS com gateway real e SQLite temporário.
+  Login correto/incorreto, saída, busca/cursor/limites, escopo, admin permitido,
+  membro 403, IDs forjados ignorados e segredos/queries/documento não persistidos.
+- `python scripts/smoke_signup.py`: PASS após inclusão do middleware.
+- `dotnet run --project tests/Signup --no-restore`, `tests/Invitations`,
+  `tests/Workspace`, `tests/Organizations`, `tests/Channels`, `tests/Usage`,
+  `tests/Providers`: PASS, usando o mesmo comando com cada caminho. Fixtures de
+  versões antigas ajustadas para omitir a tabela nova. Sem serviços externos.
+- `npm run typecheck` e `npm run build` em `front`: PASS. Mantido aviso de chunks
+  grandes; sem alteração de pacote/lockfile.
+- `node tests/ui/audit-login.cjs`: PASS, com Playwright/Chrome locais. Login nos
+  dois temas e mobile, modos animado/reduzido, mostrar/ocultar senha e erro de
+  credenciais; audit pesquisa/paginação/vazio, temas/mobile, menu/rota recusados
+  para viewer e requisição autenticada de logout antes da navegação.
+- `node tests/ui/signup.cjs`: PASS, mantendo confirmação explícita e formulário.
+- `git diff --check`: PASS.
+
+Falhas corrigidas na validação: namespace de RoutePatternFactory no teste;
+seletor exato de célula que também contém subtítulo; espera pelo breakpoint após
+resize do navegador (sem overflow persistente). Capturas em
+`artifacts/audit-login-ui/`, com identidades sintéticas e API fixtures.
+Nenhuma chamada SMTP/LLM real ou conta criada nesses testes.
+
+Antes da atualização, registrados somente contadores de documentos/memberships
+das organizações autorizadas em artifact ignorado, sem dados pessoais, e retida
+imagem do gateway como `ia-portal-ai-gateway:pre-audit-20261111`. Runtime/deploy e
+checks públicos são registrados abaixo após sua execução.
+
+Durante a entrega, apareceu o arquivo do proprietário
+`Portal de IA em Neon Futurista.png`; confirmado explicitamente seu uso no fundo.
+Fonte original preservada; cópia sem alteração de pixels em
+`front/public/images/login-neon-portal.png` (aprox. 1,7 MB). Sobreposição por CSS
+ajusta contraste nos dois temas, mantendo a marca aprovada no cabeçalho. Essa
+imagem substitui a ilustração geométrica inicial, conforme a escolha do proprietário.
+
+### Atualização local e verificação pública
+
+`docker compose build ai-gateway portal-front`: PASS (publish .NET Release e
+typecheck/build Vite dentro das imagens). Após aprovação da imagem de fundo,
+`docker compose build portal-front`: PASS novamente com o asset definitivo.
+Usados os mesmos arquivos/overrides/volumes da instalação. Variáveis privadas de
+WhatsApp recuperadas apenas em memória do container anterior; comparação da
+configuração resolvida confirmou ambiente do gateway inalterado. Atualizados por
+`up -d --no-deps ai-gateway` e depois `up -d --no-deps portal-front`; nginx
+recarregado após a troca de upstream. Nenhuma recriação de volume/banco.
+
+Readiness do gateway PASS. Startup aplicou v11; confirmado um backup
+`pre-chat-v11-*` no volume privado. Contadores de documentos e membros das
+organizações autorizadas coincidem com os anteriores. Login existente funciona,
+cadastro público permanece habilitado e somente Ollama permanece selecionável.
+Sem criação de conta, envio SMTP ou inferência LLM nestes checks.
+
+PASS em APIs reais: permissão administrativa, pesquisa, login correto e incorreto
+registrados, leitura anônima 401, escopos organização/instalação, resultado sem
+credenciais do ambiente/token. Tentativa incorreta de login usou identidade
+sintética sem conta. Nenhuma falha `ActionAuditAppendFailed` encontrada nos logs
+do novo gateway; conteúdo dos logs não foi impresso.
+
+PASS com Chromium em `https://santaluz.ddns.net`: login público, botão de cadastro,
+asset de fundo (200/tamanho esperado), temas claro/escuro e 390px sem overflow;
+busca real administrativa por Auth.Login; saída pelo botão, retorno ao formulário
+de login e confirmação de **novo** registro Auth.Logout por ID superior ao
+anterior. Apenas login público fotografado, em
+`artifacts/audit-login-public/login-{dark,light,mobile}.png`; nenhuma captura de
+metadados reais de usuários/logs privados. Screenshots de audit da suíte continuam
+usando somente fixtures sintéticas.
+
+Na verificação pública foram ajustados seletores de teste para a codificação do
+shell e o título repetido no header/conteúdo. Aguardar uma resposta de fetch
+keepalive depois da navegação não é confiável em Playwright; o check definitivo
+verificou emissão da requisição, tela de saída e novo registro persistido no
+servidor. Testes corrigidos passaram; não houve falha funcional de logout.
+
+Estado dos demais serviços preservado: WhatsApp/ML/OCR continuam em execução;
+Trino mantém `unhealthy` que já existia antes desta entrega, sem alteração ou
+afirmação de validação da análise de dados. Auditoria cobre operações das APIs a
+partir desta versão, não histórico anterior/cliques locais/todas as tarefas de
+workers. Sem retenção automática nem garantia de escrita em falha de disco/banco;
+consultar o guia para limites operacionais e rollback com backup pré-v11.
+`git diff --check`: PASS; sem commit, push ou merge.

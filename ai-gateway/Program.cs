@@ -25,9 +25,15 @@ var builder = WebApplication.CreateBuilder(args);
 var minimalHosting=builder.Configuration.GetValue<bool>("Hosting:Minimal");
 if(minimalHosting && builder.Configuration.GetValue<bool>("Chat:UseAdvancedRag"))
     throw new InvalidOperationException("Hosting:Minimal requer Chat:UseAdvancedRag=false.");
-if(minimalHosting) builder.Services.AddRateLimiter(options=>{
+builder.Services.AddRateLimiter(options=>{
     options.RejectionStatusCode=429;
-    options.GlobalLimiter=PartitionedRateLimiter.Create<HttpContext,string>(context=>{
+    options.AddPolicy("signup-status", context=>RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _=>new FixedWindowRateLimiterOptions {
+            PermitLimit=60,Window=TimeSpan.FromMinutes(1),QueueLimit=0,AutoReplenishment=true}));
+    options.AddPolicy("signup", context=>RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _=>new FixedWindowRateLimiterOptions {
+            PermitLimit=5,Window=TimeSpan.FromMinutes(10),QueueLimit=0,AutoReplenishment=true}));
+    if(minimalHosting) options.GlobalLimiter=PartitionedRateLimiter.Create<HttpContext,string>(context=>{
         var login=context.Request.Path.Equals(new PathString("/api/auth/login"));
         var key=(context.Connection.RemoteIpAddress?.ToString() ?? "unknown")+(login?":login":":api");
         return RateLimitPartition.GetFixedWindowLimiter(key,_=>new FixedWindowRateLimiterOptions{
@@ -58,6 +64,9 @@ builder.Services.AddHttpClient("browser-bridge",c=>c.Timeout=TimeSpan.FromSecond
 builder.Services.AddScoped<OrganizationWorkspaceService>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<OrganizationInvitationService>();
+builder.Services.AddScoped<AtlasSignupService>();
+builder.Services.AddScoped<ISignupMailer,SmtpSignupMailer>();
+builder.Services.AddSingleton<AiGateway.Infrastructure.Audit.ActionAuditWriter>();
 builder.Services.AddSingleton<ConnectorProfiles>();
 builder.Services.AddScoped<DataConnectorService>();
 builder.Services.AddHttpClient("trino-secure", c => c.Timeout = TimeSpan.FromSeconds(20)).ConfigurePrimaryHttpMessageHandler(ConnectorProfiles.Handler);
@@ -186,11 +195,15 @@ builder.Services.AddAuthorization(options =>
     options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().RequireClaim("perm", PortalAccess.Administration).Build();
     foreach (var permission in PortalAccess.Catalog)
         options.AddPolicy(permission.Key, policy => policy.RequireAuthenticatedUser().RequireClaim("perm", permission.Key));
+    options.AddPolicy(PortalAccess.EditKnowledgeContent,policy=>policy.RequireAuthenticatedUser()
+        .RequireAssertion(ctx=>ctx.User.HasClaim("perm",PortalAccess.EditKnowledgeContent) || ctx.User.HasClaim("perm",PortalAccess.EditKnowledge)));
 });
 
 
 
 var app =builder.Build();
+app.UseRouting();
+app.UseMiddleware<AiGateway.Infrastructure.Audit.ActionAuditMiddleware>();
 
 app.Use(async (context, next) =>
 {
@@ -215,7 +228,7 @@ if(minimalHosting)app.UseForwardedHeaders(new ForwardedHeadersOptions{
 }); // Default trusted proxies are loopback only; the gateway itself binds to loopback.
 app.UseAuthentication();
 app.UseAuthorization();
-if(minimalHosting)app.UseRateLimiter();
+app.UseRateLimiter();
 app.UseMiddleware<AiGateway.Infrastructure.MinimalHostingMiddleware>();
 app.MapGet("/health/live",()=>Results.Ok(new{status="ok"})).AllowAnonymous();
 app.MapGet("/health/ready",async (PortalDbContext db,CancellationToken ct)=>

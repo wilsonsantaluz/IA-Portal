@@ -34,6 +34,11 @@ services:
       OLLAMA_LOCAL_ORIGINS: ${OLLAMA_LOCAL_ORIGINS:-}
       AI_DEFAULT_PROVIDER: ${AI_DEFAULT_PROVIDER:-deepseek}
       ConnectionStrings__PortalConnection: Data Source=/app/data/portal.db;Foreign Keys=True
+      Signup__Enabled: ${ATLAS_PUBLIC_SIGNUP:-false}
+      Signup__PublicUrl: ${PORTAL_PUBLIC_URL:-}
+      Smtp__Host: smtp.gmail.com
+      Smtp__Username: ${SMTP_USERNAME:-}
+      Smtp__AppPassword: ${SMTP_APP_PASSWORD:-}
       Jwt__Key: ${JWT_KEY:?Configure JWT_KEY no .env}
       Bootstrap__AdminEmail: ${ADMIN_EMAIL:?Configure ADMIN_EMAIL no .env}
       Bootstrap__AdminPassword: ${ADMIN_PASSWORD:?Configure ADMIN_PASSWORD no .env}

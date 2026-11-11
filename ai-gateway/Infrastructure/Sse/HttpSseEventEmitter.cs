@@ -17,6 +17,7 @@ namespace AiGateway.Infrastructure.Sse
 
         public async Task EmitAsync(string eventName, string payload)
         {
+            if(eventName=="error") AiGateway.Infrastructure.Audit.ActionAuditContext.Failure(_response.HttpContext);
             if (_response.HttpContext.RequestAborted.IsCancellationRequested)
                 return;
 
@@ -39,6 +40,7 @@ namespace AiGateway.Infrastructure.Sse
             }
             catch
             {
+                AiGateway.Infrastructure.Audit.ActionAuditContext.Failure(_response.HttpContext);
                 // conexão encerrada pelo cliente
             }
         }

@@ -58,6 +58,7 @@ export default function HeaderBar({
         "/channels": "IA-Portal Service",
         "/organizations": "Organizações",
         "/invite": "Convite de organização",
+        "/audit": "Log de ações",
       } as Record<string, string>
     )[pathname] || "IA-Portal";
   return (

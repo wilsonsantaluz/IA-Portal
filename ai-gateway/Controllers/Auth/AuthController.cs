@@ -52,9 +52,14 @@ public class AuthController : ControllerBase
         var permissions = access.Permissions;
 
         var token = GenerateToken(user, roles, permissions);
+        AiGateway.Infrastructure.Audit.ActionAuditContext.Login(HttpContext,user.UserId,organizationId,user.UserName);
 
         return Ok(new { user.UserId, user.UserName, email = user.UserEmail, token, roles, permissions, organizationId });
     }
+
+    [Authorize]
+    [HttpPost("logout")]
+    public IActionResult Logout() => NoContent();
 
     [Authorize]
     [HttpGet("me")]

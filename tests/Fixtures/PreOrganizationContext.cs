@@ -5,7 +5,7 @@ sealed class PreOrganizationContext(DbContextOptions<PortalDbContext> options) :
 {
     protected override void OnModelCreating(ModelBuilder model)
     {
-        base.OnModelCreating(model);
+        base.OnModelCreating(model);model.Ignore<SignupRequest>();model.Ignore<ActionAuditEvent>();
         model.Ignore<ConnectorGrant>(); model.Ignore<DataConnector>();
         model.Ignore<AiGateway.Channels.MessageDeliveryEvent>();model.Ignore<AiGateway.Channels.ChannelMessage>();model.Ignore<AiGateway.Channels.ChannelConversation>();model.Ignore<AiGateway.Channels.ChannelContact>();model.Ignore<AiGateway.Channels.ChannelConnection>();model.Ignore<OrganizationInvitation>(); model.Ignore<OrganizationAiDefault>(); model.Ignore<OrganizationAiPreference>();
         model.Ignore<OrganizationMembership>(); model.Ignore<Organization>();

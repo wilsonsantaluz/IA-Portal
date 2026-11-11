@@ -349,3 +349,57 @@ This remains an experimental single-node integration: shared-container Chromium
 uses no-sandbox, profiles need private/encrypted host storage, unofficial Web
 compatibility can change, and paired reconnection/soak tests are pending. See
 [the implementation and operating guide](../service/WHATSAPP_BROWSER.md).
+
+## Cadastro público Atlas — 11/11/2026
+
+Inspeção antes da alteração: frontend React 18/TypeScript/Vite, React Router 6,
+MUI e AuthProvider com JWT; login em `AuthController`, identidade e concessões
+revalidadas no backend por `PortalAccess` e `OrganizationScope`. Convites existentes
+exigiam contas já ativas e não enviavam e-mail. Não havia serviço SMTP nem cadastro
+público. A Atlas usa slug `atlas-demo`; a organização 1 concentra administração da
+instalação. `Viewer` só consultava KB e `Member` também concedia `kb.manage`, que
+permite desativação e reindexação; nenhum atendia colaboração sem essas operações.
+
+Entrega na branch `feature/atlas-public-signup`, criada com árvore limpa:
+`kb.edit` separa criação/edição de `kb.manage`, preservando as concessões anteriores.
+O grupo Atlas — Colaboração tem chat próprio, KB, edição, dashboard e data.query.
+O servidor resolve Atlas pelo slug; cadastro não aceita destino/permissões do
+cliente. Após confirmar e-mail, cria conta e membership Atlas/custom RBAC em uma
+transação. Apenas fontes Atlas habilitadas de categoria demo recebem concessão.
+Nenhum dado existente, `.env` ou banco em execução foi alterado.
+
+A migração v10 adiciona solicitações pendentes, BCrypt, hash SHA-256 de token e
+expiração, mantendo o mecanismo existente de backup/checksum/rollback. Inspecionados
+`save`, `upsert`, `toggle`, reindexação e rotas administrativas. `upsert` preserva
+IsActive para editores sem gestão; toggle/reindex/admin permanecem protegidos no
+servidor. Não existe exclusão de documentos no controller atual. Operações no
+próprio chat continuam, com isolamento das conversas alheias.
+
+Configuração SMTP exclusivamente no servidor; envio real pelo Gmail e implantação
+no túnel ainda não validados. Veja [operação e limites](../features/PUBLIC_ATLAS_SIGNUP.md)
+e resultados no diário. Não equivale a auditoria completa para exposição pública.
+
+## Log de ações e login refinado — 11/11/2026
+
+Inspeção: não havia tabela nem tela de auditoria. Serviços emitiam mensagens
+técnicas via ILogger; logout apenas removia dados do navegador. Autenticação JWT
+revalida usuário, versão e membership em cada requisição; `OrganizationScope` e
+`PortalAccess` são as fontes reais de identidade/escopo. Frontend mantém React,
+React Router, MUI e tema local persistido. Estado inicial continha alterações
+pendentes de cadastro Atlas, preservadas em `feature/action-audit` sem commit.
+
+Incremento: tabela append-only ActionAuditEvents (v11 com backup), middleware antes
+do handler de erros/autenticação/autorização para incluir falhas e negações,
+associação explícita de identidade após login correto, marcador de falha SSE e
+endpoint de saída. INSERT independente e limitado, sem corpos/query/segredos;
+pesquisa exige `audit.read` e filtro por organização. Apenas organização 1 com
+essa permissão consulta global/anonimamente identificados. Não há auditoria de
+conteúdo de conversas, alteração/exclusão de logs ou retenção automática.
+
+Login: preservados layout em duas colunas, marca aprovada, tokens, modos claro e
+escuro, autenticação, convite, cadastro e aviso Ollama. Imagem de fundo fornecida
+e aprovada pelo proprietário, camadas CSS próprias, transparências, sombra,
+animação suave e movimento reduzido; nenhum asset,
+código ou identidade da referência externa foi importado. Inspeção da referência
+limitada à página pública, sem autenticação. Ver [operação](../features/ACTION_AUDIT.md)
+e diário para testes/limites, implantação e evidências visuais.

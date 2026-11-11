@@ -713,10 +713,10 @@ export default function AccessManagementPage({
                                   : groupForm.permissions.filter(
                                       (k) => k !== p.key,
                                     );
-                                if (e.target.checked && p.key === "kb.manage")
+                                if (e.target.checked && ["kb.manage", "kb.edit"].includes(p.key))
                                   keys = [...new Set([...keys, "kb.view"])];
                                 if (!e.target.checked && p.key === "kb.view")
-                                  keys = keys.filter((k) => k !== "kb.manage");
+                                  keys = keys.filter((k) => !["kb.manage", "kb.edit"].includes(k));
                                 setGroupForm({
                                   ...groupForm,
                                   permissions: keys,
