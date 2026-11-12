@@ -1802,3 +1802,44 @@ this is not a claim that target end-to-end checks have already executed. A
 short-lived Windows idle-sleep inhibition request is held only for the migration
 and released on completion/error, without changing persistent power settings.
 No application outside containers was introduced on Ubuntu. No commit/push/merge.
+
+## 2026-11-12 — deploy no runner local e monitoramento Atlas
+
+Branch `feature/self-hosted-deploy`, criada de `feature/litellm-gateway`; árvore
+inicial limpa. Workflow novo executa testes de orquestração, builds sequenciais
+no host e Compose após push/merge na main, com execução manual restrita à main.
+Volume existente validado antes de build/up; env fica fora do checkout; releases
+duráveis preservam mounts. Sem down/prune/reset/rollback automático. Wrapper de
+boot usa active validada ou mantém stack migrada antes do primeiro sucesso.
+
+Investigação remota encontrou consumo periódico real do loader Atlas, não apenas
+JVM ociosa. Intervalo saudável 30→300 s e heartbeat 120→660 s nos dois Compose;
+healthcheck do loader 5→30 s. Recuperação após perda do catálogo Memory pode levar
+cinco minutos. Alteração ainda não aplicada aos containers em produção.
+
+Validação executada:
+
+- `git diff --check`: PASS.
+- `python`/`ast.parse` nos scripts alterados: PASS.
+- `bash -n` nos scripts deploy-local, deploy-stack e install-runner no Ubuntu: PASS.
+- `docker compose ... config --quiet` no Ubuntu, Compose base + Atlas alterado +
+  LiteLLM + WhatsApp + volume externo, env privado sem impressão: PASS.
+- `python3 /tmp/ia-deploy-tests/test_deploy_local.py`: PASS, incluindo nova execução
+  após build por serviço; quatro cenários: gateway ausente, volume incorreto,
+  falha de build e sucesso. Docker/HTTP substituídos; Git/archive reais em fixture.
+
+Sem build frontend/.NET, build de imagens ou restart de produção nesta validação:
+o proprietário solicitou builds no servidor pelo Actions. Testes não comprovam
+login, LLM, persistência após upgrade, consumo sustentado ou deploy ponta a ponta.
+Binários do runner instalados/preparados via release oficial com SHA-256 no host;
+registro e execução real do workflow exigem token temporário e chegada à main.
+Instruções em `SELF_HOSTED_DEPLOY.md`. Nenhum commit, push ou merge automático.
+
+Preparação remota concluída: runner oficial 2.338.2 baixado diretamente no host,
+SHA-256 validado; dependências verificadas sem pacotes novos. Usuário
+github-runner criado, acesso Docker e configuração privada preparados; runtime
+preservado sem imprimir valores. O runner ainda não está registrado/rodando.
+Tentativa de instalar o drop-in de boot foi rejeitada antes da execução pela
+revisão automática (`blocked by policy`, sem motivo adicional). Drop-in não
+instalado: após o primeiro deploy, o serviço de boot ainda precisará ser ajustado
+conforme o documento, para não voltar às imagens migradas em um reboot.

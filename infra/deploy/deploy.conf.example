@@ -1,0 +1,14 @@
+# Bash syntax. Private file: /etc/ia-portal/deploy.conf, owned by root.
+# These are examples; inspect the CURRENT containers before filling in.
+PORTAL_PROJECT_NAME=replace_existing_project
+PORTAL_DATA_VOLUME=replace_existing_volume
+PORTAL_RUNTIME_ENV=/etc/ia-portal/runtime.env
+PORTAL_RELEASE_ROOT=/opt/ia-portal/releases
+# Preserve existing overrides/profiles! Relative paths refer to each release.
+# Absolute paths allow private server-specific overrides (ports, models, etc.).
+PORTAL_COMPOSE_FILES=(docker-compose.yml)
+# Example for an EXISTING Atlas + LiteLLM installation:
+# PORTAL_COMPOSE_FILES=(docker-compose.yml docker-compose.atlas.yml docker-compose.litellm.yml /etc/ia-portal/local.yml)
+COMPOSE_PROFILES=
+PORTAL_FRONT_URL=http://127.0.0.1:9080
+PORTAL_READY_URL=http://127.0.0.1:9089/health/ready

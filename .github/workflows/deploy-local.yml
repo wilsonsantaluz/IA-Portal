@@ -1,0 +1,28 @@
+name: Deploy servidor local
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: portal-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64, ia-portal-62]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Build e deploy no servidor
+        shell: bash
+        run: |
+          python3 scripts/test_deploy_local.py
+          bash scripts/deploy-local.sh /etc/ia-portal/deploy.conf

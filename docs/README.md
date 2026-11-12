@@ -1,6 +1,7 @@
 # IA-Portal — Technical documentation
 
 LiteLLM: [configuração, políticas e consumo](features/LITELLM.md).
+Deploy no servidor local: [runner GitHub Actions, volumes e diagnóstico Trino](delivery/SELF_HOSTED_DEPLOY.md).
 LangGraph: [análise e preparação, sem implementação](architecture/LANGGRAPH_PREPARATION.md).
 
 New contributors: [current state](architecture/CURRENT_STATE.md),

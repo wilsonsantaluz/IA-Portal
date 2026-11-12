@@ -120,7 +120,7 @@ def watch():
             # Do not log query bodies or connection configuration.
             print(f'Atlas not ready ({type(error).__name__}); retrying without overwriting existing data.', flush=True)
             healthy = False
-        time.sleep(30 if healthy else 5)
+        time.sleep(300 if healthy else 5)
 
 
 if __name__ == '__main__':

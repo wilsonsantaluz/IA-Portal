@@ -1,0 +1,5 @@
+# Always include LAST. Existing volume must be identified before activation.
+volumes:
+  portal_data:
+    external: true
+    name: ${PORTAL_DATA_VOLUME:?Configure the existing SQLite volume}

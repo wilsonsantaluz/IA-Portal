@@ -31,8 +31,8 @@ services:
     security_opt: [no-new-privileges:true]
     mem_limit: 128m
     healthcheck:
-      test: ["CMD", "python", "-c", "import os,time; assert time.time()-os.stat('/tmp/atlas-ready').st_mtime < 120"]
-      interval: 5s
+      test: ["CMD", "python", "-c", "import os,time; assert time.time()-os.stat('/tmp/atlas-ready').st_mtime < 660"]
+      interval: 30s
       timeout: 5s
       retries: 24
       start_period: 120s
