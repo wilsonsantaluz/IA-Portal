@@ -5,12 +5,12 @@ namespace Portal.AI.Gateway.Infrastructure;
 
 public sealed class AiProviderCatalog(PortalDbContext db, IConfiguration cfg)
 {
-    public static readonly string[] Ids = ["deepseek", "openai", "ollama"];
+    public static readonly string[] Ids = ["deepseek", "openai", "ollama", "litellm"];
     private static string Prefix(string id) => id.ToUpperInvariant();
     private string Option(string key, string fallback) => string.IsNullOrWhiteSpace(cfg[key]) ? fallback : cfg[key]!;
     private static void Known(string id) { if (!Ids.Contains(id)) throw new ChatException(400, "Provedor inválido."); }
     public string Key(string id) { Known(id); return cfg[$"{Prefix(id)}_API_KEY"] ?? ""; }
-    private string Endpoint(string id) => cfg[$"{Prefix(id)}_BASE_URL"] ?? (id == "deepseek" ? "https://api.deepseek.com/" : id == "openai" ? "https://api.openai.com/v1/" : "http://host.docker.internal:11434/");
+    private string Endpoint(string id) => cfg[$"{Prefix(id)}_BASE_URL"] ?? (id == "litellm" ? "http://litellm:4000/v1/" : id == "deepseek" ? "https://api.deepseek.com/" : id == "openai" ? "https://api.openai.com/v1/" : "http://host.docker.internal:11434/");
     private static Uri Url(string endpoint)
     {
         if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) || uri.Scheme is not ("https" or "http") || !string.IsNullOrEmpty(uri.UserInfo) || !string.IsNullOrEmpty(uri.Query) || !string.IsNullOrEmpty(uri.Fragment))
@@ -29,6 +29,7 @@ public sealed class AiProviderCatalog(PortalDbContext db, IConfiguration cfg)
     }
     public string Billing(string id, string endpoint)
     {
+        if (id == "litellm") return "unknown";
         if (id != "ollama") return "external";
         var local = Option("OLLAMA_LOCAL_ORIGINS", "http://localhost:11434,http://host.docker.internal:11434,http://ollama:11434").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Select(Origin);
         return local.Contains(Origin(endpoint)) ? "local" : "unknown";
@@ -41,7 +42,7 @@ public sealed class AiProviderCatalog(PortalDbContext db, IConfiguration cfg)
     public async Task<ProviderInfo> Get(string id, CancellationToken ct)
     {
         Known(id); var stored = await db.AiProviderSettings.AsNoTracking().SingleOrDefaultAsync(p => p.Id == id, ct);
-        var defaultModel = cfg[$"{Prefix(id)}_DEFAULT_MODEL"] ?? (id == "deepseek" ? "deepseek-chat" : id == "openai" ? "gpt-4.1" : "");
+        var defaultModel = cfg[$"{Prefix(id)}_DEFAULT_MODEL"] ?? (id == "litellm" ? "fast" : id == "deepseek" ? "deepseek-chat" : id == "openai" ? "gpt-4.1" : "");
         var models = stored is not null ? JsonSerializer.Deserialize<string[]>(stored.ModelsJson)! : Models(Option($"{Prefix(id)}_MODELS", defaultModel).Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries));
         var endpoint = stored?.Endpoint ?? Endpoint(id); string? error = null;
         try { endpoint = ValidateEndpoint(id, endpoint); } catch (ChatException ex) { error = ex.Message; try { Url(endpoint); } catch { endpoint = ""; } }

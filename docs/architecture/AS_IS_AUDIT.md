@@ -403,3 +403,72 @@ animação suave e movimento reduzido; nenhum asset,
 código ou identidade da referência externa foi importado. Inspeção da referência
 limitada à página pública, sem autenticação. Ver [operação](../features/ACTION_AUDIT.md)
 e diário para testes/limites, implantação e evidências visuais.
+
+## Chat: fonte padrão e orientação — 11/11/2026
+
+Inspeção em árvore limpa na main: React/MUI e useChatLogic enviavam sourceId
+nulo e referência vazia até seleção manual no BusinessSourcePicker, oculto em
+Configurações da conversa. BusinessChatContextService rejeita esses campos
+antes de autorizar/consultar a fonte; conexão cadastrada não implica seleção.
+Na branch fix/chat-default-data-source, seleção inicial da única fonte retornada
+por /api/data/sources, com data local atual (demo mantém 2026-11-01). Múltiplas
+fontes exigem escolha. A opção explícita Somente documentos continua disponível.
+Dica visível no topo e resposta de esclarecimento orientam onde alterar os campos.
+Sem alterações nos contratos, autenticação, autorização ou banco de dados.
+
+## Atlas automatic startup recovery — 2026-11-11
+
+Inspection: Atlas uses the volatile Trino Memory catalog and a manual Python
+loader; a successful SELECT 1 probe does not establish schema availability.
+Existing pending chat-default changes were preserved on fix/chat-default-data-source.
+Added atlas-loader to both opt-in Compose definitions. It reuses the deterministic
+loader, checks manifest/counts, verifies newly loaded data, and monitors every
+30 seconds for catalog loss. Only the two dedicated local/Compose endpoints are
+accepted. No SQLite/schema/auth contract changes, destructive SQL, or real data.
+The gateway waits for loader readiness on Compose startup. A standalone Trino
+restart can temporarily interrupt queries while the monitor restores fixtures.
+This recovers the fixed dataset; it does not preserve manual changes in Memory.
+
+## LiteLLM integration audit — 2026-11-11
+
+Branch feature/litellm-gateway created from fix/chat-default-data-source, with
+all pending chat/Atlas files preserved. Read docs/README.md and delivery roadmap
+before editing; initial summary/plan presented, then explicitly authorized by
+owner including tenant correlation, separate gateway attempts, no tool contract
+changes and no LangGraph implementation.
+
+Actual boundaries: .NET 8, request-scoped IAiProviderAdapter combines
+IOllamaService/ILlmMetrics/IChatTitleGenerator. AiProviderRouter freezes endpoint
+and selection; AiProviderCatalog stores administrative settings in SQLite and
+reads secret values from environment. HttpClientFactory rejects redirects.
+ChatUsageService persists one LlmUsage per chat/document invocation; titles have
+separate attempts and local fallback. JWT validation populates OrganizationScope
+from active membership/permissions. SSE preserves request cancellation.
+
+BusinessChatContextService deterministically classifies intent. Textual RAG is
+local/bounded; advanced retrieval uses ONNX embeddings, tenant-filtered Qdrant,
+relational revalidation and ONNX reranking. No actual iterative ReRAG loop and
+no tool-calling transport/executor exists in the current string interfaces.
+Financial queries remain closed Trino plans with server authorization and
+AllowExternalLlm; free SQL routes remain blocked.
+
+Integration uses an additive litellm provider over existing OpenAI wire code,
+optional Compose override with pinned image and server-compiled route allowlist.
+Capability aliases remain independent of deployments. No schema migration.
+Delivered LlmUsage and durable JSONL gateway attempts serve different purposes;
+unknown tokens/costs are not made zero. Upstream identity is correlated through
+deployment headers/logs, retaining litellm as the selected integration identity.
+See docs/features/LITELLM.md and architecture/LANGGRAPH_PREPARATION.md for
+incompatibilities, configuration, financial/privacy limitations and future API.
+
+## Atlas Groq default activation — 2026-11-11
+
+On feature/litellm-gateway, owner supplied GROQ_API_KEY in the private .env and
+explicitly authorized using it as the demonstration default. Metadata request
+validated the key and availability of openai/gpt-oss-20b; secret never printed.
+AtlasKnowledgeSeed now supports optional initial DefaultProvider/DefaultModel,
+insert-only for organizations without a saved default. Authorized API changes
+configure an existing installation; personal/organization precedence unchanged.
+Installation-wide provider writes still require the global organization scope.
+Other organizations, existing conversation selections and direct adapters remain.
+Groq fast deployment uses low reasoning effort, configured in JSON, not C#.

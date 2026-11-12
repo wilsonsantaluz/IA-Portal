@@ -46,11 +46,20 @@ await onlyConnection.OpenAsync();
 await using var onlyDb = new PortalDbContext(new DbContextOptionsBuilder<PortalDbContext>().UseSqlite(onlyConnection).Options);
 var only = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string,string?> {
     ["Demo:Atlas:SeedKnowledge"]="true", ["Demo:Atlas:OnlyKnowledge"]="true", ["Demo:Atlas:PreferOrganization"]="true",
-    ["Bootstrap:AdminEmail"]="atlas-only@example.test", ["Bootstrap:AdminPassword"]=Guid.NewGuid().ToString("N")
+    ["Bootstrap:AdminEmail"]="atlas-only@example.test", ["Bootstrap:AdminPassword"]=Guid.NewGuid().ToString("N"),
+    ["Demo:Atlas:DefaultProvider"]="litellm", ["Demo:Atlas:DefaultModel"]="fast",
+    ["LITELLM_ENABLED"]="true", ["LITELLM_API_KEY"]="synthetic-key", ["LITELLM_MODELS"]="fast"
 }).Build();
 await DatabaseInitializer.InitializeAsync(onlyDb,only);
 await DatabaseInitializer.InitializeAsync(onlyDb,only);
 var atlasId = await onlyDb.Organizations.Where(o => o.Slug=="atlas-demo").Select(o => o.Id).SingleAsync();
+var aiDefault = await onlyDb.OrganizationAiDefaults.IgnoreQueryFilters().SingleAsync(x => x.OrganizationId == atlasId);
+Check(aiDefault.Provider=="litellm" && aiDefault.Model=="fast" && aiDefault.Version==1,"Demo default missing or duplicated");
+await onlyDb.Database.ExecuteSqlInterpolatedAsync($"UPDATE OrganizationAiDefaults SET Model={"manual-choice"},Version=Version+1 WHERE OrganizationId={atlasId}");
+onlyDb.ChangeTracker.Clear();
+await DatabaseInitializer.InitializeAsync(onlyDb,only);
+onlyDb.ChangeTracker.Clear();
+Check((await onlyDb.OrganizationAiDefaults.IgnoreQueryFilters().SingleAsync(x=>x.OrganizationId==atlasId)).Model=="manual-choice","Existing demo default overwritten");
 var adminId = await onlyDb.Users.Select(u => u.UserId).SingleAsync();
 Check(await onlyDb.KnowledgeBaseItems.CountAsync()==10 && await onlyDb.KnowledgeBaseItems.AllAsync(k => k.OrganizationId==atlasId),"Atlas-only seed contains other knowledge");
 Check(await AiGateway.Security.PortalAccess.DefaultOrganizationAsync(onlyDb,adminId,only,default)==atlasId,"Atlas not preferred");

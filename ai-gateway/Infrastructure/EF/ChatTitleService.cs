@@ -77,6 +77,12 @@ public sealed class ChatTitleService(PortalDbContext db, IHttpContextAccessor ht
         catch (OperationCanceledException) { attempt.Status = ct.IsCancellationRequested ? "cancelled" : "timeout"; }
         catch { attempt.Status = "failed"; }
         attempt.DurationMs = clock.ElapsedMilliseconds;
+        if (router?.ProviderId == "litellm") {
+            var metrics = router.LastCall;
+            logger.LogInformation("LlmTitle usage={UsageId} organization={OrganizationId} request={RequestId} gatewayCall={GatewayCallId} upstream={UpstreamProvider} model={Model} status={Status} durationMs={DurationMs} retries={Retries} fallbacks={Fallbacks}",
+                attempt.Id, db.OrganizationId, http.HttpContext?.TraceIdentifier, metrics.GatewayCallId,
+                metrics.UpstreamProvider, attempt.Model, attempt.Status, attempt.DurationMs, metrics.Retries, metrics.Fallbacks);
+        }
         prices?.Apply(attempt);
         using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await using var final = await db.Database.BeginTransactionAsync(cleanup.Token);

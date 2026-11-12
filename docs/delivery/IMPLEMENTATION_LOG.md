@@ -1484,3 +1484,321 @@ partir desta versão, não histórico anterior/cliques locais/todas as tarefas d
 workers. Sem retenção automática nem garantia de escrita em falha de disco/banco;
 consultar o guia para limites operacionais e rollback com backup pré-v11.
 `git diff --check`: PASS; sem commit, push ou merge.
+
+## 11/11/2026 — Fonte padrão do chat e dica de configuração
+
+Branch: fix/chat-default-data-source; árvore inicialmente limpa. Alterados
+BusinessSourcePicker.tsx (única fonte autorizada selecionada ao carregar, data
+local atual; demo com referência fixa), ChatPage.tsx (dica visível mesmo com
+configurações recolhidas) e BusinessChatContextService.cs (esclarecimento com
+caminho para os controles). Múltiplas fontes mantêm escolha explícita; não
+reaplicar padrão depois de escolha manual de Somente documentos. Sem migração.
+
+Validação executada:
+- `cd front; npm run typecheck`: PASS.
+- `cd front; npm run build`: PASS; aviso de chunks maiores que 500 kB.
+- `dotnet run --project tests/BusinessChat/BusinessChat.csproj`: PASS, incluindo
+  build do gateway com warnings; SQLite temporário e double de Trino, sem fonte
+  real. Autorizações e ausência de indicadores inventados verificadas pela suíte.
+- `git diff --check`: PASS.
+
+Não realizados: teste de navegador/temas, consulta real, deploy ou reinício de
+containers. Preview: iniciar frontend com `cd front; npm run dev` usando a API
+local configurada; conferir seleção da única fonte e data em Configurações da
+conversa. Mudança disponível no código local; sem commit, push ou merge.
+
+## 11/11/2026 — Recuperação da consulta Atlas após perda do Memory
+
+Screenshot do usuário já continha fonte/data; falha agora vinha do Trino.
+Diagnóstico ao vivo: `SHOW TABLES FROM memory.atlas` como atlas_reader retornou
+schema inexistente. Trino Memory é volátil; conexão/probe SELECT 1 não comprova
+existência das tabelas. Containers permaneceram em execução, sem recriação.
+
+Executados:
+- `python scripts/atlas_trino_load.py`: PASS; schema ausente inicializado com as
+  sete tabelas sintéticas e manifest, sem alterar SQLite ou dados do portal.
+- `python scripts/atlas_trino_load.py --verify`: PASS, quatro SELECTs de
+  conferência no Trino real, incluindo valores exatos por faixa.
+- Segunda execução do loader: PASS, sem escrita/duplicação.
+- SQL aging extraído de ApprovedTrinoQuery.cs, referência 2026-11-01, executado
+  como atlas_reader no Trino real: PASS, cinco faixas iguais ao baseline.
+
+Limites: não enviado chat autenticado nem chamada LLM; usuário deve reenviar a
+pergunta. Healthcheck continua unhealthy por erro de parsing de porta no script
+nativo da imagem; SQL responde normalmente. Nenhuma alteração/recriação do
+container para corrigir healthcheck nesta intervenção. Reiniciar Trino Memory
+volta a exigir carga; persistência futura necessita incremento específico.
+
+## 2026-11-11 — Automatic Atlas dataset recovery
+
+Scope: scripts/atlas_trino_load.py, trino/atlas/loader.Dockerfile,
+docker-compose.atlas.yml, trino/atlas/compose.yml, tests/test_atlas_loader.py,
+and Atlas operations/audit documentation. Prior uncommitted chat changes kept.
+No SQLite migration, deletion, volume reset, authentication or API changes.
+
+Implementation: unprivileged read-only Python sidecar, pinned base image,
+dedicated demo network, health marker only after dataset verification. Checks
+manifest/counts every 30 seconds; reloads only an empty schema; never overwrites
+partial/different datasets. Server startup failures retry every 5 seconds.
+Gateway depends on loader readiness. Explicit curl healthcheck avoids the Trino
+image script parsing a CRLF port value as part of the URL.
+
+Commands/results:
+- `docker compose config --quiet`: PASS (no secret configuration printed).
+- `docker compose -f trino/atlas/compose.yml config --quiet`: PASS.
+- `python -m unittest discover -s tests -p "test_atlas_*.py" -v`: PASS, 8 tests;
+  deterministic generation, no overwrite, readiness failure/recovery and fast
+  restart verification. No new frontend/.NET changes in this increment.
+- `docker compose build atlas-loader`: PASS.
+- `docker compose up -d --no-build atlas-trino atlas-loader`: applied locally;
+  recreated volatile Trino, automatically loaded seven tables and verified.
+- `docker compose up -d --no-build ai-gateway`: PASS, waited for healthy loader;
+  Compose also recreated ML/OCR dependencies; existing images, no source rebuild.
+- `docker compose up -d --no-deps --no-build --wait --wait-timeout 120 atlas-loader`:
+  final image applied and healthy after idempotent validation.
+- `docker compose restart atlas-trino`: recovery test without manual loading.
+
+Startup checks made before readiness returned SERVER_STARTING_UP / missing
+schema/tables as expected; no false successful validation was recorded.
+No browser/chat/paid LLM test in this increment. Memory still does not preserve
+manual edits; this mechanism restores only the fixed synthetic baseline. No
+commit, push, merge, database reset or changes to WhatsApp containers.
+
+Final runtime result: PASS after restarting the final Trino/loader deployment;
+all four real verification SELECTs passed without manually loading any data.
+Final loader logs confirm automatic reload plus verification. Trino and loader
+both healthy, gateway running. `python scripts/atlas_trino_load.py` after recovery:
+PASS, no writes/duplicates. `git diff --check`: PASS (CRLF normalization warnings).
+
+## 2026-11-11 — LiteLLM integration and LangGraph preparation
+
+Branch: feature/litellm-gateway. Architecture summary and implementation plan
+presented before source edits, then explicitly approved. Pending chat-default
+and Atlas startup-recovery changes preserved, with no commit, push or merge.
+
+Files in this increment:
+- ai-gateway/Infrastructure/Qdrant/Services/LLMs/LiteLlmService.cs: additive
+  OpenAI-compatible provider, trusted OrganizationScope, request/call correlation,
+  actual deployment metadata, streaming and CancellationToken; no C# retries.
+- ChatCompletionAdapter.cs: bounded extension hooks, shared protocol preserved.
+- ILlmMetrics.cs, AiProviderCatalog.cs, Program.cs: metadata, catalog and DI.
+- ChatUsageService.cs and ChatTitleService.cs: correlated logs; SQLite usage
+  remains one final invocation plus separate title, not sum of proxy attempts.
+- front/src/pages/AiSettingsPage.tsx and UsagePage.tsx: LiteLLM label/filter.
+- docker-compose.yml, docker-compose.litellm.yml, .env.example: opt-in proxy,
+  environment-only credentials, no public port or dependency for direct adapters.
+- infra/litellm/{routes.json,configure.py,audit.py}: configurable capability
+  allowlists, billing/privacy authorization, retry/cooldown budgets and separate
+  JSONL attempt/fallback ledger in dedicated persistent volume.
+- tests/LiteLlm/{LiteLlm.csproj,Program.cs,fake_upstream.py},
+  tests/test_litellm_policy.py and tests/litellm_proxy_smoke.py.
+- README.md, docs/README.md, docs/features/LITELLM.md,
+  docs/architecture/{AS_IS_AUDIT.md,LANGGRAPH_PREPARATION.md}, this log.
+
+Proxy image fixed at docker.litellm.ai/berriai/litellm:v1.90.2 with digest
+sha256:19a879f9c4ed466f2438aa08b22e2b472053ab57c6325db73c71d0624d2d4953.
+No LangGraph runtime, tool transport/executor in C#, SQL changes, SQLite schema
+migration, authentication changes or removal of existing provider implementations.
+
+Validation actually executed:
+- `cd front; npm run typecheck`: PASS.
+- `cd front; npm run build`: PASS, existing large chunk warning (>500 kB).
+- `dotnet run --project tests/Providers`: PASS, all three direct adapters,
+  selection, ownership, titles, payment/rate-limit errors and migration regression.
+- `dotnet run --project tests/LiteLlm`: PASS, provider settings/selection,
+  trusted tenant/correlation, actual model, streaming, single usage + title,
+  disabled/unavailable proxy, explicit direct adapter, 429, truncation and
+  cancellation. Unknown cost is retained as null; no retry in C#.
+- `dotnet run --project tests/Usage`: PASS, accounting, pricing, isolation,
+  unavailable metrics, partial/failed calls and migration regression.
+- `dotnet run --project tests/BusinessChat`: PASS, analytical/documental policy,
+  grants, grounding and no invented metrics; temporary SQLite/query double.
+- `python -m unittest discover -s tests -p test_litellm_policy.py -v`: PASS,
+  six tests (route substitution, secret references, free account attestation,
+  free-model validation, local-only privacy, paid authorization + budget).
+- `python tests/litellm_proxy_smoke.py`: PASS with real pinned proxy and
+  synthetic upstreams in disposable Docker containers. 429/503/timeout fallback,
+  bounded retries/cooldown, Groq wire adapter, plain/SSE tool-call passthrough,
+  successful-result tokens, denied authentication/unknown paid model, failed
+  attempts, actual Groq provider, fallback events and tenants 7/8 in safe ledger.
+  All test containers/networks cleaned; no production volumes or provider keys.
+- `docker compose config --quiet`: PASS.
+- `docker compose -f docker-compose.yml -f docker-compose.atlas.yml -f docker-compose.litellm.yml --profile litellm config --quiet`: PASS, without printing secrets.
+- `git diff --check`: PASS, CRLF normalization warnings only.
+
+Issues found and resolved during validation: local variable collision in shared
+SSE code; parallel .NET builds collided on the shared project output, so later
+.NET checks ran sequentially. Mock Groq response initially omitted service_tier.
+Callback loading requires an absolute module path because generated config is
+in /tmp. Deployment cooldown must be explicit to avoid Retry-After: 0 overriding
+router-wide cooldown; cooldown tests count router failures separately from SDK
+attempts. Initial image exploration used v1.81.3; final real-proxy validation
+uses v1.90.2 and its digest above. Final tests passed after those fixes.
+
+Limits: no real Groq/OpenRouter inference because credentials/account eligibility
+were not supplied for this work; no paid inference. No browser/theme runtime
+suite in this increment. Proxy/dotnet/frontend source not deployed to the running
+portal, no live credentials or .env modified. To activate, follow LITELLM.md;
+existing direct providers remain configured independently. Provider quota is
+external, never guaranteed free. Paid destinations excluded by default; enabling
+one requires route allowlist, explicit paid-route authorization and a budget.
+The router budget is operational/process-dependent, not a durable hard financial
+cap. Use provider-side billing limits for that requirement. Callback ledger is
+not transactional billing: unknown failure costs stay unknown and reconciliation
+with provider invoices remains necessary. Tool calls are tested at the proxy
+only, as requested. Future LangGraph contracts/diagrams are documentation only.
+
+## 2026-11-11 — Activate Atlas demonstration on Groq via LiteLLM
+
+Explicit authorization: same branch, preserve pending chat/Atlas work, use the
+GROQ_API_KEY already placed by owner in .env as the demonstration default.
+No key values were printed, placed in source, sent to browser or stored in DB.
+
+Changes: optional insert-only Atlas default in AtlasKnowledgeSeed.cs; variables
+in docker-compose.atlas.yml/.env.example; seed tests in tests/AtlasKnowledge;
+Groq fast deployment reasoning_effort=low through routes.json/configure.py,
+with a policy test preventing credential/budget overrides via tuning; generic
+cloud quota notice in LoginPage.tsx; operations documentation. LiteLLM memory
+limit raised to 1536m after observing about 955 MiB RSS under its former 1 GiB
+limit. front/Dockerfile uses 300000 ms network timeout/concurrency 4 for Yarn,
+preserving the lockfile and dependency versions.
+
+Private local configuration: kept supplied GROQ_API_KEY; generated strong internal
+LiteLLM master key; enabled LiteLLM/free-account route and Atlas litellm/fast
+initial default; appended LiteLLM override/profile to existing Atlas Compose
+settings. .env stays ignored by Git. No real secret values in this record.
+
+Before application settings writes: created a consistent SQLite backup inside
+private portal_data/backups using sqlite3 backup; integrity_check returned OK.
+No schema migration, reset, deletion, password change or volume removal.
+Updated provider through authorized installation/global API; set organization
+Atlas default and current administrator's Atlas preference to litellm/fast.
+Preserved other users' explicit preferences and existing conversation selections.
+
+Commands and actual validation:
+- Groq /openai/v1/models: key accepted; gpt-oss-20b available. Initial Python
+  default User-Agent was rejected (403); explicit validation User-Agent succeeded.
+- Real proxy short inference: HTTP 200, groq/openai/gpt-oss-20b, nonempty answer,
+  80 prompt + 22 completion = 102 tokens. Operator probe recorded only in gateway
+  ledger, not fabricated as a portal usage row.
+- `dotnet run --project tests/AtlasKnowledge`: PASS, opt-in/idempotent default,
+  administrator-selected default preserved, existing knowledge/membership tests.
+- `python -m unittest discover -s tests -p test_litellm_policy.py -v`: PASS, 7 tests.
+- `cd front; npm run typecheck`: PASS.
+- `docker compose build ai-gateway portal-front`: gateway image built/published;
+  initial combined command failed on Yarn icons-material ESOCKETTIMEDOUT.
+- After bounded network timeout/concurrency adjustment,
+  `docker compose build portal-front`: PASS, frozen dependencies, typecheck/build
+  passed, existing peer dependency/chunk-size warnings only.
+- `docker compose up -d --no-deps litellm`, targeted recreation for memory limit,
+  `docker compose up -d --no-deps --no-build ai-gateway` and portal-front: applied.
+  `docker compose restart litellm`: final deployment tuning loaded.
+- Provider diagnostic via authenticated API: connected, no chargeable diagnostic.
+  Attempt from Atlas context to change installation settings correctly returned
+  403; configuration then used authorized global scope, without relaxing RBAC.
+- Authenticated new Atlas conversation: default litellm/fast, real financial
+  stream completed/persisted through Groq, five exact Trino aging buckets matched.
+  First run recorded chat completed + title invalid_response (1680 tokens total);
+  local fallback preserved the title. This exposed GPT-OSS reasoning compatibility.
+- After low-effort deployment tuning: new authenticated documentary conversation
+  completed, automatic title generated; exactly two completed usage rows,
+  chat 1296 tokens and title 176 tokens (1472 total). No C# transport change.
+- Running Nginx /login and served JS asset: PASS, new LiteLLM settings and generic
+  quota notice present, old exclusive Ollama Cloud wording removed.
+- Persistent attempt ledger: correlated Groq events with organization/request/
+  call IDs and reported tokens verified without printing raw records/content.
+- `docker compose config --quiet`, `git check-ignore .env`, `git diff --check`:
+  PASS (CRLF normalization warnings only). Trino, loader and LiteLLM healthy;
+  gateway and frontend running. No Trino/SQLite data reset or WhatsApp changes.
+
+All operational tests used synthetic Atlas data or short synthetic prompts.
+Groq inference is now real and uses the owner's authorized account/free quota;
+no paid fallback enabled. External quota/availability still applies. Older
+Ollama-selected conversations require an explicit model switch or a new
+conversation. No browser screenshot suite in this increment. No commit/push/merge.
+
+## 2026-11-12 — Ubuntu migration in progress, NOT cut over
+
+Owner explicitly authorized preparing the LAN Ubuntu host, moving the container
+stack and SSH tunnel, using deployment credentials already in private .env.
+Branch/pending changes preserved. SSH first-use host key enrolled locally;
+subsequent connections reject changed keys. No credential values printed.
+
+Verified target: Ubuntu 26.04.1 LTS amd64, four CPUs, about 7.3 GiB usable RAM,
+4 GiB swap, 86 GiB free initially. This differs from the owner's stated 16 GB;
+reported the actual figure. Docker Engine/Compose installed from Docker's signed
+Ubuntu repository. Engine active and Compose 5.7.1 verified. Host provisioning
+and two systemd unit templates added under infra/local; units installed/verified
+on target but production stack/tunnel not enabled yet.
+
+New Ed25519 key generated ON the Ubuntu host; only its public key was authorized
+on the existing Oracle user with restricted remote loopback forwards and no
+interactive shell. Original Windows private key was NOT copied. Strict known-host
+verification retained. Temporary reverse forwards 29080/29089 are exclusively
+127.0.0.1 on Oracle and verified. Public 19080/19089 remain on Windows.
+
+Packaging: exact running images exported (3,562,356,175 compressed bytes), source
+plus model assets packaged privately. Slow Wi-Fi stalled bulk transfer; stopped
+only the identified source-uploader process, split essential code into a smaller
+18,320,722-byte archive, and successfully transferred/hash-verified/extracted it
+with private runtime .env (0600). Excluded DEPLOY_SERVER credentials from runtime
+.env; retained application secrets via SFTP without displaying them. Enabled-state
+of the existing bridge is preserved; current gateway has browser bridge disabled,
+while bridge container and its session volume are retained. Optional Compose
+variable WHATSAPP_BRIDGE_ENABLED added with previous default true unchanged.
+
+Resume-capable encrypted image streams are still uploading in background;
+private progress in artifacts/server-migration/preparation-status.json. Background
+preparation will verify/load exact images, generate a local image-ID override,
+and transfer optional model assets. It DOES NOT stop production, copy the final
+live database, start the public target stack or switch the public tunnel.
+
+Three source volumes identified for preservation: portal_data (~2.2 MiB),
+litellm_audit and whatsapp_sessions (~160 MiB). They have NOT yet been cut over.
+No reset, volume deletion, public DNS change or stop of the working Windows portal.
+Wi-Fi had power-save enabled with weak signal (-74 to -77 dBm); runtime power-save
+was disabled without changing credentials/address. Owner asked whether all apps
+are containerized and explicitly authorized continuing. On later status request,
+reported incomplete migration accurately and continued preparation. Asked whether
+Ethernet can be connected to improve transfer speed; work does not depend on reply.
+
+Remaining: complete artifact transfer/load; quiesce writers and bridge, consistent
+backup/copy/restore and integrity/count verification; start target and validate
+real authentication/Groq/history; final tunnel cutover/public HTTPS verification;
+then disable old autostart/stop only source IA-Portal containers, preserving data.
+No commit, push or merge. See infra/local/UBUNTU_SERVER.md.
+
+## 2026-11-12 — Wi-Fi-only migration continuation
+
+Owner confirmed Ethernet unavailable; continued with Wi-Fi, no further hardware
+approval required. Image upload progressed beyond 43%; not yet a completed
+migration. Docker/Compose, source/private runtime configuration and staged tunnel
+remain verified. Portal still served by Windows while image transfer continues.
+
+Added infra/local/volume_snapshot.py for offline snapshots with SQLite backup
+(including committed WAL), file hashes, database integrity/table counts, numeric
+ownership preservation for the node-user browser profile, rejection of nonempty
+restore destinations and tar traversal protection. Ephemeral browser locks are
+omitted; original source files are not deleted. Three synthetic automated tests
+passed (`python -m unittest discover -s tests -p test_volume_snapshot.py -v`).
+Initial tests exposed unclosed SQLite handles and WAL-sidecar inventory effects;
+fixed via explicit connection closing and normalized SQLite backup/ephemeral
+sidecar handling. No application schema/authentication changes.
+
+An owner-authorized private migration worker now waits for verified images,
+pre-copies the inactive browser profile, and will perform a short final quiesce,
+consistent data/audit snapshots, empty-volume restore, exact table-count checks,
+server startup, authenticated real Groq/Trino/stream/title validation, staged
+loopback validation, and only then final tunnel promotion. Existing Windows
+runner/task identity is verified before disabling/stopping. Source containers
+are retained, never removed; failures before promotion restart source writers.
+After promotion the destination remains authoritative rather than blindly
+rolling back to an older DB. Windows source containers are stopped only after
+public HTTPS/health verification. Optional model assets continue transferring.
+
+Private progress: artifacts/server-migration/migration-status.json and
+preparation-status.json. Remote smoke/count-check Python/shell syntax validated;
+this is not a claim that target end-to-end checks have already executed. A
+short-lived Windows idle-sleep inhibition request is held only for the migration
+and released on completion/error, without changing persistent power settings.
+No application outside containers was introduced on Ubuntu. No commit/push/merge.

@@ -42,6 +42,13 @@ Local mode does **not** require Qdrant, Trino, or ONNX models. AI responses requ
 
 ## Architecture
 
+Optional unified model routing is available through [LiteLLM](docs/features/LITELLM.md).
+It preserves the direct C# adapters, offers configurable capability routes and
+explicitly authorized fallbacks, and separates delivered usage from gateway
+attempts. Start with the linked opt-in Compose/configuration guide; external
+provider credentials are required. [LangGraph preparation](docs/architecture/LANGGRAPH_PREPARATION.md)
+is a proposal only; no graph runtime or application tool-calling contract is added.
+
 | Component | Technology and purpose |
 | --- | --- |
 | `front/` | React, TypeScript, Vite, Material UI; Nginx in Docker |

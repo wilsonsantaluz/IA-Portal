@@ -176,9 +176,9 @@ export default function LoginPage() {
             Entre com suas credenciais para continuar.
           </Typography>
           <Alert severity="info" sx={{ mb: 2 }}>
-            O acesso a esta demonstração é gratuito. O chat usa exclusivamente o
-            Ollama Cloud e está sujeito a limites de uso. Se o limite for atingido,
-            aguarde e tente novamente mais tarde.
+            O acesso a esta demonstração é gratuito. O chat está sujeito aos
+            limites de uso dos provedores de IA. Se houver indisponibilidade,
+            tente novamente mais tarde.
           </Alert>
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>

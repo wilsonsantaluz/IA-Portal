@@ -15,7 +15,7 @@ services:
     # Internal only: no host ports, no public browser debugging endpoint.
   ai-gateway:
     environment:
-      BrowserBridge__Enabled: "true"
+      BrowserBridge__Enabled: ${WHATSAPP_BRIDGE_ENABLED:-true}
       BrowserBridge__Url: http://whatsapp-bridge:3010/
       BrowserBridge__Secret: ${WHATSAPP_BRIDGE_SECRET:?Set a private random bridge secret}
 volumes:

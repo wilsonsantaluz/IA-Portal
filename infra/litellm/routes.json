@@ -1,0 +1,15 @@
+{
+  "destinations": {
+    "groq-fast": {"provider": "groq", "model_env": "GROQ_FAST_MODEL", "key_env": "GROQ_API_KEY", "billing": "free-account", "parameters": {"reasoning_effort": "low"}},
+    "groq-balanced": {"provider": "groq", "model_env": "GROQ_BALANCED_MODEL", "key_env": "GROQ_API_KEY", "billing": "free-account"},
+    "groq-reasoning": {"provider": "groq", "model_env": "GROQ_REASONING_MODEL", "key_env": "GROQ_API_KEY", "billing": "free-account"},
+    "openrouter-free": {"provider": "openrouter", "model_env": "OPENROUTER_FREE_MODEL", "key_env": "OPENROUTER_API_KEY", "billing": "free-model"},
+    "local": {"provider": "ollama_chat", "model_env": "LITELLM_OLLAMA_MODEL", "api_base": "http://host.docker.internal:11434", "billing": "local"},
+    "deepseek": {"provider": "deepseek", "model_env": "DEEPSEEK_DEFAULT_MODEL", "key_env": "DEEPSEEK_API_KEY", "billing": "paid"}
+  },
+  "routes": {
+    "fast": {"privacy": "external-approved", "destinations": ["groq-fast", "openrouter-free"], "max_tokens": 1024},
+    "balanced": {"privacy": "external-approved", "destinations": ["groq-balanced", "openrouter-free"], "max_tokens": 2048},
+    "reasoning": {"privacy": "external-approved", "destinations": ["groq-reasoning", "openrouter-free"], "max_tokens": 2048}
+  }
+}

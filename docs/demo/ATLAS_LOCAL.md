@@ -1,5 +1,22 @@
 # Atlas local: entrega incremental
 
+## Padrão de IA da demonstração com Groq
+
+A configuração local pode usar **LiteLLM → fast → Groq `openai/gpt-oss-20b`**
+como padrão Atlas. Configure `GROQ_API_KEY`, `LITELLM_MASTER_KEY`,
+`LITELLM_ENABLED=true`, `LITELLM_GROQ_FREE_ACCOUNT=true`,
+`ATLAS_AI_DEFAULT_PROVIDER=litellm` e `ATLAS_AI_DEFAULT_MODEL=fast`.
+Inclua `docker-compose.litellm.yml` em `COMPOSE_FILE` e `litellm` em
+`COMPOSE_PROFILES`. Consulte o [guia LiteLLM](../features/LITELLM.md).
+
+O seed cria esse padrão somente quando Atlas ainda não tem um padrão salvo.
+Em instalações existentes, altere o padrão na organização Atlas pela interface/API
+autorizada. Preferências pessoais têm precedência; conversas existentes mantêm
+seu modelo até uma troca explícita em Configurações da conversa. Outras
+organizações e adapters diretos não têm seus padrões alterados por esse seed.
+As chaves ficam apenas no ambiente do servidor; nunca são enviadas ao navegador.
+O uso na franquia Groq continua sujeito à elegibilidade e cotas da conta.
+
 Todos os documentos e registros Atlas são fictícios. Não conectar dados reais.
 
 ## Instalação local ativada em 07/11/2026
@@ -35,9 +52,10 @@ validação real foi mantida: Trino + DeepSeek (`deepseek-flash` efetivo), polí
 citada, valores conferidos e gráfico renderizado. As duas chamadas de IA
 (resposta e título) registraram 3.610 tokens. Não são métricas antigas ou simuladas.
 
-O Trino Memory continua descartável. Se reiniciá-lo, recarregue os dados com
-`python scripts/atlas_trino_load.py`, seguido de `--verify`, conforme as instruções
-abaixo. A captura local da validação está em `artifacts/atlas-local/chat-live.png`.
+O Trino Memory continua descartável. O serviço `atlas-loader` recarrega e valida
+automaticamente o dataset ao subir e após reinícios do Trino. A carga manual
+continua disponível para diagnóstico. A captura local da validação está em
+`artifacts/atlas-local/chat-live.png`.
 
 ## Base de conhecimento (Fase A)
 
@@ -173,10 +191,11 @@ demonstração, com conta de leitura e memória separada. O volume SQLite existe
 
 ```powershell
 docker compose -f docker-compose.yml -f docker-compose.atlas.yml config --quiet
-docker compose -f docker-compose.yml -f docker-compose.atlas.yml up --build -d
+docker compose -f docker-compose.yml -f docker-compose.atlas.yml up --build -d --wait --wait-timeout 180
 docker compose -f docker-compose.yml -f docker-compose.atlas.yml ps
-# Aguarde o atlas-trino ficar saudável antes da carga:
-python scripts/atlas_trino_load.py
+# A API aguarda atlas-loader saudável (carga e conferência automáticas).
+docker compose -f docker-compose.yml -f docker-compose.atlas.yml logs --tail 20 atlas-loader
+# Conferência manual opcional:
 python scripts/atlas_trino_load.py --verify
 ```
 
@@ -194,8 +213,17 @@ carregador local; o gateway sempre usa `atlas_reader`. Esses nomes sem senha sã
 exclusivos de uma demonstração isolada em loopback; não são autenticação para
 fontes empresariais. Enterprise exige TLS e credencial real read-only no servidor.
 
-Trino Memory perde os dados quando seu container reinicia; execute a carga
-novamente nesse caso. A carga é determinística e idempotente: se encontrar o
+Trino Memory perde os dados quando seu container reinicia. O serviço
+`atlas-loader` verifica a base a cada 30 segundos e recupera o dataset sintético
+automaticamente; durante a recuperação, consultas podem ficar indisponíveis.
+Ele executa como usuário sem privilégios, filesystem somente leitura e acesso
+apenas à rede da demonstração. A API aguarda seu healthcheck na subida via
+Compose. Reinícios isolados do Trino não param a API já em execução.
+Uma carga parcial ou divergente deixa o loader sem prontidão e exige diagnóstico;
+ele nunca apaga tabelas para tentar corrigir a situação.
+Isso restaura o dataset fixo de demonstração, não persiste alterações manuais
+no Trino. Dados editáveis exigem outro catálogo com armazenamento durável.
+A carga é determinística e idempotente: se encontrar o
 mesmo manifest/contagens, não escreve. Se encontrar um schema diferente ou
 parcial, recusa sobrescrevê-lo. Nunca executa DROP/TRUNCATE nem altera o SQLite.
 O gerador e o carregador não dependem de dados externos; o runtime Trino exige
@@ -206,8 +234,8 @@ a imagem Docker especificada. Nenhum serviço proprietário é necessário.
 Para validar sem iniciar os serviços da instalação existente:
 
 ```powershell
-docker compose -f trino/atlas/compose.yml -p ia-atlas-validation up -d
-python scripts/atlas_trino_load.py
+docker compose -f trino/atlas/compose.yml -p ia-atlas-validation up --build -d --wait --wait-timeout 180
+python scripts/atlas_trino_load.py --verify
 $env:Demo__Atlas__SeedKnowledge='true'
 $env:TRINO_CONNECTORS_FILE='config/trino-sources.example.json'
 # Defina Jwt__Key, Bootstrap e provedor conforme README; .NET não lê .env sozinho.

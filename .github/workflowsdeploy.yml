@@ -1,0 +1,25 @@
+
+name: Deploy IA-Portal
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ia-portal-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, linux, x64]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy
+        run: |
+          docker compose up -d --build --remove-orphans
+
+      - name: Status
+        run: docker compose ps

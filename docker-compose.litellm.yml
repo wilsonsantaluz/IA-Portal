@@ -1,0 +1,37 @@
+# Opt-in: include after docker-compose.yml (and Atlas override when used).
+services:
+  litellm:
+    image: docker.litellm.ai/berriai/litellm:v1.90.2@sha256:19a879f9c4ed466f2438aa08b22e2b472053ab57c6325db73c71d0624d2d4953
+    profiles: [litellm]
+    restart: unless-stopped
+    entrypoint: [python, /app/portal/configure.py]
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      GROQ_FAST_MODEL: ${GROQ_FAST_MODEL:-openai/gpt-oss-20b}
+      GROQ_BALANCED_MODEL: ${GROQ_BALANCED_MODEL:-openai/gpt-oss-120b}
+      GROQ_REASONING_MODEL: ${GROQ_REASONING_MODEL:-openai/gpt-oss-120b}
+      OPENROUTER_FREE_MODEL: ${OPENROUTER_FREE_MODEL:-openrouter/free}
+      DEEPSEEK_DEFAULT_MODEL: ${DEEPSEEK_DEFAULT_MODEL:-deepseek-chat}
+      LITELLM_GROQ_FREE_ACCOUNT: ${LITELLM_GROQ_FREE_ACCOUNT:-false}
+      LITELLM_OLLAMA_MODEL: ${LITELLM_OLLAMA_MODEL:-}
+      LITELLM_PAID_ROUTES: ${LITELLM_PAID_ROUTES:-}
+      LITELLM_PAID_DAILY_BUDGET_USD: ${LITELLM_PAID_DAILY_BUDGET_USD:-0}
+      PYTHONPATH: /app/portal
+      LITELLM_LOG: CRITICAL
+    volumes:
+      - ./infra/litellm:/app/portal:ro
+      - litellm_audit:/var/log/portal
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    mem_limit: 1536m
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:4000/health/liveliness',timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    # No public port or gateway depends_on: direct adapters remain independent.
+volumes:
+  litellm_audit:

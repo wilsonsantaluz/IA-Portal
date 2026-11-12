@@ -1,0 +1,18 @@
+[Unit]
+Description=IA-Portal Docker Compose stack
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/ia-portal
+ExecStart=/usr/bin/docker compose --project-name ia-portal up -d --no-build --pull never --wait --wait-timeout 240
+ExecStartPost=/usr/local/libexec/ia-portal-ready
+ExecStop=/usr/bin/docker compose --project-name ia-portal stop --timeout 30
+TimeoutStartSec=420
+TimeoutStopSec=180
+
+[Install]
+WantedBy=multi-user.target
