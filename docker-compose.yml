@@ -33,6 +33,12 @@ services:
       OLLAMA_ALLOWED_ORIGINS: ${OLLAMA_ALLOWED_ORIGINS:-}
       OLLAMA_LOCAL_ORIGINS: ${OLLAMA_LOCAL_ORIGINS:-}
       AI_DEFAULT_PROVIDER: ${AI_DEFAULT_PROVIDER:-deepseek}
+      LITELLM_ENABLED: ${LITELLM_ENABLED:-false}
+      LITELLM_API_KEY: ${LITELLM_MASTER_KEY:-}
+      LITELLM_BASE_URL: ${LITELLM_BASE_URL:-http://litellm:4000/v1/}
+      LITELLM_ALLOWED_ORIGINS: ${LITELLM_ALLOWED_ORIGINS:-http://litellm:4000}
+      LITELLM_MODELS: ${LITELLM_MODELS:-fast,balanced,reasoning}
+      LITELLM_DEFAULT_MODEL: ${LITELLM_DEFAULT_MODEL:-fast}
       ConnectionStrings__PortalConnection: Data Source=/app/data/portal.db;Foreign Keys=True
       Signup__Enabled: ${ATLAS_PUBLIC_SIGNUP:-false}
       Signup__PublicUrl: ${PORTAL_PUBLIC_URL:-}

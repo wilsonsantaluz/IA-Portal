@@ -1,5 +1,8 @@
 # IA-Portal — Technical documentation
 
+LiteLLM: [configuração, políticas e consumo](features/LITELLM.md).
+LangGraph: [análise e preparação, sem implementação](architecture/LANGGRAPH_PREPARATION.md).
+
 New contributors: [current state](architecture/CURRENT_STATE.md),
 [target architecture](architecture/TARGET_ARCHITECTURE.md),
 [product roadmap](ROADMAP.md), [self-hosting](SELF_HOSTING.md),

@@ -147,6 +147,11 @@ export default function ChatPage() {
           <BusinessSourcePicker sourceId={chat.dataSourceId} referenceDate={chat.referenceDate} onSource={chat.setDataSourceId} onDate={chat.setReferenceDate} onChoose={setInput} disabled={loading || chat.historyLoading}/>
           </Box>
           </Box>
+          <Typography fontSize={11} color="text.secondary" sx={{ mt: 0.5 }}>
+            {chat.dataSourceId
+              ? `Fonte selecionada · Referência: ${chat.referenceDate.split("-").reverse().join("/")}. Para alterar, abra Configurações da conversa → Fonte de dados / Data de referência.`
+              : "Para consultar indicadores, abra Configurações da conversa e selecione a Fonte de dados e a Data de referência."}
+          </Typography>
         </Box>
         {chat.historyLoading && (
           <LinearProgress aria-label="Carregando histórico" />

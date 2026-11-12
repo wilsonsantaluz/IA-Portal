@@ -30,13 +30,15 @@ public abstract class ChatCompletionAdapter : IAiProviderAdapter
         LastCall = new() { Model = model };
     }
     private Uri baseUri = null!;
+    protected virtual void ConfigurePayload(Dictionary<string, object> payload) { }
+    protected virtual void CaptureHeaders(HttpResponseMessage response) { }
     public static void Ensure(HttpResponseMessage response)
     {
         if (response.IsSuccessStatusCode) return;
         var code = (int)response.StatusCode;
         throw new AiProviderException(code is 401 or 403 ? "authentication" : code == 402 ? "payment_required" : code == 429 ? "rate_limit" : code >= 500 ? "unavailable" : "invalid_request");
     }
-    private void Capture(JsonElement root)
+    protected virtual void Capture(JsonElement root)
     {
         if (root.TryGetProperty("model", out var model) && model.ValueKind == JsonValueKind.String) LastCall.Model = model.GetString() ?? LastCall.Model;
         if (!root.TryGetProperty("usage", out var usage) || usage.ValueKind != JsonValueKind.Object) return;
@@ -52,9 +54,10 @@ public abstract class ChatCompletionAdapter : IAiProviderAdapter
         await Prepare(model, ct);
         var payload = new Dictionary<string, object> { ["model"] = model, ["messages"] = messages, ["stream"] = false };
         if (title) payload[ProviderId == "openai" ? "max_completion_tokens" : "max_tokens"] = 64;
+        ConfigurePayload(payload);
         using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(baseUri, "chat/completions")) { Content = JsonContent.Create(payload) };
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        using var response = await Http.SendAsync(request, ct); Ensure(response);
+        using var response = await Http.SendAsync(request, ct); CaptureHeaders(response); Ensure(response);
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct)); var root = json.RootElement; Capture(root);
         var content = "";
         if (root.TryGetProperty("choices", out var choices) && choices.ValueKind == JsonValueKind.Array && choices.GetArrayLength() > 0 && choices[0].TryGetProperty("message", out var message) && message.TryGetProperty("content", out var text) && text.ValueKind == JsonValueKind.String) content = text.GetString() ?? "";
@@ -71,17 +74,19 @@ public abstract class ChatCompletionAdapter : IAiProviderAdapter
     public async IAsyncEnumerable<string> GenerateStreamAsync(string model, string prompt, [EnumeratorCancellation] CancellationToken ct = default)
     {
         await Prepare(model, ct);
-        using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(baseUri, "chat/completions")) { Content = JsonContent.Create(new { model, stream = true, stream_options = new { include_usage = true }, messages = new[] { new { role = "user", content = prompt } } }) };
+        var payload = new Dictionary<string, object> { ["model"] = model, ["stream"] = true, ["stream_options"] = new { include_usage = true }, ["messages"] = new[] { new { role = "user", content = prompt } } };
+        ConfigurePayload(payload);
+        using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(baseUri, "chat/completions")) { Content = JsonContent.Create(payload) };
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
-        using var response = await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct); Ensure(response);
+        using var response = await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct); CaptureHeaders(response); Ensure(response);
         using var stream = await response.Content.ReadAsStreamAsync(ct); using var reader = new StreamReader(stream);
         while (true) {
             var line = await reader.ReadLineAsync(ct);
             if (line is null) throw new AiProviderException("interrupted");
             if (!line.StartsWith("data:")) continue;
-            var payload = line[5..].TrimStart();
-            if (payload == "[DONE]") { LastCall.Status = "completed"; yield break; }
-            using var json = JsonDocument.Parse(payload); var root = json.RootElement; Capture(root);
+            var eventPayload = line[5..].TrimStart();
+            if (eventPayload == "[DONE]") { LastCall.Status = "completed"; yield break; }
+            using var json = JsonDocument.Parse(eventPayload); var root = json.RootElement; Capture(root);
             if (!root.TryGetProperty("choices", out var choices) || choices.ValueKind != JsonValueKind.Array || choices.GetArrayLength() == 0) continue;
             if (choices[0].TryGetProperty("delta", out var delta) && delta.TryGetProperty("content", out var text) && text.ValueKind == JsonValueKind.String) yield return text.GetString()!;
         }

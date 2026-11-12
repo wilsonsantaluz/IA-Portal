@@ -8,7 +8,7 @@ ENV VITE_MINIMAL_HOSTING=$VITE_MINIMAL_HOSTING
 WORKDIR /app
 
 COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile
+RUN yarn install --frozen-lockfile --network-timeout 300000 --network-concurrency 4
 
 COPY . .
 RUN yarn typecheck && yarn build

@@ -9,7 +9,7 @@ import { aiError, type ProviderOption } from "../components/ConversationModelPic
 type Provider = ProviderOption & { enabled: boolean; configured: boolean; endpoint: string; version: number; keyEnvironmentVariable: string; configurationError?: string };
 type Selection = { provider: string; model: string };
 type GlobalDefault = Selection & { version: number };
-const names: Record<string, string> = { deepseek: "DeepSeek", openai: "OpenAI", ollama: "Ollama" };
+const names: Record<string, string> = { deepseek: "DeepSeek", openai: "OpenAI", ollama: "Ollama", litellm: "LiteLLM" };
 const value = (selection: Selection) => JSON.stringify({ provider: selection.provider, model: selection.model });
 const surface = { p: { xs: 2, md: 3 }, border: "1px solid", borderColor: "divider", borderRadius: 3, boxShadow: "var(--portal-shadow)" };
 

@@ -45,7 +45,7 @@ public sealed class BusinessChatContextService(IServiceProvider services, IConfi
         if (intent == BusinessIntent.Clarify)
             return Direct("Essa análise ainda não tem um plano validado. Posso mostrar aging na data de referência, os dez maiores saldos ou faturamento versus caixa. Especifique a análise; não vou estimar valores ausentes.");
         if (intent != BusinessIntent.Documents && (req.SourceId is null || req.ReferenceDate is null))
-            return Direct("Selecione uma fonte de dados autorizada e uma data de referência no chat. Sem esses dados não posso calcular indicadores. Perguntas sobre políticas continuam disponíveis na base documental.");
+            return Direct("Para calcular indicadores, abra Configurações da conversa no topo do chat e selecione Fonte de dados e Data de referência. Uma única fonte autorizada é selecionada automaticamente ao carregar o chat; confira a data desejada nesse campo, inclusive para perguntas sobre hoje. Perguntas sobre políticas continuam disponíveis na base documental.");
         string context = "";
         if (intent is BusinessIntent.Documents or BusinessIntent.Hybrid)
         {

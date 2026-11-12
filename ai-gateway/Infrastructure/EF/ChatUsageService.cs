@@ -37,6 +37,10 @@ public sealed class ChatUsageService(PortalDbContext db, IHttpContextAccessor ht
         usage.Status = completed ? "completed" : result.Status == "invalid_response" ? "invalid_response" :
             ct.IsCancellationRequested ? http.HttpContext!.RequestAborted.IsCancellationRequested ? "cancelled" : "timeout" : "failed";
         usage.DurationMs = clock.ElapsedMilliseconds;
+        logger.LogInformation("LlmDelivered usage={UsageId} organization={OrganizationId} request={RequestId} gatewayCall={GatewayCallId} provider={Provider} upstream={UpstreamProvider} model={Model} status={Status} input={InputTokens} output={OutputTokens} durationMs={DurationMs} retries={Retries} fallbacks={Fallbacks} error={ErrorCode}",
+            usage.Id, db.OrganizationId, http.HttpContext?.TraceIdentifier, result.GatewayCallId,
+            usage.Provider, result.UpstreamProvider, usage.Model, usage.Status, usage.InputTokens, usage.OutputTokens,
+            usage.DurationMs, result.Retries, result.Fallbacks, result.ErrorCode);
         prices.Apply(usage);
         try {
             using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(5));

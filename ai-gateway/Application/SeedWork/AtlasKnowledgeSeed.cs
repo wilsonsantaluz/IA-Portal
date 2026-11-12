@@ -28,6 +28,17 @@ public static class AtlasKnowledgeSeed
             db.Organizations.Add(organization);
             await db.SaveChangesAsync(ct);
         }
+        // Optional initial demo default. Never overwrite an administrator's saved selection.
+        var defaultProvider = config["Demo:Atlas:DefaultProvider"];
+        if (!string.IsNullOrWhiteSpace(defaultProvider) && !await db.OrganizationAiDefaults.IgnoreQueryFilters().AnyAsync(x => x.OrganizationId == organization.Id, ct))
+        {
+            var model = config["Demo:Atlas:DefaultModel"] ?? "fast";
+            await new AiProviderCatalog(db, config).Resolve(defaultProvider, model, ct);
+            db.OrganizationAiDefaults.Add(new OrganizationAiDefault {
+                OrganizationId = organization.Id, Provider = defaultProvider, Model = model, Version = 1
+            });
+            await db.SaveChangesAsync(ct);
+        }
         var role = await db.Roles.IgnoreQueryFilters().SingleOrDefaultAsync(x => x.OrganizationId == organization.Id && x.RoleName == "admin", ct);
         if (role is null)
         {

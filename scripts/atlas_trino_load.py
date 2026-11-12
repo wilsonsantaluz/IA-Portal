@@ -8,10 +8,13 @@ import urllib.request
 from urllib.parse import urlparse
 from pathlib import Path
 import re
+import os
 
 from atlas_dataset import generate
 
-ENDPOINT = 'http://127.0.0.1:18081'
+ENDPOINT = os.environ.get('ATLAS_TRINO_ENDPOINT', 'http://127.0.0.1:18081').rstrip('/')
+if ENDPOINT not in ('http://127.0.0.1:18081', 'http://atlas-trino:8080'):
+    raise ValueError('Only the dedicated local or Compose Atlas Trino endpoint is allowed')
 HTTP = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
@@ -38,12 +41,12 @@ def query(sql, user='atlas_reader', default_schema=None):
         if not next_uri:
             return rows
         target = urlparse(next_uri)
-        if target.scheme != 'http' or target.netloc != '127.0.0.1:18081' or not target.path.startswith('/v1/statement/'):
+        if target.scheme != 'http' or target.netloc != urlparse(ENDPOINT).netloc or not target.path.startswith('/v1/statement/') or target.username or target.fragment:
             raise RuntimeError('Unexpected nextUri destination')
         request = urllib.request.Request(next_uri, headers={'X-Trino-User': user})
 
 
-def load():
+def load(quiet=False):
     tables = generate()
     fingerprint = hashlib.sha256(json.dumps(tables, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
     existing = {r[0] for r in query("SELECT table_name FROM memory.information_schema.tables WHERE table_schema='atlas'", 'atlas_loader')}
@@ -55,8 +58,9 @@ def load():
         for name, rows in tables.items():
             if query(f'SELECT count(*) FROM memory.atlas.{name}', 'atlas_loader') != [[len(rows)]]:
                 raise RuntimeError('Dataset changed: refusing to overwrite')
-        print('PASS: dataset already initialized; no writes, no duplicate rows.')
-        return
+        if not quiet:
+            print('PASS: dataset already initialized; no writes, no duplicate rows.')
+        return False
     query('CREATE SCHEMA IF NOT EXISTS memory.atlas', 'atlas_loader')
     for name, rows in tables.items():
         fields = list(rows[0])
@@ -83,6 +87,7 @@ def load():
     query('CREATE TABLE memory.atlas.atlas_manifest (fingerprint VARCHAR)', 'atlas_loader')
     query("INSERT INTO memory.atlas.atlas_manifest VALUES ('" + fingerprint + "')", 'atlas_loader')
     print('PASS: deterministic synthetic dataset loaded into isolated local Memory catalog.')
+    return True
 
 
 def verify():
@@ -98,8 +103,31 @@ def verify():
     print('PASS: all four checked-in verification SELECTs match row counts, referential/financial invariants and exact aging amounts in real local Trino.')
 
 
+def watch():
+    """Recover the disposable demo after Trino restarts; fail closed on partial data."""
+    ready = Path('/tmp/atlas-ready')
+    healthy = False
+    while True:
+        ready.unlink(missing_ok=True)
+        try:
+            created = load(quiet=healthy)
+            if not healthy or created:
+                verify()
+                print('Atlas ready; monitoring for Memory catalog loss.', flush=True)
+            ready.touch()
+            healthy = True
+        except Exception as error:
+            # Do not log query bodies or connection configuration.
+            print(f'Atlas not ready ({type(error).__name__}); retrying without overwriting existing data.', flush=True)
+            healthy = False
+        time.sleep(30 if healthy else 5)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--verify', action='store_true')
+    parser.add_argument('--watch', action='store_true', help='Monitor and restore the dedicated Compose demo after restarts')
     args = parser.parse_args()
-    verify() if args.verify else load()
+    if args.verify and args.watch:
+        parser.error('--verify and --watch are mutually exclusive')
+    watch() if args.watch else verify() if args.verify else load()
