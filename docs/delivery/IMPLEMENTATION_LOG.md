@@ -1811,6 +1811,25 @@ No application outside containers was introduced on Ubuntu. No commit/push/merge
 
 #### Falha do primeiro deploy e recuperação
 
+#### Segunda execução: publicação do apontador da release
+
+Run 43315252387, job 131521457937, commit 53b7040: todos os healthchecks
+passaram. Curl reportou reset às 22:11:01 UTC, mas a política de retry recuperou
+a conexão. O erro fatal, às 22:11:04, foi current-release: Permission denied.
+Arquivo criado por root durante recuperação manual impedia truncate pelo runner.
+Trino novo e aplicação estavam ativos; frontend e API retornaram HTTP 200.
+
+Correção: publicação do manifesto por arquivo temporário + rename no diretório
+do runner, sem depender do dono/mode do manifesto antigo; preflight verifica
+escrita no diretório. Frontend também recebe retry limitado para resets de
+inicialização. Testes executados como github-runner (UID 1001), não root: PASS
+em seis cenários, incluindo manifesto prévio read-only 0444, permissões de código
+público e env privado 0600. Apontador ativo recuperado pelo próprio github-runner
+após checks HTTP, sem rebuild ou restart. A primeira tentativa desse reparo teve
+erro de sintaxe no helper temporário antes de execução; corrigido e concluído.
+Nenhum volume/banco ou segredo alterado. Histórico do Actions continua failed;
+isso não descreve indisponibilidade atual. Sem teste de login/LLM/WhatsApp.
+
 Run 43307133926, job 131493284367, main ba3ace0: 25m30s. Checkout ~12 s;
 builds ~24m40s. Logs mostram OCR apt 315,7 s, SDK/base ~249 s em parte paralelo
 ao OCR, ML restore 109,5 s, gateway restore 242,8 s / publish 15,6 s,
