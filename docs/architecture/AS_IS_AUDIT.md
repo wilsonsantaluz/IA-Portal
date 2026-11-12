@@ -475,6 +475,39 @@ Groq fast deployment uses low reasoning effort, configured in JSON, not C#.
 
 ## 2026-11-12 — runner local e consumo ocioso do Atlas
 
+### Reavaliação remota: necessidade do loader
+
+Implementação autorizada após a avaliação: imagem Atlas derivada do Trino 484,
+SQL sintético gerado offline no build (mesmo gerador do helper manual), carga CLI
+única por início do container. Wrapper aguarda servidor disponível, termina em
+falha de carga, marca prontidão apenas no sucesso e encaminha sinais ao Trino.
+Sem Python no runtime, serviço atlas-loader ou laço de verificação de dataset.
+Os dois Compose aguardam marker + HTTP. Gateway depende diretamente do Trino.
+Pipeline desativa restart e para apenas o watcher legado antes de subir a imagem
+nova. Arquivos de ACL, catálogo, limites de memória e SQLite não foram alterados.
+
+Inspeção posterior no servidor confirmou que o container atlas-loader ainda
+executa `--watch` com pausa saudável de 30 s, apesar da alteração local anterior
+para 300 s. Mount do catálogo aponta a `/opt/ia-portal/trino/atlas/memory.properties`.
+Não foi presumido que o primeiro workflow concluiu ou promoveu a nova release.
+Em nova amostra: loader 0% CPU, Trino 2,67% e 1,492 GiB. Não é possível atribuir
+todo o consumo do Trino ao loader nem estabelecer baseline sem medição isolada.
+
+O watcher não indexa documentos/Parquet/SQL Server. Gera dataset sintético Atlas,
+verifica tabelas/fingerprint e sete contagens periodicamente, recriando dados
+quando o catálogo Memory é perdido. A aplicação usa atlas_local, catálogo memory,
+schema atlas, conta atlas_reader, e depende do heartbeat saudável do loader.
+Consulta diagnóstica a system.runtime.queries foi negada pelo controle de acesso;
+nenhuma permissão foi ampliada para a investigação.
+
+Conclusão: watcher contínuo desnecessário para execução de consultas. Mantendo
+demo, substituir por carga única coordenada após cada reinício do Trino e adaptar
+depends_on/healthcheck. Sem demo, remover loader e dependência, configurar fontes
+persistentes reais e revisar referências Atlas existentes sem apagar registros.
+Só parar loader mantém dados até restart do Trino, mas deixa startup/deploy
+incompatíveis com a dependência atual; não é correção durável. Nenhuma alteração
+de produção foi executada nesta avaliação.
+
 Inspeção remota somente de metadados confirmou Ubuntu x64, 7299 MiB de RAM,
 stack em `/opt/ia-portal`, projeto `ia-portal`, perfil litellm e overrides Atlas,
 LiteLLM, WhatsApp browser e imagens importadas. Não existiam workflows ou unidade
