@@ -472,3 +472,25 @@ configure an existing installation; personal/organization precedence unchanged.
 Installation-wide provider writes still require the global organization scope.
 Other organizations, existing conversation selections and direct adapters remain.
 Groq fast deployment uses low reasoning effort, configured in JSON, not C#.
+
+## 2026-11-12 — runner local e consumo ocioso do Atlas
+
+Inspeção remota somente de metadados confirmou Ubuntu x64, 7299 MiB de RAM,
+stack em `/opt/ia-portal`, projeto `ia-portal`, perfil litellm e overrides Atlas,
+LiteLLM, WhatsApp browser e imagens importadas. Não existiam workflows ou unidade
+actions.runner. O runner novo deve construir localmente e omitir o override de
+imagens importadas, preservando env, volumes, modelos e túnel existentes.
+
+Trino: 1,47 GiB e CPU 3,93% em amostra; loader CPU 11,01%. `watch()` regenera
+dataset/fingerprint e executa SELECTs de contagem a cada 30 segundos mesmo sem
+usuários. Nova janela saudável: 300 segundos; retry de erro permanece 5 segundos.
+Ambos os Compose ajustam a validade do heartbeat para 660 segundos. Não há
+evidência de saturação contínua da CPU; htop pode mostrar threads Java com RES
+compartilhado. Sem redução arbitrária de heap ou remoção de conectores existentes.
+
+Deploy proposto: push main/manual main, runner Linux x64 exclusivo, permissões
+read-only contents, sem evento PR, concorrência serial, checkout sem credenciais
+persistidas, release durável, volume SQLite externo conferido contra o gateway
+existente, builds por serviço, readiness/HTTP e ponteiro active após sucesso.
+Não altera autenticação, contratos, frontend ou esquema SQLite. Registro do runner
+depende do token temporário do GitHub, não suportado pelo conector disponível.
