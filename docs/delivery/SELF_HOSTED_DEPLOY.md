@@ -107,18 +107,19 @@ Linhas Java no htop podem ser threads compartilhando a mesma memória; não some
 o RES de cada thread. A JVM mantém heap/threads e trabalho interno sem usuários.
 [Memória do Trino](https://trino.io/docs/current/installation/deployment.html).
 
-O loader de demonstração gera e verifica fingerprint/contagens periodicamente.
-O intervalo saudável passa de 30 para 300 segundos; falhas tentam novamente a
-cada 5 segundos. O healthcheck acompanha a nova janela (660 segundos). Após um
-reinício do Trino, a recuperação do catálogo Memory pode levar cinco minutos.
-Não reduzimos limites de memória às cegas nem removemos Atlas: consultas e
-conexões existentes dependem dele. Para desativá-lo, planeje também a remoção das
-dependências do gateway; simplesmente parar Trino não é uma solução permanente.
+O monitoramento contínuo foi substituído por inicialização no próprio container
+Trino. Em cada início, o CLI carrega o SQL sintético gerado no build e encerra.
+Não há Python no runtime ou sidecar loader. O healthcheck aguarda a carga e depois
+verifica somente HTTP, sem SQL periódico. O pipeline desabilita restart e para
+apenas o antigo atlas-loader antes de subir o novo Trino, evitando duas cargas
+concorrentes. O container antigo fica parado, sem apagar volumes. Use os novos
+Compose sem o override antigo de imagens importadas. O ajuste de boot documentado
+acima segue necessário para impedir retorno à versão migrada após reboot.
 
 Diagnóstico sem imprimir segredos:
 
 ```bash
 docker stats --no-stream
 docker top ia-portal-atlas-trino-1
-docker logs --tail 30 ia-portal-atlas-loader-1
+docker logs --tail 30 ia-portal-atlas-trino-1
 ```

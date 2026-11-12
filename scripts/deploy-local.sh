@@ -49,6 +49,17 @@ services=$("${compose[@]}" config --services)
 while IFS= read -r service; do
   [[ -n "$service" ]] && "${compose[@]}" build "$service"
 done <<< "$services"
+# Retire only the legacy demo watcher before starting the self-initializing Trino.
+# Never remove volumes or unrelated orphan services.
+if grep -qx atlas-trino <<< "$services"; then
+  legacy=$(docker ps -aq --filter "label=com.docker.compose.project=$PORTAL_PROJECT_NAME" --filter 'label=com.docker.compose.service=atlas-loader')
+  if [[ -n "$legacy" ]]; then
+    while IFS= read -r container_id; do
+      docker update --restart=no "$container_id" >/dev/null
+      docker stop --time 30 "$container_id" >/dev/null
+    done <<< "$legacy"
+  fi
+fi
 "${compose[@]}" up -d --no-build --wait --wait-timeout 180
 curl --fail --silent --show-error --retry 20 --retry-delay 3 --retry-connrefused --retry-all-errors --max-time 5 "$PORTAL_READY_URL" >/dev/null
 curl --fail --silent --show-error --max-time 10 "$PORTAL_FRONT_URL" >/dev/null

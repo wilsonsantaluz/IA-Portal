@@ -52,8 +52,8 @@ validação real foi mantida: Trino + DeepSeek (`deepseek-flash` efetivo), polí
 citada, valores conferidos e gráfico renderizado. As duas chamadas de IA
 (resposta e título) registraram 3.610 tokens. Não são métricas antigas ou simuladas.
 
-O Trino Memory continua descartável. O serviço `atlas-loader` recarrega e valida
-automaticamente o dataset ao subir e após reinícios do Trino. A carga manual
+O Trino Memory continua descartável. A inicialização do container recarrega
+o dataset uma vez ao subir e após reinícios do Trino. A carga manual
 continua disponível para diagnóstico. A captura local da validação está em
 `artifacts/atlas-local/chat-live.png`.
 
@@ -193,8 +193,8 @@ demonstração, com conta de leitura e memória separada. O volume SQLite existe
 docker compose -f docker-compose.yml -f docker-compose.atlas.yml config --quiet
 docker compose -f docker-compose.yml -f docker-compose.atlas.yml up --build -d --wait --wait-timeout 180
 docker compose -f docker-compose.yml -f docker-compose.atlas.yml ps
-# A API aguarda atlas-loader saudável (carga e conferência automáticas).
-docker compose -f docker-compose.yml -f docker-compose.atlas.yml logs --tail 20 atlas-loader
+# A API aguarda atlas-trino saudável após a carga única de inicialização.
+docker compose -f docker-compose.yml -f docker-compose.atlas.yml logs --tail 20 atlas-trino
 # Conferência manual opcional:
 python scripts/atlas_trino_load.py --verify
 ```
@@ -213,14 +213,15 @@ carregador local; o gateway sempre usa `atlas_reader`. Esses nomes sem senha sã
 exclusivos de uma demonstração isolada em loopback; não são autenticação para
 fontes empresariais. Enterprise exige TLS e credencial real read-only no servidor.
 
-Trino Memory perde os dados quando seu container reinicia. O serviço
-`atlas-loader` verifica a base a cada 30 segundos e recupera o dataset sintético
-automaticamente; durante a recuperação, consultas podem ficar indisponíveis.
-Ele executa como usuário sem privilégios, filesystem somente leitura e acesso
-apenas à rede da demonstração. A API aguarda seu healthcheck na subida via
-Compose. Reinícios isolados do Trino não param a API já em execução.
-Uma carga parcial ou divergente deixa o loader sem prontidão e exige diagnóstico;
-ele nunca apaga tabelas para tentar corrigir a situação.
+Trino Memory perde os dados quando seu container reinicia. A imagem Atlas
+inicializa o dataset uma vez em cada início do processo Trino, inclusive após
+reinício isolado do container ou recuperação pela política Docker. O SQL é gerado
+no build com dados sintéticos determinísticos; Python não é instalado na imagem
+final. O CLI executa a carga local e encerra. Não há watcher, contagem periódica
+ou processo atlas-loader em execução. O healthcheck só libera a API após concluir
+a carga e verifica prontidão HTTP, sem SQL periódico. Uma falha de carga encerra
+o container sem liberar prontidão; não apaga tabelas para corrigir divergências.
+Durante reinícios, consultas podem ficar indisponíveis até a carga terminar.
 Isso restaura o dataset fixo de demonstração, não persiste alterações manuais
 no Trino. Dados editáveis exigem outro catálogo com armazenamento durável.
 A carga é determinística e idempotente: se encontrar o

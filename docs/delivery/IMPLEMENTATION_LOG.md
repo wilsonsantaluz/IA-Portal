@@ -1805,6 +1805,52 @@ No application outside containers was introduced on Ubuntu. No commit/push/merge
 
 ## 2026-11-12 — deploy no runner local e monitoramento Atlas
 
+### Avaliação adicional solicitada: Trino somente para consultas
+
+### Implementação autorizada: carga apenas na inicialização
+
+Removidos watcher/sidecar e Dockerfile do loader. Novo Dockerfile multi-stage gera
+SQL offline com o gerador existente e copia somente SQL/script para o Trino 484.
+O início espera a flag starting=false, executa CLI local uma vez e marca readiness.
+O processo CLI termina; wrapper permanece aguardando o Trino e repassa sinais.
+Cada reinício do container refaz a carga, sem depender de eventos externos,
+polling de dataset ou reexecução de um serviço Compose já concluído. Gateway
+aguarda o healthcheck marker + HTTP. Deploy para e desativa restart do container
+legado por labels/projeto, sem remover volumes ou outros serviços.
+
+Validações no Ubuntu, em instância Docker isolada sem rede externa/portas:
+
+- Build multi-stage: PASS; base Trino já usada em produção retagueada só para o
+  teste, evitando novo download. Dockerfile entregue mantém digest original.
+- Carga inicial e consulta read-only de invoices: PASS, 5896 registros.
+- `docker restart` da instância isolada e nova carga: PASS, 5896 registros.
+- Após carga e consulta, `docker top ... -eo pid,comm`: apenas bash e trino-server;
+  CLI não permanece e não há Python no runtime.
+- Ociosidade após prontidão: contador de eventos de consulta permaneceu em 180
+  durante 35 segundos; PASS. Instância de teste parada/removida ao concluir.
+- `python3 scripts/test_deploy_local.py`: PASS em cinco cenários, incluindo
+  desativação/parada do watcher legado antes de up.
+- `bash -n` e ambos os Compose `config --quiet`: PASS.
+
+O primeiro teste revelou ausência de grep na imagem mínima; prontidão corrigida
+para usar regex nativa do Bash. Uma observação de ociosidade começou durante
+recarga e registrou consultas de inicialização; não foi tratada como baseline.
+Sem build frontend/.NET: nenhuma mudança nessas aplicações. Sem migração SQLite,
+restart de produção ou aplicação desta mudança ao servidor principal. Boot antigo
+ainda precisa do ajuste documentado em SELF_HOSTED_DEPLOY para usar a release
+ativa e não voltar à imagem importada. Submissão por PR, sem merge automático.
+
+Branch `feature/trino-idle-audit`, árvore inicialmente limpa. Inspeção remota
+read-only de docker stats, comando/código do loader, jvm.config e mounts. Código
+e ACL confirmam demonstração em Memory, sem rotina de indexação. Watcher ainda
+usa 30 s em produção; redução anterior não foi comprovada aplicada. Diagnóstico
+system.runtime.queries recusado pela ACL, mantida sem mudanças.
+
+Recomendação: eliminar polling contínuo; preservar demo com inicialização única
+coordenada por ciclo de vida do Trino ou migrar explicitamente para catálogos
+persistentes. Nenhum container parado/recriado e nenhum dado alterado. Sem build
+ou testes de aplicação: alteração apenas documental. Sem commit/push/merge.
+
 Branch `feature/self-hosted-deploy`, criada de `feature/litellm-gateway`; árvore
 inicial limpa. Workflow novo executa testes de orquestração, builds sequenciais
 no host e Compose após push/merge na main, com execução manual restrita à main.

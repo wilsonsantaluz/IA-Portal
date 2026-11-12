@@ -46,6 +46,30 @@ def query(sql, user='atlas_reader', default_schema=None):
         request = urllib.request.Request(next_uri, headers={'X-Trino-User': user})
 
 
+def initialization_statements(tables, fingerprint):
+    yield 'CREATE SCHEMA IF NOT EXISTS memory.atlas'
+    for name, rows in tables.items():
+        fields = list(rows[0])
+        types = {field: 'BIGINT' if field == 'id' or field.endswith(('_id', '_cents'))
+                 else 'DATE' if field.endswith('_on') else 'VARCHAR' for field in fields}
+        definitions = ','.join(f'"{field}" {types[field]}' for field in fields)
+        yield f'CREATE TABLE memory.atlas.{name} ({definitions})'
+        def literal(field, value):
+            if value == '':
+                return 'NULL'
+            if types[field] == 'BIGINT':
+                return str(int(value))
+            if types[field] == 'DATE':
+                return "DATE '" + date.fromisoformat(value).isoformat() + "'"
+            return "'" + str(value).replace("'", "''") + "'"
+        for offset in range(0, len(rows), 200):
+            values = ','.join('(' + ','.join(literal(field, row[field]) for field in fields) + ')'
+                              for row in rows[offset:offset + 200])
+            yield f'INSERT INTO memory.atlas.{name} VALUES {values}'
+    yield 'CREATE TABLE memory.atlas.atlas_manifest (fingerprint VARCHAR)'
+    yield "INSERT INTO memory.atlas.atlas_manifest VALUES ('" + fingerprint + "')"
+
+
 def load(quiet=False):
     tables = generate()
     fingerprint = hashlib.sha256(json.dumps(tables, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
@@ -61,31 +85,11 @@ def load(quiet=False):
         if not quiet:
             print('PASS: dataset already initialized; no writes, no duplicate rows.')
         return False
-    query('CREATE SCHEMA IF NOT EXISTS memory.atlas', 'atlas_loader')
+    for statement in initialization_statements(tables, fingerprint):
+        query(statement, 'atlas_loader')
     for name, rows in tables.items():
-        fields = list(rows[0])
-        types = {field: 'BIGINT' if field == 'id' or field.endswith(('_id', '_cents'))
-                 else 'DATE' if field.endswith('_on') else 'VARCHAR' for field in fields}
-        definitions = ','.join(f'"{field}" {types[field]}' for field in fields)
-        query(f'CREATE TABLE memory.atlas.{name} ({definitions})', 'atlas_loader')
-        def literal(field, value):
-            if value == '':
-                return 'NULL'
-            if types[field] == 'BIGINT':
-                return str(int(value))
-            if types[field] == 'DATE':
-                return "DATE '" + date.fromisoformat(value).isoformat() + "'"
-            return "'" + str(value).replace("'", "''") + "'"
-        for offset in range(0, len(rows), 200):
-            values = ','.join('(' + ','.join(literal(field, row[field]) for field in fields) + ')'
-                              for row in rows[offset:offset + 200])
-            query(f'INSERT INTO memory.atlas.{name} VALUES {values}', 'atlas_loader')
-        actual = query(f'SELECT count(*) FROM memory.atlas.{name}')
-        if actual != [[len(rows)]]:
+        if query(f'SELECT count(*) FROM memory.atlas.{name}') != [[len(rows)]]:
             raise RuntimeError('Loaded row count mismatch')
-        print(f'PASS: {name}={actual[0][0]}')
-    query('CREATE TABLE memory.atlas.atlas_manifest (fingerprint VARCHAR)', 'atlas_loader')
-    query("INSERT INTO memory.atlas.atlas_manifest VALUES ('" + fingerprint + "')", 'atlas_loader')
     print('PASS: deterministic synthetic dataset loaded into isolated local Memory catalog.')
     return True
 
@@ -103,31 +107,22 @@ def verify():
     print('PASS: all four checked-in verification SELECTs match row counts, referential/financial invariants and exact aging amounts in real local Trino.')
 
 
-def watch():
-    """Recover the disposable demo after Trino restarts; fail closed on partial data."""
-    ready = Path('/tmp/atlas-ready')
-    healthy = False
-    while True:
-        ready.unlink(missing_ok=True)
-        try:
-            created = load(quiet=healthy)
-            if not healthy or created:
-                verify()
-                print('Atlas ready; monitoring for Memory catalog loss.', flush=True)
-            ready.touch()
-            healthy = True
-        except Exception as error:
-            # Do not log query bodies or connection configuration.
-            print(f'Atlas not ready ({type(error).__name__}); retrying without overwriting existing data.', flush=True)
-            healthy = False
-        time.sleep(300 if healthy else 5)
+def export_sql(destination):
+    """Build-time only: emit deterministic demo SQL, with no network requests."""
+    tables = generate()
+    fingerprint = hashlib.sha256(json.dumps(tables, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    Path(destination).write_text(''.join(sql + ';\n' for sql in initialization_statements(tables, fingerprint)), encoding='utf-8')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--verify', action='store_true')
-    parser.add_argument('--watch', action='store_true', help='Monitor and restore the dedicated Compose demo after restarts')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--verify', action='store_true')
+    mode.add_argument('--export-sql', metavar='PATH', help='Generate initialization SQL offline at image build time')
     args = parser.parse_args()
-    if args.verify and args.watch:
-        parser.error('--verify and --watch are mutually exclusive')
-    watch() if args.watch else verify() if args.verify else load()
+    if args.export_sql:
+        export_sql(args.export_sql)
+    elif args.verify:
+        verify()
+    else:
+        load()

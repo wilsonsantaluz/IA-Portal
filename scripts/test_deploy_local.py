@@ -11,7 +11,7 @@ SCRIPT = Path(__file__).with_name('deploy-local.sh').resolve()
 
 class DeployTests(unittest.TestCase):
     def test_existing_volume_and_failure_boundaries(self):
-        for case in ('missing', 'wrong-volume', 'build-failure', 'success'):
+        for case in ('missing', 'wrong-volume', 'build-failure', 'success', 'legacy'):
             with self.subTest(case=case), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp)
                 repo = root / 'repo'
@@ -29,10 +29,16 @@ class DeployTests(unittest.TestCase):
                 docker.write_text('''#!/bin/bash
 echo "$*" >> "$TEST_LOG"
 case "$1" in
- ps) [[ "$TEST_CASE" == missing ]] || echo gateway ;;
+ ps)
+   if [[ " $* " == *'service=atlas-loader'* ]]; then
+     [[ "$TEST_CASE" != legacy ]] || echo old-loader
+   else
+     [[ "$TEST_CASE" == missing ]] || echo gateway
+   fi ;;
  inspect) if [[ "$TEST_CASE" == wrong-volume ]]; then echo other; else echo existing; fi ;;
  compose)
    [[ " $* " != *" --services "* ]] || printf '%s\\n' ai-gateway portal-front
+   if [[ " $* " == *" --services "* && "$TEST_CASE" == legacy ]]; then echo atlas-trino; fi
    if [[ " $* " == *" build "* && "$TEST_CASE" == build-failure ]]; then exit 1; fi ;;
 esac
 exit 0
@@ -59,12 +65,15 @@ PORTAL_READY_URL=http://localhost/health/ready
                                         capture_output=True, text=True)
                 calls = log.read_text()
                 active = root / 'releases/active'
-                if case == 'success':
+                if case in ('success', 'legacy'):
                     self.assertEqual(result.returncode, 0, result.stderr)
                     self.assertTrue(active.is_symlink())
                     self.assertTrue((active / 'docker-compose.yml').is_file())
                     self.assertIn('up -d --no-build --wait', calls)
                     self.assertIn('--env-file ' + str(root / 'runtime.env'), calls)
+                    if case == 'legacy':
+                        self.assertIn('update --restart=no old-loader', calls)
+                        self.assertLess(calls.index('stop --time 30 old-loader'), calls.index('up -d'))
                 else:
                     self.assertNotEqual(result.returncode, 0)
                     self.assertFalse(active.exists())
