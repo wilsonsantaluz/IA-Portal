@@ -17,6 +17,7 @@ command -v flock >/dev/null
 command -v curl >/dev/null
 docker compose version
 mkdir -p "$PORTAL_RELEASE_ROOT"
+[[ -w "$PORTAL_RELEASE_ROOT" ]] || die 'diretorio de releases sem permissao de escrita'
 exec 9>"$PORTAL_RELEASE_ROOT/.deploy.lock"
 flock -n 9 || die 'outro deploy em andamento'
 
@@ -72,7 +73,11 @@ if grep -qx atlas-trino <<< "$services"; then
 fi
 "${compose[@]}" up -d --no-build --wait --wait-timeout 180
 curl --fail --silent --show-error --retry 20 --retry-delay 3 --retry-connrefused --retry-all-errors --max-time 5 "$PORTAL_READY_URL" >/dev/null
-curl --fail --silent --show-error --max-time 10 "$PORTAL_FRONT_URL" >/dev/null
-printf '%s\n' "$release" > "$PORTAL_RELEASE_ROOT/current-release"
+curl --fail --silent --show-error --retry 5 --retry-delay 2 --retry-all-errors --max-time 10 "$PORTAL_FRONT_URL" >/dev/null
+# Replace the directory entry rather than truncate a manifest possibly created
+# by root during manual recovery. Parent directory belongs to the runner.
+manifest=$(mktemp "$PORTAL_RELEASE_ROOT/.current-release.XXXXXX")
+printf '%s\n' "$release" > "$manifest"
+mv -f "$manifest" "$PORTAL_RELEASE_ROOT/current-release"
 ln -sfn "$release" "$PORTAL_RELEASE_ROOT/active"
 echo "Deploy validado: $revision"
