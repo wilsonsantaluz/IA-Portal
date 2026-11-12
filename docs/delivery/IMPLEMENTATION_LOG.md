@@ -1809,6 +1809,36 @@ No application outside containers was introduced on Ubuntu. No commit/push/merge
 
 ### Implementação autorizada: carga apenas na inicialização
 
+#### Falha do primeiro deploy e recuperação
+
+Run 43307133926, job 131493284367, main ba3ace0: 25m30s. Checkout ~12 s;
+builds ~24m40s. Logs mostram OCR apt 315,7 s, SDK/base ~249 s em parte paralelo
+ao OCR, ML restore 109,5 s, gateway restore 242,8 s / publish 15,6 s,
+frontend yarn install 290,8 s / typecheck+build 30 s, bridge apt 222,7 s.
+Houve connection reset em download de imagem base. Instalação migrada tinha
+imagens finais, não o cache completo de build do Windows. Builds foram
+sequenciais para limitar pico de memória. Não foi evidenciada insuficiência
+de hardware como causa dessa falha.
+
+Causa de startup: `umask 027` deixava arquivos extraídos de Git como 0640.
+Trino UID 1000 não conseguia ler config.properties; bridge USER node não lia
+package.json copiado root:root. Correção: liberar leitura/travessia apenas da
+release de código Git público antes de build/mount. Env/modelos/volumes externos
+não sofrem chmod. Testes acrescentam regressão para arquivos/diretórios públicos
+e preservação do runtime.env em 0600. Logs de build agora agrupados por serviço
+com duração em segundos.
+
+Recuperação remota: release identificada pelo mount do Trino, caminho validado
+sob /opt/ia-portal/releases e ausência de .env interno; aplicado a+rX somente
+nessa release, reconstruídos loader/bridge usando cache. Primeira tentativa de
+up encontrou status unhealthy antigo; Trino posteriormente voltou a healthy.
+Segunda subida sem rebuild: PASS, todos os serviços ativos/healthchecks Compose
+aprovados, API retornou status ready e frontend HTTP 200. Ponteiro active promovido
+somente após essas verificações. Login, chamada LLM e envio WhatsApp não foram
+executados; readiness não prova essas funcionalidades. Regressão de permissões
+com runtime.env 0600 e cinco cenários de deploy: PASS no Ubuntu.
+Sem reset, exclusão de volumes ou alteração de valores de segredos.
+
 Removidos watcher/sidecar e Dockerfile do loader. Novo Dockerfile multi-stage gera
 SQL offline com o gerador existente e copia somente SQL/script para o Trino 484.
 O início espera a flag starting=false, executa CLI local uma vez e marca readiness.

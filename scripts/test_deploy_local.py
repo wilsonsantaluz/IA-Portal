@@ -48,6 +48,7 @@ exit 0
                 curl.write_text('#!/bin/bash\nexit 0\n')
                 curl.chmod(0o755)
                 (root / 'runtime.env').touch()
+                (root / 'runtime.env').chmod(0o600)
                 conf = root / 'deploy.conf'
                 conf.write_text(f'''PORTAL_PROJECT_NAME=fixture
 PORTAL_DATA_VOLUME=existing
@@ -69,6 +70,11 @@ PORTAL_READY_URL=http://localhost/health/ready
                     self.assertEqual(result.returncode, 0, result.stderr)
                     self.assertTrue(active.is_symlink())
                     self.assertTrue((active / 'docker-compose.yml').is_file())
+                    # Containers with a different UID must read public code even
+                    # though deployment uses umask 027. Private env is excluded.
+                    self.assertTrue((active / 'docker-compose.yml').stat().st_mode & 0o004)
+                    self.assertTrue((active / 'infra/deploy').stat().st_mode & 0o001)
+                    self.assertEqual((root / 'runtime.env').stat().st_mode & 0o777, 0o600)
                     self.assertIn('up -d --no-build --wait', calls)
                     self.assertIn('--env-file ' + str(root / 'runtime.env'), calls)
                     if case == 'legacy':

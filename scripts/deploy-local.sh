@@ -32,6 +32,10 @@ revision=$(git rev-parse HEAD)
 release=$(mktemp -d "$PORTAL_RELEASE_ROOT/$revision.XXXXXX")
 # Persistent release: checkout cleanup must never remove live bind mounts.
 git archive HEAD | tar -x -C "$release"
+# Only public Git-tracked source is in this directory. Non-root container users
+# must be able to read COPY inputs and bind mounts, regardless of runner umask.
+# runtime.env, models and persistent volumes live outside this release.
+chmod -R a+rX "$release"
 cd "$release"
 compose=(docker compose --project-name "$PORTAL_PROJECT_NAME" --project-directory "$release" --env-file "$PORTAL_RUNTIME_ENV")
 for file in "${PORTAL_COMPOSE_FILES[@]}"; do
@@ -47,7 +51,13 @@ export COMPOSE_PARALLEL_LIMIT=1
 export COMPOSE_BAKE=false
 services=$("${compose[@]}" config --services)
 while IFS= read -r service; do
-  [[ -n "$service" ]] && "${compose[@]}" build "$service"
+  if [[ -n "$service" ]]; then
+    echo "::group::Build $service"
+    started=$SECONDS
+    "${compose[@]}" build "$service"
+    echo "Build $service: $((SECONDS-started)) segundos"
+    echo '::endgroup::'
+  fi
 done <<< "$services"
 # Retire only the legacy demo watcher before starting the self-initializing Trino.
 # Never remove volumes or unrelated orphan services.
