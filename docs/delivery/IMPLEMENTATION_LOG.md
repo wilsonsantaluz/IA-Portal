@@ -2,6 +2,26 @@
 
 > Documento vivo. Atualizar após cada etapa; **não declarar testes não executados**.
 
+## 2026-11-12 — login compacto e responsivo
+
+Branch feature/compact-login, criada de main com árvore inicialmente limpa.
+Inspecionados LoginPage/login.css/LoginVisual, Brand, temas, AuthProvider,
+authService, router e ativos/referências. React/MUI existente preservado.
+Grid 48/52, formulário 440 px, campos/botão 46 px, gap 16 px e arte original sem
+opacidade/sobreposições. Aviso completo expansível por teclado e cadastro
+condicional preservado. Sem mudança de contratos ou fluxo de autenticação.
+
+`yarn.cmd typecheck` e `yarn.cmd build` em front: PASS. Build mantém aviso de
+chunks >500 kB. Playwright/axe em desenvolvimento e preview de produção: 12
+cenários PASS (2 temas × 6 viewports, incluindo os quatro pedidos e 1920×800).
+Sem overflow horizontal/scroll inicial; altura reduzida rola. Senha, loading,
+erro, aviso por teclado, preferência de tema e cadastro condicional validados
+com API simulada. Primeiro teste detectou excesso de 3 px em 1366×640, corrigido
+pelo dimensionamento da arte. Detalhes/capturas/limitações em
+docs/design/LOGIN_COMPACT_VALIDATION.md. Sem .NET/login real/deploy, pois backend
+intacto. Sem novas bibliotecas ou alterações em outras telas. PR para revisão
+visual, sem merge automático.
+
 ## Modelo de registro
 
 ### YYYY-MM-DD — Etapa X — Título
