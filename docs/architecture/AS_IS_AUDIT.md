@@ -527,3 +527,16 @@ persistidas, release durável, volume SQLite externo conferido contra o gateway
 existente, builds por serviço, readiness/HTTP e ponteiro active após sucesso.
 Não altera autenticação, contratos, frontend ou esquema SQLite. Registro do runner
 depende do token temporário do GitHub, não suportado pelo conector disponível.
+
+## Inspeção do login — 12/11/2026
+
+React 18/MUI 5, React Router 6 e CSS de página. LoginPage usa AuthProvider e
+authService para POST /api/auth/login, mantendo retorno seguro de convite.
+Signup status controla link /signup. PortalThemeProvider persiste theme-mode
+com escuro padrão. Ativos originais e SVGs de marca disponíveis.
+
+Painel anterior combinava fundo com opacidade 27% no claro, cena de altura
+própria, cartão sobreposto e lista de funcionalidades. Padding/margens do
+formulário somavam altura excessiva e shell ocultava overflow. Refatoração
+mantém autenticação/tokens e reduz somente apresentação. Evidências e limites
+em docs/design/LOGIN_COMPACT_VALIDATION.md.

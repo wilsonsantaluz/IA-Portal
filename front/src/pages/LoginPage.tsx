@@ -1,31 +1,18 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import {
-  Box,
-  Button,
-  TextField,
-  Typography,
-  Paper,
-  Alert,
-  Stack,
-  IconButton,
-  InputAdornment,
-} from "@mui/material";
-import AutoAwesomeOutlined from "@mui/icons-material/AutoAwesomeOutlined";
+import { Box, Button, TextField, Typography, Paper, Alert, IconButton, InputAdornment } from "@mui/material";
 import ArrowForwardRounded from "@mui/icons-material/ArrowForwardRounded";
-import DescriptionOutlined from "@mui/icons-material/DescriptionOutlined";
-import ForumOutlined from "@mui/icons-material/ForumOutlined";
-import InsightsOutlined from "@mui/icons-material/InsightsOutlined";
-import { useAuth } from "../auth/AuthProvider";
-import { useNavigate, useLocation } from "react-router-dom";
+import VisibilityOutlined from "@mui/icons-material/VisibilityOutlined";
+import VisibilityOffOutlined from "@mui/icons-material/VisibilityOffOutlined";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
-import { Link } from "react-router-dom";
+import { useAuth } from "../auth/AuthProvider";
 import Brand from "../components/Brand";
 import ThemeToggle from "../components/ThemeToggle";
 import LoginVisual from "../components/LoginVisual";
-import VisibilityOutlined from "@mui/icons-material/VisibilityOutlined";
-import VisibilityOffOutlined from "@mui/icons-material/VisibilityOffOutlined";
+import { portalTokens } from "../theme/portalTheme";
 import "./login.css";
+
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -54,181 +41,63 @@ export default function LoginPage() {
     }
   }
   return (
-    <Box
-      className="login-shell"
-      sx={{
-        minHeight: "100dvh",
-        display: "grid",
-        gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-      }}
-    >
-      <Box
-        className="login-story"
-        sx={{
-          display: { xs: "none", md: "flex" },
-          p: { md: 4, lg: 5 },
-          flexDirection: "column",
-          justifyContent: "space-between",
-          position: "relative",
-          overflow: "hidden",
-          borderRight: "1px solid",
-          borderColor: "divider",
-        }}
-      >
-        <Brand />
+    <Box component="main" className="login-shell">
+      <Box className="login-story" sx={{
+        "--login-art-background": portalTokens.dark.background,
+        "--login-art-text": portalTokens.dark.text,
+        "--login-art-muted": portalTokens.dark.muted,
+        "--login-art-accent": portalTokens.dark.cyan,
+      }}>
+        <Box component="img" src="/brand/ia-portal-logo-dark.svg" alt="IA-Portal" width={190} height={50} sx={{ objectFit: "contain" }} />
         <LoginVisual />
-        <Box className="portal-page login-story-card" sx={{ my: 3, maxWidth: 520, p: { md: 3, lg: 3.5 } }}>
-          <Box
-            sx={{
-              display: "inline-flex",
-              p: 1.5,
-              border: "1px solid",
-              borderColor: "divider",
-              bgcolor: "background.paper",
-              borderRadius: "16px",
-              color: "primary.main",
-              boxShadow: "var(--portal-shadow)",
-              mb: 2,
-            }}
-          >
-            <AutoAwesomeOutlined />
-          </Box>
-          <Typography
-            variant="h4"
-            fontSize={{ md: 32, lg: 40 }}
-            lineHeight={1.15}
-          >
-            Seu conhecimento.
-            <br />
-            <Box component="span" color="primary.main">
-              Novas possibilidades.
-            </Box>
+        <Box className="login-story-copy">
+          <Typography component="p" className="login-story-title">
+            Seu conhecimento.<br />
+            <Box component="span">Novas possibilidades.</Box>
           </Typography>
-          <Typography
-            color="text.secondary"
-            fontSize={15}
-            lineHeight={1.8}
-            mt={2.5}
-          >
-            Conecte ideias, explore documentos e transforme informação em ação
-            com inteligência artificial.
+          <Typography className="login-story-description">
+            Conecte ideias e documentos com inteligência artificial.
           </Typography>
-          <Stack spacing={1} mt={3}>
-            {[
-              { icon: <ForumOutlined />, label: "Conversas com mais contexto" },
-              {
-                icon: <DescriptionOutlined />,
-                label: "Conhecimento em um só lugar",
-              },
-              { icon: <InsightsOutlined />, label: "Informações para ir além" },
-            ].map((x) => (
-              <Stack
-                key={x.label}
-                className="login-feature"
-                direction="row"
-                alignItems="center"
-                spacing={1.5}
-              >
-                <Box color="primary.main" display="flex">
-                  {x.icon}
-                </Box>
-                <Typography fontSize={13}>{x.label}</Typography>
-              </Stack>
-            ))}
-          </Stack>
         </Box>
-        <Typography fontSize={11} color="text.secondary">
-          IA-Portal · Conhecimento em ação
-        </Typography>
       </Box>
-      <Box
-        className="login-form-panel"
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          p: { xs: 2, sm: 4, md: 5 },
-          position: "relative",
-        }}
-      >
-        <Box sx={{ position: "absolute", top: 20, right: 20 }}>
+      <Box className="login-form-panel">
+        <Box className="login-toolbar">
+          <Box className="login-mobile-brand"><Brand /></Box>
           <ThemeToggle />
         </Box>
-        <Paper
-          className="portal-page login-form-card"
-          sx={{ width: "100%", maxWidth: 460, px: { xs: 3, sm: 4 }, py: { xs: 4, sm: 4.5 }, my: { xs: 7, md: 4 } }}
-        >
-          <Box sx={{ display: { xs: "block", md: "none" }, mb: 5 }}>
-            <Brand />
-          </Box>
-          <Typography
-            variant="overline"
-            fontWeight={700}
-            color="primary.main"
-            letterSpacing=".14em"
-          >
+        <Paper component="section" className="login-form-card" aria-labelledby="login-title">
+          <Typography variant="overline" fontWeight={700} color="primary.main" letterSpacing=".14em" sx={{ fontSize: 11, lineHeight: 1.5 }}>
             BEM-VINDO AO IA-PORTAL
           </Typography>
-          <Typography variant="h4" fontSize={30} mt={1}>
+          <Typography component="h1" id="login-title" variant="h4" fontSize={28} mt={1}>
             Acesse seu espaço
           </Typography>
           <Typography fontSize={14} color="text.secondary" mt={1} mb={3}>
             Entre com suas credenciais para continuar.
           </Typography>
-          <Alert severity="info" sx={{ mb: 2 }}>
-            O acesso a esta demonstração é gratuito. O chat está sujeito aos
-            limites de uso dos provedores de IA. Se houver indisponibilidade,
-            tente novamente mais tarde.
-          </Alert>
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-          {signupEnabled && <Button component={Link} to="/signup" sx={{ mb: 2 }}>Criar conta no IA-Portal</Button>}
-          <Box component="form" onSubmit={handleSubmit}>
-            <TextField
-              fullWidth
-              label="E-mail"
-              type="email"
-              autoComplete="username"
-              margin="normal"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoFocus
-              required
-            />
-            <TextField
-              fullWidth
-              label="Senha"
-              type={showPassword ? "text" : "password"}
+          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+          <Box component="form" className="login-fields" onSubmit={handleSubmit} aria-busy={loading}>
+            <TextField fullWidth label="E-mail" type="email" autoComplete="username" size="small"
+              value={email} onChange={(e) => setEmail(e.target.value)} autoFocus required />
+            <TextField fullWidth label="Senha" type={showPassword ? "text" : "password"} size="small"
               InputProps={{ endAdornment: <InputAdornment position="end"><IconButton aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"} onClick={() => setShowPassword(value => !value)} edge="end">{showPassword ? <VisibilityOffOutlined /> : <VisibilityOutlined />}</IconButton></InputAdornment> }}
-              autoComplete="current-password"
-              margin="normal"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-            <Button
-              fullWidth
-              type="submit"
-              variant="contained"
-              size="large"
-              endIcon={!loading && <ArrowForwardRounded />}
-              sx={{ mt: 3, py: 1.6 }}
-              disabled={loading}
-            >
+              autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <Button fullWidth type="submit" variant="contained" size="large" endIcon={!loading && <ArrowForwardRounded />}
+              sx={{ minHeight: 46, mt: 0.5 }} disabled={loading}>
               {loading ? "Entrando..." : "Entrar"}
             </Button>
           </Box>
-          <Typography
-            fontSize={11}
-            color="text.secondary"
-            mt={4}
-            textAlign="center"
-          >
-            Um espaço para conectar ideias e informações.
-          </Typography>
+          {signupEnabled && <Typography className="login-signup" color="text.secondary" fontSize={13}>
+            <Link to="/signup">Criar conta no IA-Portal</Link>
+          </Typography>}
+          <Box component="details" className="login-demo-notice">
+            <Box component="summary">Demonstração gratuita · limites de IA</Box>
+            <Typography component="p" fontSize={13} mt={1}>
+              O acesso a esta demonstração é gratuito. O chat está sujeito aos
+              limites de uso dos provedores de IA. Se houver indisponibilidade,
+              tente novamente mais tarde.
+            </Typography>
+          </Box>
         </Paper>
       </Box>
     </Box>
