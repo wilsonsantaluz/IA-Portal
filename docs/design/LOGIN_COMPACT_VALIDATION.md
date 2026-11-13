@@ -1,17 +1,25 @@
 # Login compacto — validação em 12/11/2026
 
-Branch: `feature/compact-login`. Alteração restrita ao login, sem novas dependências
+Revisão: `feature/login-glass-motion`, após o PR #17. Alteração restrita ao login, sem novas dependências
 ou mudanças de API, sessão, cadastro e retorno de convites.
 
-Grid 48%/52%, altura mínima do viewport, formulário até 440 px, campos/botão de
+Grid 48%/52%, altura mínima do viewport, cartão de até 480 px com formulário de
+422 px úteis no desktop, campos/botão de
 46 px e intervalo de 16 px. Toolbar no fluxo normal. Abaixo de 900 px, ilustração
 oculta e marca junto ao seletor de tema. Alturas insuficientes permitem rolagem.
 Sem overflow hidden no shell, corte de conteúdo ou transform scale.
 
 Imagem original e SVGs preservados. Painel ilustrado usa os tokens escuros
-existentes nos dois temas, sem transparência. Object-fit contain mantém a arte
-inteira visível. Cartão sobreposto, flutuantes e lista removidos. Formulário usa
-tema selecionado, bordas legíveis no claro e botão sólido sem brilho adicional.
+existentes nos dois temas, sem reduzir a opacidade da imagem. Object-fit cover
+preenche o painel mantendo o elemento IA-Portal visível; extremidades decorativas
+podem ser recortadas conforme a proporção. Mensagem curta em vidro fosco de
+aproximadamente 140–160 px de altura, sem lista de funcionalidades. Elementos
+decorativos flutuam por transform CSS em ciclos de 7 s. Formulário em cartão
+translúcido com blur, sombra, borda discreta e entrada de 0,5 s; fundo com gradientes
+estáticos. Claro usa superfícies neutras; escuro recupera profundidade e luz suave.
+Tokens existentes reutilizados. Sem cópia de marca, imagem ou código da referência.
+Somente elementos decorativos usam posicionamento absoluto; conteúdo essencial
+permanece em Grid/Flex. Movimento desativado em prefers-reduced-motion.
 Aviso completo em details/summary nativos, expansíveis por teclado.
 
 ## Resultado no navegador
@@ -30,7 +38,7 @@ login simuladas. Sem contas ou dados de produção.
 | 390×844 | PASS | PASS | Não | Não |
 
 Em 390×360 com erro, ambos os temas permitem rolar até o último controle.
-Formulário medido em 440 px no desktop/tablet e 342 px no mobile; campos/botão
+Formulário medido em 422 px no desktop/tablet e 316 px no mobile; campos/botão
 em 46 px. Controles essenciais visíveis em Full HD com 800 px úteis.
 Capturas de todos os viewports geradas e inspecionadas. Exemplos para revisão:
 
@@ -42,7 +50,9 @@ Capturas de todos os viewports geradas e inspecionadas. Exemplos para revisão:
 O teste `tests/ui/login-layout.cjs` confirma 12 layouts, zero violações axe WCAG
 A/AA encontradas, ausência de erros JavaScript, aviso operável com Enter, senha
 visível/oculta, payload original de login, loading com botão desabilitado, erro,
-tema salvo e link de cadastro condicionado à API. Não equivale a auditoria
+tema salvo e link de cadastro condicionado à API. A animação também foi verificada
+com movimento normal (transform varia) e preferência reduzida (animation none).
+Não equivale a auditoria
 completa de acessibilidade.
 
 ## Comandos executados

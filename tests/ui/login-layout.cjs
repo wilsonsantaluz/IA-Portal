@@ -57,7 +57,7 @@ const sizes = [[1920, 1080], [1920, 800], [1366, 768], [1366, 640], [768, 1024],
         assert(metrics.buttonBottom <= height);
         if (width >= 900) {
           const art = await page.locator('.login-illustration').evaluate(el => ({ loaded: el.complete && el.naturalWidth > 0, fit: getComputedStyle(el).objectFit }));
-          assert(art.loaded && art.fit === 'contain');
+          assert(art.loaded && art.fit === 'cover');
         } else {
           assert.equal(await page.locator('.login-story').isVisible(), false);
         }
@@ -96,12 +96,22 @@ const sizes = [[1920, 1080], [1920, 800], [1366, 768], [1366, 640], [768, 1024],
       await page.goto(base + '/login');
       await page.getByRole('heading', { name: 'Acesse seu espaço' }).waitFor();
       assert.equal(await page.getByRole('link', { name: 'Criar conta no IA-Portal' }).count(), 0);
+      // Motion is real with the default preference, and stops when requested.
+      await page.setViewportSize({ width: 1920, height: 800 });
+      await page.emulateMedia({ reducedMotion: 'no-preference' });
+      const floating = page.locator('.login-float-document');
+      assert.equal(await floating.evaluate(el => getComputedStyle(el).animationName), 'login-float');
+      const before = await floating.evaluate(el => getComputedStyle(el).transform);
+      await page.waitForTimeout(250);
+      assert.notEqual(await floating.evaluate(el => getComputedStyle(el).transform), before);
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      assert.equal(await floating.evaluate(el => getComputedStyle(el).animationName), 'none');
       assert.deepEqual(errors, []);
       await context.close();
       await browser.close();
       browser = null;
     }
     fs.writeFileSync(path.join(output, 'report.json'), JSON.stringify(report, null, 2));
-    console.log(`PASS: ${report.length} layouts; both themes, axe, overflow, short heights, details, password, loading and error state. Auth mocked.`);
+    console.log(`PASS: ${report.length} layouts; both themes, axe, overflow, short heights, details, password, loading, error and motion preferences. Auth mocked.`);
   } finally { if (browser) await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

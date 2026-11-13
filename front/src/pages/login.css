@@ -6,22 +6,70 @@
   background: var(--portal-surface);
 }
 .login-story {
+  position: relative;
+  isolation: isolate;
   display: grid;
   grid-template-rows: auto minmax(220px, 1fr) auto;
   gap: 20px;
   min-width: 0;
-  padding: clamp(24px, 3vw, 48px);
+  padding: clamp(24px, 2.5vw, 40px);
   background: var(--login-art-background);
   color: var(--login-art-text);
 }
-.login-scene { align-self: center; width: 100%; min-width: 0; }
+.login-story > img, .login-story-copy { position: relative; z-index: 1; }
+.login-scene {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.login-scene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--login-art-background) 30%, transparent),
+    transparent 22%, transparent 58%,
+    color-mix(in srgb, var(--login-art-background) 45%, transparent));
+}
 .login-illustration {
   display: block;
   width: 100%;
-  max-height: 54dvh;
-  object-fit: contain;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 40%;
 }
-.login-story-copy { max-width: 460px; }
+.login-float {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--login-art-text) 20%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--login-art-background) 55%, transparent);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--login-art-background) 35%, transparent);
+  color: var(--login-art-text);
+  font-size: 12px;
+  font-weight: 600;
+  animation: login-float 7s ease-in-out infinite;
+}
+.login-float svg { color: var(--login-art-accent); font-size: 25px; }
+.login-float-caption { display: block; margin-top: 3px; font-size: 10px; font-weight: 400; color: var(--login-art-muted); }
+.login-float-document { left: 5%; top: 30%; }
+.login-float-knowledge { right: 5%; top: 20%; animation-delay: -3s; }
+.login-story-copy {
+  grid-row: 3;
+  max-width: 500px;
+  padding: 20px 24px;
+  border: 1px solid color-mix(in srgb, var(--login-art-text) 20%, transparent);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--login-art-background) 55%, transparent);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 16px 40px color-mix(in srgb, var(--login-art-background) 40%, transparent);
+}
 .login-story .login-story-title {
   font-size: clamp(24px, 2vw, 34px);
   font-weight: 600;
@@ -40,6 +88,10 @@
   flex-direction: column;
   min-width: 0;
   padding: 24px clamp(24px, 4vw, 64px);
+  background:
+    radial-gradient(ellipse at 90% 15%, color-mix(in srgb, var(--portal-violet) 10%, transparent), transparent 55%),
+    radial-gradient(ellipse at 8% 90%, color-mix(in srgb, var(--portal-cyan) 7%, transparent), transparent 50%),
+    var(--portal-background);
 }
 .login-toolbar {
   display: flex;
@@ -51,17 +103,27 @@
 .login-mobile-brand { display: none; }
 .login-form-panel .login-form-card {
   width: 100%;
-  max-width: 440px;
+  max-width: 480px;
   align-self: center;
   margin-block: auto;
-  padding-block: 32px;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
+  padding: 28px;
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--portal-surface) 88%, transparent);
+  border: 1px solid var(--portal-border);
+  box-shadow: var(--portal-shadow);
+  backdrop-filter: blur(20px);
+  animation: login-card-enter .5s ease both;
+}
+[data-theme="dark"] .login-form-panel .login-form-card {
+  border-color: color-mix(in srgb, var(--portal-border) 85%, var(--portal-primary));
+  box-shadow: var(--portal-shadow), 0 0 60px -25px color-mix(in srgb, var(--portal-primary) 25%, transparent);
 }
 .login-fields { display: grid; gap: 16px; }
 .login-fields .MuiOutlinedInput-root { height: 46px; }
-.login-fields .MuiButton-containedPrimary { background-image: none; box-shadow: none; }
+.login-fields .MuiButton-containedPrimary {
+  background-image: linear-gradient(115deg, var(--portal-primary), color-mix(in srgb, var(--portal-primary) 88%, var(--portal-violet)));
+  box-shadow: 0 8px 18px -8px color-mix(in srgb, var(--portal-primary) 55%, transparent);
+}
 [data-theme="light"] .login-fields .MuiOutlinedInput-notchedOutline {
   border-color: color-mix(in srgb, var(--portal-muted) 80%, var(--portal-border));
 }
@@ -81,6 +143,11 @@
   max-width: 100%;
   border-radius: 4px;
 }
+@media (min-width: 900px) and (max-width: 1199px) {
+  .login-float { gap: 6px; padding: 9px; font-size: 11px; }
+  .login-float svg { font-size: 20px; }
+  .login-float-caption { display: none; }
+}
 @media (max-width: 899px) {
   .login-shell { grid-template-columns: minmax(0, 1fr); }
   .login-story { display: none; }
@@ -88,5 +155,17 @@
   .login-mobile-brand { display: block; min-width: 0; }
 }
 @media (max-width: 479px) {
-  .login-form-panel { padding: 16px 24px; }
+  .login-form-panel { padding: 16px; }
+  .login-form-panel .login-form-card { padding: 24px 20px; border-radius: 20px; }
+}
+@keyframes login-float {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-9px) rotate(-1deg); }
+}
+@keyframes login-card-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .login-shell *, .login-shell *::before, .login-shell *::after { animation: none !important; }
 }

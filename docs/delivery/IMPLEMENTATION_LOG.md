@@ -22,6 +22,28 @@ docs/design/LOGIN_COMPACT_VALIDATION.md. Sem .NET/login real/deploy, pois backen
 intacto. Sem novas bibliotecas ou alterações em outras telas. PR para revisão
 visual, sem merge automático.
 
+## 2026-11-12 — conciliar login compacto com vidro e animação
+
+Proprietário aprovou o ganho de proporção, mas solicitou recuperar animação,
+transparência, sombras e profundidade, principalmente no escuro. Branch
+feature/login-glass-motion criada de origin/main com árvore limpa. Apenas
+LoginVisual/login.css e teste visual alterados; autenticação/markup do formulário
+intactos. Referência visual usada somente para composição, sem copiar seus ativos.
+
+Arte original agora preenche painel esquerdo; elemento central preservado no
+enquadramento. Mensagem curta em vidro fosco, flutuantes decorativos animados,
+cartão do formulário com transparência, sombra e animação de entrada. Gradientes
+estáticos e animações CSS transform, sem loop JavaScript. Preferência de movimento
+reduzido interrompe animações. Fluxo essencial continua em Grid/Flex, com dimensões
+compactas e rolagem normal para alturas insuficientes.
+
+Typecheck/build frontend: PASS, mantendo aviso de chunks >500 kB. Playwright/axe:
+12 layouts em desenvolvimento PASS, zero violações A/AA encontradas, sem overflow
+horizontal/scroll inicial nos quatro tamanhos solicitados e 1920×800/1366×640.
+Validado movimento real e desativação em reduced-motion; estados anteriores
+preservados. Build final em preview validada separadamente conforme relatório
+docs/design/LOGIN_COMPACT_VALIDATION.md. Sem .NET, API real, deploy ou merge.
+
 ## Modelo de registro
 
 ### YYYY-MM-DD — Etapa X — Título

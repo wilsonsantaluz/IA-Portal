@@ -540,3 +540,9 @@ própria, cartão sobreposto e lista de funcionalidades. Padding/margens do
 formulário somavam altura excessiva e shell ocultava overflow. Refatoração
 mantém autenticação/tokens e reduz somente apresentação. Evidências e limites
 em docs/design/LOGIN_COMPACT_VALIDATION.md.
+
+Revisão visual posterior ao PR #17: o proprietário solicitou recuperar a
+profundidade e animação que foram retiradas. Reintroduzidos vidro/sombras no
+cartão e mensagem curta, imagem de fundo vívida e flutuantes decorativos CSS.
+Somente decoração é absoluta; formulário e controles continuam no fluxo normal.
+Reutilizados os mesmos tokens/ativos, sem mudança de identidade ou auth.
