@@ -56,9 +56,9 @@ sudo /usr/local/libexec/ia-portal-deploy-stack start
 O instalador copia o wrapper, instala drop-in da unidade existente e recarrega
 systemd sem reiniciar a stack. O comando start aplica a release active sem builds
 ou pulls. Quando essa release usa o novo Trino, desativa restart e para somente
-o watcher legado. Nenhum volume é removido. O fallback da instalação antiga
-continua disponível antes de existir uma active validada. O drop-in manual
-descrito abaixo é equivalente ao instalado pelo script.
+o watcher legado. Nenhum volume é removido. O boot exige uma active validada:
+se ela faltar, falha explicitamente em vez de tentar uma instalação antiga.
+O drop-in manual descrito abaixo é equivalente ao instalado pelo script.
 
 Instale `/etc/ia-portal/deploy.conf` a partir de
 `infra/deploy/deploy.conf.example`, proprietário root, grupo github-runner, 0640.
@@ -121,6 +121,33 @@ rollback. O apontador active só muda após validação. Não reverta imagens co
 esquema incompatível nem restaure backup descartando gravações sem revisão.
 
 ## Trino ocioso
+
+`-agentpath:/usr/lib/trino/bin/libjvmkill.so` é a biblioteca nativa padrão de
+proteção da JVM, não o watcher de dados Atlas. O argumento permanece no comando
+do Java durante toda a vida do servidor e aparece também nas threads no htop.
+O Trino precisa permanecer ativo para receber consultas; apenas a carga inicial
+encerra. [Projeto oficial jvmkill](https://github.com/airlift/jvmkill).
+
+## Remover instalação legada após validar boot
+
+`infra/local/retire-legacy-stack.py` faz dry-run por padrão. Exige o nome exato
+da release active, verifica o boot, protege mounts de todos os containers,
+volumes, .env, modelos e backups; recusa symlinks/arquivos privados no plano de
+exclusão. A aplicação da limpeza é uma operação explícita do proprietário:
+
+```bash
+sudo python3 infra/local/retire-legacy-stack.py --expected-active HASH.SUFFIX
+sudo python3 infra/local/retire-legacy-stack.py --apply --expected-active HASH.SUFFIX
+```
+
+Usa o mesmo lock de deploy, elimina somente código sem referências, releases
+inativas, loader parado e tags locais antigas sem uso. Não usa Docker prune,
+force ou remoção de volumes. Registra o inventário em
+`/var/log/ia-portal-legacy-retirement.json`. Após retirar código/release antigos,
+rollback para eles exige obter o código/imagem novamente; backups de dados ficam
+preservados. Comandos Compose usam a release active e o env privado externo.
+
+## Medições e inicialização
 
 Medição remota: Trino 1,47 GiB/2 GiB e 3,93% CPU; loader 11,01% CPU em uma
 amostra; host 4,3 GB disponíveis, swap zero. Uma amostra não caracteriza picos.

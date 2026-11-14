@@ -10,10 +10,11 @@ SCRIPT = Path(__file__).with_name('deploy-stack.sh').resolve()
 
 class BootTests(unittest.TestCase):
     def test_only_modern_start_retires_legacy_loader(self):
-        for case in ('modern', 'legacy', 'stop'):
+        for case in ('modern', 'legacy', 'stop', 'missing-active'):
             with self.subTest(case=case), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp)
-                (root / 'active').mkdir()
+                if case != 'missing-active':
+                    (root / 'active').mkdir()
                 binary = root / 'bin'
                 binary.mkdir()
                 docker = binary / 'docker'
@@ -48,6 +49,10 @@ COMPOSE_PROFILES=
                                              'BASH_ENV': str(hook), 'BOOT_FIXTURE': str(conf),
                                              'BOOT_LOG': str(log), 'BOOT_CASE': case},
                                         capture_output=True, text=True)
+                if case == 'missing-active':
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertFalse(log.exists())
+                    continue
                 self.assertEqual(result.returncode, 0, result.stderr)
                 calls = log.read_text()
                 if case == 'modern':

@@ -4,16 +4,11 @@ set -Eeuo pipefail
 source /etc/ia-portal/deploy.conf
 export PORTAL_DATA_VOLUME COMPOSE_PROFILES
 unset COMPOSE_FILE COMPOSE_PROJECT_NAME
-if [[ -d "$PORTAL_RELEASE_ROOT/active" ]]; then
-  cd "$PORTAL_RELEASE_ROOT/active"
-  compose=(docker compose --project-name "$PORTAL_PROJECT_NAME" --env-file "$PORTAL_RUNTIME_ENV")
-  for file in "${PORTAL_COMPOSE_FILES[@]}"; do compose+=(-f "$file"); done
-  compose+=(-f infra/deploy/production.yml)
-else
-  # Before the first successful Actions deploy, retain the migrated stack.
-  cd /opt/ia-portal
-  compose=(docker compose --project-name "$PORTAL_PROJECT_NAME" --env-file "$PORTAL_RUNTIME_ENV")
-fi
+[[ -d "$PORTAL_RELEASE_ROOT/active" ]] || { echo 'Validated active release required; legacy fallback disabled.' >&2; exit 1; }
+cd "$PORTAL_RELEASE_ROOT/active"
+compose=(docker compose --project-name "$PORTAL_PROJECT_NAME" --env-file "$PORTAL_RUNTIME_ENV")
+for file in "${PORTAL_COMPOSE_FILES[@]}"; do compose+=(-f "$file"); done
+compose+=(-f infra/deploy/production.yml)
 case "${1:-}" in
   start)
     services=$("${compose[@]}" config --services)

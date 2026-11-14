@@ -556,3 +556,11 @@ verificação de host. Confirmados HTTPS público 200 e túnel sem novos restart
 Boot antigo sem drop-in reativou atlas-loader, embora active e imagem nova com
 inicialização única existam. Preparado instalador de boot e proteção contra
 watcher legado; execução bloqueada por revisão automática, pendente passo manual.
+
+Atualização após execução manual pelo proprietário: drop-in instalado e release
+6a93ae9 ativa, Trino com inicialização única e loader legado parado. Proprietário
+autorizou apagar o legado. Removidos código antigo sem mounts, quatro releases
+inativas, loader parado e dez tags sem uso; dados/modelos/env/backups preservados.
+Wrapper agora exige active, sem fallback. HTTPS 200 após limpeza; nenhuma nova
+consulta Trino observada em 35 s (contador 89→89). libjvmkill.so é o agente nativo
+da imagem oficial para proteção da JVM, não é indexador ou loader Atlas.

@@ -77,6 +77,35 @@ frontend local 200 e novo teste HTTPS público 200. Sem novo build de imagens/.N
 sem migração SQLite, remoção de volumes ou merge automático. O loader antigo
 permanece ativo até o passo manual ser aplicado.
 
+## 2026-11-14 — retirada autorizada da stack legada e diagnóstico agentpath
+
+Proprietário executou instalação do boot e pediu explicitamente exclusão do
+legado. Inspeção confirmou drop-in 10-releases.conf, active 6a93ae9, novo Trino
+e loader legado parado. Árvore Git limpa no início deste incremento.
+
+Executada limpeza no servidor após dry-run e teste do plano: 28 entradas de
+código antigo na raiz, quatro releases sem mounts, container atlas-loader
+parado e dez tags de imagens antigas/teste sem uso. Imagem LiteLLM ainda usada
+foi mantida. Sem prune/force ou remoção de volumes. Protegidos .env, models,
+migration-backups, release ativa, arquivos privados e mounts de todos os
+containers. Inventário em /var/log/ia-portal-legacy-retirement.json.
+
+Wrapper instalado atualizado para exigir active, sem fallback para Compose
+antigo. Nenhum container da aplicação reiniciado nesta limpeza. API pronta e
+frontend local aprovados; HTTPS público /login retornou 200. Boot/túnel ativos.
+Raiz final: .env, models, migration-backups e releases.
+
+Trino: processos bash e trino-server; nenhum Python/CLI de carga. Contador de
+TIMELINE Query permaneceu 89→89 em 35 segundos de observação. Agentpath aponta
+para libjvmkill.so fornecida na imagem oficial, proteção JVMTI da JVM, sem relação
+com indexação ou watcher. Mantida configuração de JVM/ACL/memória. Uma amostra
+mostrou ~1 GiB e 4,36% CPU, não atribuídos individualmente à biblioteca.
+
+Testes no Ubuntu: plano de limpeza preservando data/env/mounts/active/symlink:
+PASS; quatro cenários de boot, incluindo ausência de active: PASS; bash -n: PASS.
+Sem build frontend/.NET, login/LLM real ou teste de reboot. Limpeza já aplicada
+por autorização explícita; melhorias de código seguem no PR #18, sem merge.
+
 ## Modelo de registro
 
 ### YYYY-MM-DD — Etapa X — Título
