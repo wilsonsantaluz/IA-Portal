@@ -39,6 +39,28 @@ não use esse runner para executar código de PRs de forks. Confira as
 
 ## Configuração privada e boot
 
+### Conexão morta mantendo portas no edge
+
+Se aplicação local retorna 200 mas o túnel acusa `remote port forwarding failed`
+nas portas 19080/19089, inspecione os listeners no edge. Uma sessão SSH antiga
+pode continuar reservando as portas após perda de conectividade. Não mate todos
+os processos SSH: confira PID, portas e identidade da chave do túnel antes de
+encerrar somente a sessão abandonada.
+
+O edge desta instalação recebeu
+`infra/oracle/10-ia-portal-client-alive.conf` em `/etc/ssh/sshd_config.d/`:
+ClientAliveInterval=30 e ClientAliveCountMax=3. Configuração validada com
+`sshd -t` e valores efetivos conferidos com `sshd -T` antes/depois de reload.
+Não altera autenticação, chaves, portas públicas ou host verification. Clientes
+saudáveis respondem aos probes mesmo sem interação no terminal; conexões sem
+resposta são encerradas em cerca de 90 s, liberando os forwards. Após instalar,
+reconectar o túnel para que sua sessão use a nova política.
+
+Em 14/11, rota até o edge usava Wi-Fi wlp2s0 com sinal -85 dBm e contadores de
+retransmissões. Essa amostra não prova a causa exata da perda, mas indica risco
+de instabilidade da ligação. Cabo de rede é preferível para este servidor.
+Não foi modificada automaticamente a configuração da interface/DHCP.
+
 O diretório comum `/etc/ia-portal` precisa permitir travessia ao usuário do
 túnel, além do runner. Use 0751 com root:github-runner; mantenha tunnel em 0700
 do usuário ia-portal-tunnel e chave/known_hosts em 0600. Não adicione o usuário

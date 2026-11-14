@@ -564,3 +564,10 @@ inativas, loader parado e dez tags sem uso; dados/modelos/env/backups preservado
 Wrapper agora exige active, sem fallback. HTTPS 200 após limpeza; nenhuma nova
 consulta Trino observada em 35 s (contador 89→89). libjvmkill.so é o agente nativo
 da imagem oficial para proteção da JVM, não é indexador ou loader Atlas.
+
+Nova queda externa: serviços locais íntegros. Edge reteve sessão SSH abandonada
+segurando 19080/19089, impedindo novas conexões do túnel. Identidade/portas/PID
+validados antes de encerrar exclusivamente essa sessão. Edge não enviava probes
+ClientAlive (intervalo 0); instalado 30/3, validado com sshd -t/-T e reconectado
+túnel. Rota Wi-Fi do host com -85 dBm pode contribuir para perdas, sem causalidade
+isolada comprovada. Sem alterações na aplicação, dados ou autenticação.

@@ -106,6 +106,37 @@ PASS; quatro cenários de boot, incluindo ausência de active: PASS; bash -n: PA
 Sem build frontend/.NET, login/LLM real ou teste de reboot. Limpeza já aplicada
 por autorização explícita; melhorias de código seguem no PR #18, sem merge.
 
+## 2026-11-14 — túnel abandonado bloqueando reconexão
+
+Nova indisponibilidade: API/frontend locais 200, containers ativos e carga ~0,12.
+Túnel havia tentado reiniciar 57 vezes com remote port forwarding failed em 19080.
+Edge mantinha os dois listeners em sessão sshd antiga, criada às 20:16 UTC, com
+tráfego acumulado sem resposta. PID, portas, início da sessão e fingerprint
+confirmados contra a chave pública do túnel do Ubuntu antes de SIGTERM específico;
+outras sessões de administração não foram encerradas. Nova sessão conseguiu
+reservar as portas e encaminhamento retornou HTTP 200.
+
+Edge usava ClientAliveInterval=0. Instalado drop-in com intervalo 30 e contagem 3;
+sshd -t PASS, sshd -T confirmou 30/3, reload PASS, daemon permaneceu ativo. Túnel
+reconectado para adotar a nova política; NRestarts=0. Sem mudança de auth/chaves,
+host verification, CORS, firewall ou serviços Docker. Arquivo versionado em
+infra/oracle/10-ia-portal-client-alive.conf.
+
+Rota do servidor ao edge confirmada em wlp2s0; sinal -85 dBm, retransmissões
+acumuladas. Não provada a causalidade exata da queda; recomendada ligação por cabo,
+sem alterar interface/DHCP remotamente. Nenhum build frontend/.NET ou migração de
+banco: mudança somente operacional/configuração SSH.
+
+Observação após correção, 8 sondagens HTTP a cada 15 s no encaminhamento: sete
+200 e um timeout de 5 s, seguido de recuperação. Mesmo PID de túnel durante
+toda a série; NRestarts=0 no host. HTTPS público de outra estação também 200.
+Portanto a correção de sessão abandonada não estabelece estabilidade completa:
+permanece oscilação de latência/conectividade no caminho. Fonte Wi-Fi fraca é
+evidência relevante, não prova isolada da causa do timeout.
+Teste ICMP até o roteador não executado: utilitário ping indisponível no host;
+nenhum pacote instalado só para esse teste. Rotas, sinal e healthchecks HTTP
+foram medidos; não foi obtida taxa de perda ICMP.
+
 ## Modelo de registro
 
 ### YYYY-MM-DD — Etapa X — Título
