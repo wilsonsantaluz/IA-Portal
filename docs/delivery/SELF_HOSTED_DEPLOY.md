@@ -39,6 +39,27 @@ não use esse runner para executar código de PRs de forks. Confira as
 
 ## Configuração privada e boot
 
+O diretório comum `/etc/ia-portal` precisa permitir travessia ao usuário do
+túnel, além do runner. Use 0751 com root:github-runner; mantenha tunnel em 0700
+do usuário ia-portal-tunnel e chave/known_hosts em 0600. Não adicione o usuário
+do túnel ao grupo github-runner: isso daria acesso desnecessário a outros segredos.
+O instalador abaixo libera somente travessia no diretório pai, preservando os
+arquivos privados e a verificação estrita da chave do host.
+
+Depois do primeiro deploy validado, instale a integração persistente:
+
+```bash
+sudo bash infra/local/install-release-boot.sh
+sudo /usr/local/libexec/ia-portal-deploy-stack start
+```
+
+O instalador copia o wrapper, instala drop-in da unidade existente e recarrega
+systemd sem reiniciar a stack. O comando start aplica a release active sem builds
+ou pulls. Quando essa release usa o novo Trino, desativa restart e para somente
+o watcher legado. Nenhum volume é removido. O fallback da instalação antiga
+continua disponível antes de existir uma active validada. O drop-in manual
+descrito abaixo é equivalente ao instalado pelo script.
+
 Instale `/etc/ia-portal/deploy.conf` a partir de
 `infra/deploy/deploy.conf.example`, proprietário root, grupo github-runner, 0640.
 Para a instalação migrada, configure:

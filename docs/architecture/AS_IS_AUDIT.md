@@ -546,3 +546,13 @@ profundidade e animação que foram retiradas. Reintroduzidos vidro/sombras no
 cartão e mensagem curta, imagem de fundo vívida e flutuantes decorativos CSS.
 Somente decoração é absoluta; formulário e controles continuam no fluxo normal.
 Reutilizados os mesmos tokens/ativos, sem mudança de identidade ou auth.
+
+## Indisponibilidade externa após reboot — 14/11/2026
+
+Aplicação local saudável. Túnel falhava por falta de travessia do usuário de
+serviço em /etc/ia-portal (0750 root:github-runner); chave/known_hosts permaneciam
+privados no filho 0700. Corrigido pai para 0751, sem trocar chaves ou desativar
+verificação de host. Confirmados HTTPS público 200 e túnel sem novos restarts.
+Boot antigo sem drop-in reativou atlas-loader, embora active e imagem nova com
+inicialização única existam. Preparado instalador de boot e proteção contra
+watcher legado; execução bloqueada por revisão automática, pendente passo manual.

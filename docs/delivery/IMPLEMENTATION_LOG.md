@@ -44,6 +44,39 @@ Validado movimento real e desativação em reduced-motion; estados anteriores
 preservados. Build final em preview validada separadamente conforme relatório
 docs/design/LOGIN_COMPACT_VALIDATION.md. Sem .NET, API real, deploy ou merge.
 
+## 2026-11-14 — indisponibilidade externa após reboot
+
+Branch fix/server-boot-and-tunnel de origin/main (6a93ae9), árvore limpa. Host
+reiniciado havia ~7 h; API/frontend locais retornavam 200, RAM disponível ~4 GiB,
+swap zero e disco 49%. Túnel SSH falhava continuamente por Permission denied na
+chave: pai /etc/ia-portal root:github-runner 0750 impedia travessia do usuário
+ia-portal-tunnel; chave/known_hosts e diretório filho tinham owner/modes corretos.
+Sem troca de chave, desativação de host verification ou exposição de segredos.
+
+Correção aplicada: somente o+x no pai (0751). Confirmado acesso do usuário aos
+arquivos privados; túnel reiniciado e estabilizado com NRestarts=0. HTTPS público
+/login: 200, HTML IA-Portal presente. Local API/frontend: 200. Usuário do túnel
+não foi adicionado ao grupo do runner; folha 0700 e chave 0600 preservadas.
+
+Boot ainda executava Compose antigo de /opt/ia-portal, sem drop-in. Isso reativou
+o atlas-loader antigo apesar de active apontar à release 6a93ae9 e imagem nova
+já conter /opt/atlas/start.sh. Preparados install-release-boot.sh e wrapper
+atualizado para usar active e parar/desativar restart do watcher legado somente
+quando a release selecionada não o define.
+
+A execução remota de instalação do drop-in e aplicação da release foi rejeitada
+antes de executar por revisão automática: blocked by policy, sem motivo adicional.
+Não foi contornada. Arquivos públicos transferidos para /tmp/ia-boot-fix para
+execução manual pelo proprietário; bash -n: PASS. Testes de orquestração isolados
+com Docker/config falsos não usam /etc real: três cenários PASS (release nova
+retira watcher, stack antiga preserva loader necessário e stop não altera policy).
+Novas conexões do cliente SSH automático expiraram; OpenSSH nativo negociava
+normalmente. Nova sessão automática com ECDH compatível (sem mudar o sshd e com
+host verification estrita) confirmou uptime, carga baixa, túnel ativo/NRestarts=0,
+frontend local 200 e novo teste HTTPS público 200. Sem novo build de imagens/.NET/UI,
+sem migração SQLite, remoção de volumes ou merge automático. O loader antigo
+permanece ativo até o passo manual ser aplicado.
+
 ## Modelo de registro
 
 ### YYYY-MM-DD — Etapa X — Título
