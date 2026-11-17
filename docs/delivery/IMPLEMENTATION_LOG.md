@@ -44,6 +44,99 @@ Validado movimento real e desativação em reduced-motion; estados anteriores
 preservados. Build final em preview validada separadamente conforme relatório
 docs/design/LOGIN_COMPACT_VALIDATION.md. Sem .NET, API real, deploy ou merge.
 
+## 2026-11-14 — indisponibilidade externa após reboot
+
+Branch fix/server-boot-and-tunnel de origin/main (6a93ae9), árvore limpa. Host
+reiniciado havia ~7 h; API/frontend locais retornavam 200, RAM disponível ~4 GiB,
+swap zero e disco 49%. Túnel SSH falhava continuamente por Permission denied na
+chave: pai /etc/ia-portal root:github-runner 0750 impedia travessia do usuário
+ia-portal-tunnel; chave/known_hosts e diretório filho tinham owner/modes corretos.
+Sem troca de chave, desativação de host verification ou exposição de segredos.
+
+Correção aplicada: somente o+x no pai (0751). Confirmado acesso do usuário aos
+arquivos privados; túnel reiniciado e estabilizado com NRestarts=0. HTTPS público
+/login: 200, HTML IA-Portal presente. Local API/frontend: 200. Usuário do túnel
+não foi adicionado ao grupo do runner; folha 0700 e chave 0600 preservadas.
+
+Boot ainda executava Compose antigo de /opt/ia-portal, sem drop-in. Isso reativou
+o atlas-loader antigo apesar de active apontar à release 6a93ae9 e imagem nova
+já conter /opt/atlas/start.sh. Preparados install-release-boot.sh e wrapper
+atualizado para usar active e parar/desativar restart do watcher legado somente
+quando a release selecionada não o define.
+
+A execução remota de instalação do drop-in e aplicação da release foi rejeitada
+antes de executar por revisão automática: blocked by policy, sem motivo adicional.
+Não foi contornada. Arquivos públicos transferidos para /tmp/ia-boot-fix para
+execução manual pelo proprietário; bash -n: PASS. Testes de orquestração isolados
+com Docker/config falsos não usam /etc real: três cenários PASS (release nova
+retira watcher, stack antiga preserva loader necessário e stop não altera policy).
+Novas conexões do cliente SSH automático expiraram; OpenSSH nativo negociava
+normalmente. Nova sessão automática com ECDH compatível (sem mudar o sshd e com
+host verification estrita) confirmou uptime, carga baixa, túnel ativo/NRestarts=0,
+frontend local 200 e novo teste HTTPS público 200. Sem novo build de imagens/.NET/UI,
+sem migração SQLite, remoção de volumes ou merge automático. O loader antigo
+permanece ativo até o passo manual ser aplicado.
+
+## 2026-11-14 — retirada autorizada da stack legada e diagnóstico agentpath
+
+Proprietário executou instalação do boot e pediu explicitamente exclusão do
+legado. Inspeção confirmou drop-in 10-releases.conf, active 6a93ae9, novo Trino
+e loader legado parado. Árvore Git limpa no início deste incremento.
+
+Executada limpeza no servidor após dry-run e teste do plano: 28 entradas de
+código antigo na raiz, quatro releases sem mounts, container atlas-loader
+parado e dez tags de imagens antigas/teste sem uso. Imagem LiteLLM ainda usada
+foi mantida. Sem prune/force ou remoção de volumes. Protegidos .env, models,
+migration-backups, release ativa, arquivos privados e mounts de todos os
+containers. Inventário em /var/log/ia-portal-legacy-retirement.json.
+
+Wrapper instalado atualizado para exigir active, sem fallback para Compose
+antigo. Nenhum container da aplicação reiniciado nesta limpeza. API pronta e
+frontend local aprovados; HTTPS público /login retornou 200. Boot/túnel ativos.
+Raiz final: .env, models, migration-backups e releases.
+
+Trino: processos bash e trino-server; nenhum Python/CLI de carga. Contador de
+TIMELINE Query permaneceu 89→89 em 35 segundos de observação. Agentpath aponta
+para libjvmkill.so fornecida na imagem oficial, proteção JVMTI da JVM, sem relação
+com indexação ou watcher. Mantida configuração de JVM/ACL/memória. Uma amostra
+mostrou ~1 GiB e 4,36% CPU, não atribuídos individualmente à biblioteca.
+
+Testes no Ubuntu: plano de limpeza preservando data/env/mounts/active/symlink:
+PASS; quatro cenários de boot, incluindo ausência de active: PASS; bash -n: PASS.
+Sem build frontend/.NET, login/LLM real ou teste de reboot. Limpeza já aplicada
+por autorização explícita; melhorias de código seguem no PR #18, sem merge.
+
+## 2026-11-14 — túnel abandonado bloqueando reconexão
+
+Nova indisponibilidade: API/frontend locais 200, containers ativos e carga ~0,12.
+Túnel havia tentado reiniciar 57 vezes com remote port forwarding failed em 19080.
+Edge mantinha os dois listeners em sessão sshd antiga, criada às 20:16 UTC, com
+tráfego acumulado sem resposta. PID, portas, início da sessão e fingerprint
+confirmados contra a chave pública do túnel do Ubuntu antes de SIGTERM específico;
+outras sessões de administração não foram encerradas. Nova sessão conseguiu
+reservar as portas e encaminhamento retornou HTTP 200.
+
+Edge usava ClientAliveInterval=0. Instalado drop-in com intervalo 30 e contagem 3;
+sshd -t PASS, sshd -T confirmou 30/3, reload PASS, daemon permaneceu ativo. Túnel
+reconectado para adotar a nova política; NRestarts=0. Sem mudança de auth/chaves,
+host verification, CORS, firewall ou serviços Docker. Arquivo versionado em
+infra/oracle/10-ia-portal-client-alive.conf.
+
+Rota do servidor ao edge confirmada em wlp2s0; sinal -85 dBm, retransmissões
+acumuladas. Não provada a causalidade exata da queda; recomendada ligação por cabo,
+sem alterar interface/DHCP remotamente. Nenhum build frontend/.NET ou migração de
+banco: mudança somente operacional/configuração SSH.
+
+Observação após correção, 8 sondagens HTTP a cada 15 s no encaminhamento: sete
+200 e um timeout de 5 s, seguido de recuperação. Mesmo PID de túnel durante
+toda a série; NRestarts=0 no host. HTTPS público de outra estação também 200.
+Portanto a correção de sessão abandonada não estabelece estabilidade completa:
+permanece oscilação de latência/conectividade no caminho. Fonte Wi-Fi fraca é
+evidência relevante, não prova isolada da causa do timeout.
+Teste ICMP até o roteador não executado: utilitário ping indisponível no host;
+nenhum pacote instalado só para esse teste. Rotas, sinal e healthchecks HTTP
+foram medidos; não foi obtida taxa de perda ICMP.
+
 ## Modelo de registro
 
 ### YYYY-MM-DD — Etapa X — Título

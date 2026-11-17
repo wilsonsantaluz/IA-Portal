@@ -39,6 +39,49 @@ não use esse runner para executar código de PRs de forks. Confira as
 
 ## Configuração privada e boot
 
+### Conexão morta mantendo portas no edge
+
+Se aplicação local retorna 200 mas o túnel acusa `remote port forwarding failed`
+nas portas 19080/19089, inspecione os listeners no edge. Uma sessão SSH antiga
+pode continuar reservando as portas após perda de conectividade. Não mate todos
+os processos SSH: confira PID, portas e identidade da chave do túnel antes de
+encerrar somente a sessão abandonada.
+
+O edge desta instalação recebeu
+`infra/oracle/10-ia-portal-client-alive.conf` em `/etc/ssh/sshd_config.d/`:
+ClientAliveInterval=30 e ClientAliveCountMax=3. Configuração validada com
+`sshd -t` e valores efetivos conferidos com `sshd -T` antes/depois de reload.
+Não altera autenticação, chaves, portas públicas ou host verification. Clientes
+saudáveis respondem aos probes mesmo sem interação no terminal; conexões sem
+resposta são encerradas em cerca de 90 s, liberando os forwards. Após instalar,
+reconectar o túnel para que sua sessão use a nova política.
+
+Em 14/11, rota até o edge usava Wi-Fi wlp2s0 com sinal -85 dBm e contadores de
+retransmissões. Essa amostra não prova a causa exata da perda, mas indica risco
+de instabilidade da ligação. Cabo de rede é preferível para este servidor.
+Não foi modificada automaticamente a configuração da interface/DHCP.
+
+O diretório comum `/etc/ia-portal` precisa permitir travessia ao usuário do
+túnel, além do runner. Use 0751 com root:github-runner; mantenha tunnel em 0700
+do usuário ia-portal-tunnel e chave/known_hosts em 0600. Não adicione o usuário
+do túnel ao grupo github-runner: isso daria acesso desnecessário a outros segredos.
+O instalador abaixo libera somente travessia no diretório pai, preservando os
+arquivos privados e a verificação estrita da chave do host.
+
+Depois do primeiro deploy validado, instale a integração persistente:
+
+```bash
+sudo bash infra/local/install-release-boot.sh
+sudo /usr/local/libexec/ia-portal-deploy-stack start
+```
+
+O instalador copia o wrapper, instala drop-in da unidade existente e recarrega
+systemd sem reiniciar a stack. O comando start aplica a release active sem builds
+ou pulls. Quando essa release usa o novo Trino, desativa restart e para somente
+o watcher legado. Nenhum volume é removido. O boot exige uma active validada:
+se ela faltar, falha explicitamente em vez de tentar uma instalação antiga.
+O drop-in manual descrito abaixo é equivalente ao instalado pelo script.
+
 Instale `/etc/ia-portal/deploy.conf` a partir de
 `infra/deploy/deploy.conf.example`, proprietário root, grupo github-runner, 0640.
 Para a instalação migrada, configure:
@@ -100,6 +143,33 @@ rollback. O apontador active só muda após validação. Não reverta imagens co
 esquema incompatível nem restaure backup descartando gravações sem revisão.
 
 ## Trino ocioso
+
+`-agentpath:/usr/lib/trino/bin/libjvmkill.so` é a biblioteca nativa padrão de
+proteção da JVM, não o watcher de dados Atlas. O argumento permanece no comando
+do Java durante toda a vida do servidor e aparece também nas threads no htop.
+O Trino precisa permanecer ativo para receber consultas; apenas a carga inicial
+encerra. [Projeto oficial jvmkill](https://github.com/airlift/jvmkill).
+
+## Remover instalação legada após validar boot
+
+`infra/local/retire-legacy-stack.py` faz dry-run por padrão. Exige o nome exato
+da release active, verifica o boot, protege mounts de todos os containers,
+volumes, .env, modelos e backups; recusa symlinks/arquivos privados no plano de
+exclusão. A aplicação da limpeza é uma operação explícita do proprietário:
+
+```bash
+sudo python3 infra/local/retire-legacy-stack.py --expected-active HASH.SUFFIX
+sudo python3 infra/local/retire-legacy-stack.py --apply --expected-active HASH.SUFFIX
+```
+
+Usa o mesmo lock de deploy, elimina somente código sem referências, releases
+inativas, loader parado e tags locais antigas sem uso. Não usa Docker prune,
+force ou remoção de volumes. Registra o inventário em
+`/var/log/ia-portal-legacy-retirement.json`. Após retirar código/release antigos,
+rollback para eles exige obter o código/imagem novamente; backups de dados ficam
+preservados. Comandos Compose usam a release active e o env privado externo.
+
+## Medições e inicialização
 
 Medição remota: Trino 1,47 GiB/2 GiB e 3,93% CPU; loader 11,01% CPU em uma
 amostra; host 4,3 GB disponíveis, swap zero. Uma amostra não caracteriza picos.

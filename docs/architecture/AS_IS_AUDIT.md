@@ -546,3 +546,28 @@ profundidade e animação que foram retiradas. Reintroduzidos vidro/sombras no
 cartão e mensagem curta, imagem de fundo vívida e flutuantes decorativos CSS.
 Somente decoração é absoluta; formulário e controles continuam no fluxo normal.
 Reutilizados os mesmos tokens/ativos, sem mudança de identidade ou auth.
+
+## Indisponibilidade externa após reboot — 14/11/2026
+
+Aplicação local saudável. Túnel falhava por falta de travessia do usuário de
+serviço em /etc/ia-portal (0750 root:github-runner); chave/known_hosts permaneciam
+privados no filho 0700. Corrigido pai para 0751, sem trocar chaves ou desativar
+verificação de host. Confirmados HTTPS público 200 e túnel sem novos restarts.
+Boot antigo sem drop-in reativou atlas-loader, embora active e imagem nova com
+inicialização única existam. Preparado instalador de boot e proteção contra
+watcher legado; execução bloqueada por revisão automática, pendente passo manual.
+
+Atualização após execução manual pelo proprietário: drop-in instalado e release
+6a93ae9 ativa, Trino com inicialização única e loader legado parado. Proprietário
+autorizou apagar o legado. Removidos código antigo sem mounts, quatro releases
+inativas, loader parado e dez tags sem uso; dados/modelos/env/backups preservados.
+Wrapper agora exige active, sem fallback. HTTPS 200 após limpeza; nenhuma nova
+consulta Trino observada em 35 s (contador 89→89). libjvmkill.so é o agente nativo
+da imagem oficial para proteção da JVM, não é indexador ou loader Atlas.
+
+Nova queda externa: serviços locais íntegros. Edge reteve sessão SSH abandonada
+segurando 19080/19089, impedindo novas conexões do túnel. Identidade/portas/PID
+validados antes de encerrar exclusivamente essa sessão. Edge não enviava probes
+ClientAlive (intervalo 0); instalado 30/3, validado com sshd -t/-T e reconectado
+túnel. Rota Wi-Fi do host com -85 dBm pode contribuir para perdas, sem causalidade
+isolada comprovada. Sem alterações na aplicação, dados ou autenticação.
